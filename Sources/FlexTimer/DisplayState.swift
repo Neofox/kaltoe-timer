@@ -10,7 +10,8 @@ enum DisplayState: Equatable {
     /// weekly overtime position otherwise.
     static func compute(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
                         now: Date, rules: WorkRules) -> DisplayState {
-        guard let today else { return hasSession ? .notClockedIn : .noSession }
+        guard hasSession else { return .noSession }
+        guard let today else { return .notClockedIn }
         let left = WorkCalculator.timeLeft(clockIn: today.clockIn, now: now, rules: rules)
         if today.clockOut == nil && left > 0 { return .counting(timeLeft: left) }
         return .overtime(weekly: WorkCalculator.weeklyOvertime(records: week, now: now, rules: rules))

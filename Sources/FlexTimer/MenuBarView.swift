@@ -2,10 +2,11 @@ import SwiftUI
 
 struct MenuBarView: View {
     @EnvironmentObject var state: AppState
+    @State private var manualTime = Date()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let today = state.today {
+            if let today = state.today, state.hasSession {
                 row("Started", today.clockIn.formatted(date: .omitted, time: .shortened))
                 row("Leave at", WorkCalculator.leaveTime(clockIn: today.clockIn, rules: state.rules)
                     .formatted(date: .omitted, time: .shortened))
@@ -13,11 +14,26 @@ struct MenuBarView: View {
                     clockIn: today.clockIn, now: Date(), rules: state.rules)))
             } else if state.hasSession {
                 Text("Not clocked in yet").foregroundStyle(.secondary)
+            } else {
+                Text("Session expired — sign in below").foregroundStyle(.secondary)
+            }
+
+            if state.today == nil {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        DatePicker("Started at", selection: $manualTime, displayedComponents: .hourAndMinute)
+                            .datePickerStyle(.field)
+                        Button("Set") {
+                            SettingsStore.setManualStart(manualTime, on: Date())
+                            state.recompute(now: Date())
+                        }
+                    }
+                }
             }
 
             Divider()
             row("Week OT", Formatting.signedHM(WorkCalculator.weeklyOvertime(
-                records: state.week, now: Date(), rules: state.rules)))
+                records: state.weekIncludingManual(now: Date()), now: Date(), rules: state.rules)))
 
             if let error = state.syncError {
                 Text(error).font(.caption).foregroundStyle(.orange)

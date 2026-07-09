@@ -31,4 +31,23 @@ final class AppStateTests: XCTestCase {
         state.recompute(now: d(2026, 7, 7, 8, 0))
         XCTAssertEqual(state.menuText, "⏳ —")
     }
+
+    func testManualStartDrivesCountdownAndWeeklySum() {
+        SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
+        let state = AppState()
+        state.hasSession = true
+        state.week = []
+        let now = d(2026, 7, 9, 15, 25)
+        SettingsStore.setManualStart(d(2026, 7, 9, 8, 59), on: now)
+        state.recompute(now: now)
+        XCTAssertEqual(state.menuText, "⏳ 2:34")
+    }
+
+    func testExpiredSessionShowsDashDespiteStaleWeekData() {
+        let state = AppState()
+        state.hasSession = false
+        state.week = [WorkRecord(clockIn: d(2026, 7, 9, 9, 0), clockOut: nil, flexWorkedNet: nil)]
+        state.recompute(now: d(2026, 7, 9, 15, 0))
+        XCTAssertEqual(state.menuText, "⏳ —")
+    }
 }
