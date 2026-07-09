@@ -35,7 +35,7 @@ final class LoginWindowController: NSObject, WKNavigationDelegate, NSWindowDeleg
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak self] cookies in
-            guard let self else { return }
+            guard let self, self.onSuccess != nil else { return }
             let flexCookies = cookies.filter { $0.domain.contains("flex.team") }
             let names = Set(flexCookies.map(\.name))
             guard FlexAPIConfig.sessionCookieNames.isSubset(of: names) else { return }
@@ -45,6 +45,7 @@ final class LoginWindowController: NSObject, WKNavigationDelegate, NSWindowDeleg
                 UserDefaults.standard.set(hash, forKey: "flexUserIdHash")
             }
             let done = self.onSuccess
+            self.onSuccess = nil
             self.close()
             done?()
         }
