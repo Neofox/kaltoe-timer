@@ -14,6 +14,12 @@ final class FormattingTests: XCTestCase {
         XCTAssertEqual(Formatting.signedHM(0), "+0:00")
     }
 
+    func testSignedHMNearZeroNegativeFloorsToPlusZero() {
+        XCTAssertEqual(Formatting.signedHM(-30), "+0:00")
+        XCTAssertEqual(Formatting.signedHM(-59), "+0:00")
+        XCTAssertEqual(Formatting.signedHM(-60), "-0:01")
+    }
+
     func testHMS() {
         XCTAssertEqual(Formatting.hms(2 * 3600 + 34 * 60 + 12), "2:34:12")
     }
