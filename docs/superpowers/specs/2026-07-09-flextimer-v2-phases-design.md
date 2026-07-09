@@ -36,11 +36,11 @@ no color). Already clocked out → OT display (no color).
 
 ### Settings (UserDefaults, like v1 rules)
 
-| Key                                   | Default | Meaning                          |
-| ------------------------------------- | ------- | -------------------------------- |
-| `lunchStartHour` / `lunchStartMinute` | 11 / 30 | official break start             |
-| `lunchEndHour` / `lunchEndMinute`     | 12 / 30 | break end / work resumes         |
-| `lunchEarlyLeaveMinutes`              | 10      | allowed early departure to lunch |
+| Key                                 | Default | Meaning                          |
+| ----------------------------------- | ------- | -------------------------------- |
+| `lunchStartMinutes` (from midnight) | 690     | official break start (11:30)     |
+| `lunchEndMinutes` (from midnight)   | 750     | break end / work resumes (12:30) |
+| `lunchEarlyLeaveMinutes`            | 10      | allowed early departure to lunch |
 
 Stored alongside the existing rule keys in `SettingsStore`; missing keys →
 defaults.
@@ -55,7 +55,11 @@ defaults.
 | `warning`  | ≤ 30 min before leave time, still clocked in                                            | orange            |
 | `critical` | ≤ 10 min before leave time, or past leave time while the day is still open (clocked in) | red               |
 
-- Color applies to the whole label (icon + text).
+- Rendering: the warning/critical label is drawn as a **capsule pill** —
+  orange/red background with white icon + text (like macOS's own menu bar
+  active-state pills) — rather than tinting the text, for readability on
+  both light and dark menu bars. `normal` renders the plain template
+  icon + text as v1 does.
 - Lunch phases (`toLunch`, `onBreak`) are always `normal` — no one overworks
   toward lunch.
 - After clock-out, OT display is `normal` (not overworking anymore).
