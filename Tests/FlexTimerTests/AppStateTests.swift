@@ -11,7 +11,7 @@ final class AppStateTests: XCTestCase {
             WorkRecord(clockIn: d(2026, 7, 7, 8, 59), clockOut: nil, flexWorkedNet: nil),
         ]
         state.recompute(now: d(2026, 7, 7, 15, 25)) // Tuesday 15:25, clocked in 08:59
-        XCTAssertEqual(state.menuText, "⏳ 2:34")
+        XCTAssertEqual(state.menuText, "2:34")
 
         state.recompute(now: d(2026, 7, 7, 19, 0)) // past 17:59 → weekly OT: −5h +2h01 +1h01 = −1:58
         XCTAssertEqual(state.menuText, "OT -1:58")
@@ -22,14 +22,14 @@ final class AppStateTests: XCTestCase {
         state.hasSession = true
         state.week = []
         state.recompute(now: d(2026, 7, 7, 8, 0))
-        XCTAssertEqual(state.menuText, "⏳ --:--")
+        XCTAssertEqual(state.menuText, "--:--")
     }
 
     func testNoSessionShowsDash() {
         let state = AppState()
         state.hasSession = false
         state.recompute(now: d(2026, 7, 7, 8, 0))
-        XCTAssertEqual(state.menuText, "⏳ —")
+        XCTAssertEqual(state.menuText, "—")
     }
 
     func testManualStartDrivesCountdownAndWeeklySum() {
@@ -40,7 +40,7 @@ final class AppStateTests: XCTestCase {
         let now = d(2026, 7, 9, 15, 25)
         SettingsStore.setManualStart(d(2026, 7, 9, 8, 59), on: now)
         state.recompute(now: now)
-        XCTAssertEqual(state.menuText, "⏳ 2:34")
+        XCTAssertEqual(state.menuText, "2:34")
     }
 
     func testExpiredSessionShowsDashDespiteStaleWeekData() {
@@ -48,6 +48,6 @@ final class AppStateTests: XCTestCase {
         state.hasSession = false
         state.week = [WorkRecord(clockIn: d(2026, 7, 9, 9, 0), clockOut: nil, flexWorkedNet: nil)]
         state.recompute(now: d(2026, 7, 9, 15, 0))
-        XCTAssertEqual(state.menuText, "⏳ —")
+        XCTAssertEqual(state.menuText, "—")
     }
 }

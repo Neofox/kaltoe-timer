@@ -4,7 +4,7 @@ import Foundation
 
 @MainActor
 final class AppState: ObservableObject {
-    @Published var menuText = "⏳ --:--"
+    @Published var menuText = "--:--"
     @Published var week: [WorkRecord] = []
     @Published var lastSync: Date?
     @Published var syncError: String?

@@ -31,13 +31,13 @@ final class DisplayStateTests: XCTestCase {
     func testNoSession() {
         XCTAssertEqual(DisplayState.compute(hasSession: false, today: nil, week: [],
                                             now: d(2026, 7, 6, 9, 0), rules: rules), .noSession)
-        XCTAssertEqual(DisplayState.noSession.menuBarText, "⏳ —")
+        XCTAssertEqual(DisplayState.noSession.menuBarText, "—")
     }
 
     func testNotClockedIn() {
         XCTAssertEqual(DisplayState.compute(hasSession: true, today: nil, week: [],
                                             now: d(2026, 7, 6, 8, 0), rules: rules), .notClockedIn)
-        XCTAssertEqual(DisplayState.notClockedIn.menuBarText, "⏳ --:--")
+        XCTAssertEqual(DisplayState.notClockedIn.menuBarText, "--:--")
     }
 
     func testCountingDuringDay() {
@@ -45,7 +45,7 @@ final class DisplayStateTests: XCTestCase {
         let s = DisplayState.compute(hasSession: true, today: today, week: [today],
                                      now: d(2026, 7, 6, 15, 25), rules: rules)
         XCTAssertEqual(s, .counting(timeLeft: 2 * 3600 + 34 * 60))
-        XCTAssertEqual(s.menuBarText, "⏳ 2:34")
+        XCTAssertEqual(s.menuBarText, "2:34")
     }
 
     func testOvertimeAfterLeaveTime() {

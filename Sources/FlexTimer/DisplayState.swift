@@ -19,9 +19,9 @@ enum DisplayState: Equatable {
 
     var menuBarText: String {
         switch self {
-        case .noSession: return "⏳ —"
-        case .notClockedIn: return "⏳ --:--"
-        case .counting(let left): return "⏳ " + Formatting.hm(left)
+        case .noSession: return "—"
+        case .notClockedIn: return "--:--"
+        case .counting(let left): return Formatting.hm(left)
         case .overtime(let weekly): return "OT " + Formatting.signedHM(weekly)
         }
     }
