@@ -96,17 +96,18 @@ final class AppStateTests: XCTestCase {
         SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
         let state = AppState()
         state.hasSession = true
-        // Mon 2026-07-06 worked 9h net (09:00–19:00 minus 1h break) → +1h; Thursday is a vacation day.
-        state.week = [WorkRecord(clockIn: d(2026, 7, 6, 9, 0), clockOut: d(2026, 7, 6, 19, 0), flexWorkedNet: nil)]
+        // Mon 2026-07-06 worked 9h net (09:00–19:00 minus 1h break) → +1h;
+        // Tue 2026-07-07 worked 8h net (09:00–18:00 minus 1h break) → 0h.
+        // Thursday 2026-07-09 is a vacation day.
+        state.week = [
+            WorkRecord(clockIn: d(2026, 7, 6, 9, 0), clockOut: d(2026, 7, 6, 19, 0), flexWorkedNet: nil),
+            WorkRecord(clockIn: d(2026, 7, 7, 9, 0), clockOut: d(2026, 7, 7, 18, 0), flexWorkedNet: nil),
+        ]
         state.dayOffDates = [Calendar.current.startOfDay(for: d(2026, 7, 9, 0, 0))]
-        // Tuesday 19:00, past leave time, no record today → overtime phase shows weekly counter:
-        // −(5−1)h + 1h = −3:00
+        // Tuesday 19:00: today's record is completed and past leave time → overtime phase.
+        // Weekly counter: −(5−1)h + 1h + 0h = −3:00
         state.recompute(now: d(2026, 7, 7, 19, 0))
-        XCTAssertEqual(state.menuText, "--:--")  // not clocked in today — counter not shown here
-        XCTAssertEqual(WorkCalculator.weeklyOvertime(records: state.weekIncludingManual(now: d(2026, 7, 7, 19, 0)),
-                                                     dayOffs: state.dayOffDates,
-                                                     now: d(2026, 7, 7, 19, 0), rules: state.rules),
-                       -3 * 3600)
+        XCTAssertEqual(state.menuText, "OT -3:00")
     }
 
     func testSessionExpiryNotifiesViaAttachedNotifier() {

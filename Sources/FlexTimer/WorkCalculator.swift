@@ -40,6 +40,8 @@ enum WorkCalculator {
     }
 
     /// Weekly counter: −(adjusted required) + Σ daily overtime. Negative = still owed.
+    /// `dayOffs` elements must be `Calendar.current.startOfDay`-normalized dates —
+    /// week-range filtering compares instants.
     static func weeklyOvertime(records: [WorkRecord], dayOffs: Set<Date> = [],
                                now: Date, rules: WorkRules) -> TimeInterval {
         records.reduce(-requiredOvertime(dayOffs: dayOffs, weekOf: now, rules: rules)) {
@@ -64,6 +66,8 @@ enum WorkCalculator {
     /// Required overtime for the week containing `now`: base − dayOffDeduction per
     /// holiday/vacation weekday − familyDayDeduction if the week contains family day
     /// (family day itself never double-counts as a day-off). Floored at 0.
+    /// `dayOffs` elements must be `Calendar.current.startOfDay`-normalized dates —
+    /// week-range filtering compares instants.
     static func requiredOvertime(dayOffs: Set<Date>, weekOf now: Date, rules: WorkRules,
                                  calendar: Calendar = .current) -> TimeInterval {
         let start = weekStart(of: now, calendar: calendar)

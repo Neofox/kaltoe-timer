@@ -70,7 +70,10 @@ final class AppState: ObservableObject {
         sessionNotifier = SessionNotifier.live { [weak self] in
             Task { @MainActor in self?.signIn() }
         }
-        sessionNotifier?.sessionBecame(hasSession)  // establish baseline
+        // Establish baseline. Launching with present-but-expired cookies means
+        // hasSession starts true here, so the first refresh's true→false transition
+        // intentionally notifies; a no-cookie launch starts false and never does.
+        sessionNotifier?.sessionBecame(hasSession)
         Task { await refresh() }
     }
 
@@ -88,7 +91,9 @@ final class AppState: ObservableObject {
     func refresh() async {
         do {
             let now = Date()
-            let result = try await client.fetchWeek(from: WorkCalculator.weekStart(of: now), to: now)
+            let weekStart = WorkCalculator.weekStart(of: now)
+            let weekEnd = Calendar.current.date(byAdding: .day, value: 6, to: weekStart) ?? now
+            let result = try await client.fetchWeek(from: weekStart, to: max(now, weekEnd))
             week = result.records
             dayOffDates = result.dayOffDates
             lastSync = now

@@ -35,7 +35,7 @@ final class SessionNotifier {
             let content = UNMutableNotificationContent()
             content.title = "칼퇴타이머"
             content.body = "Flex session expired — sign in again to keep tracking."
-            center.add(UNNotificationRequest(identifier: "session-expired-\(UUID().uuidString)",
+            center.add(UNNotificationRequest(identifier: "session-expired",
                                              content: content, trigger: nil))
         })
     }
