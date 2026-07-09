@@ -79,6 +79,49 @@ defaults write com.perso.flextimer lunchEarlyLeaveMinutes -float 10
 
 **Note**: When running the app unbundled (`swift run`), UserDefaults uses a different domain than `com.perso.flextimer`, so these commands won't affect it. Use them against the installed app only.
 
+## Hooks
+
+Run your own scripts when 칼퇴타이머 detects 출근 (clock-in) or 퇴근 (clock-out). Drop executables at:
+
+```
+~/Library/Application Support/칼퇴타이머/hooks/
+├── on-clock-in
+└── on-clock-out
+```
+
+Both are optional; a missing or non-executable file is skipped. Remember `chmod +x`.
+
+Scripts receive environment variables:
+
+- `KALTOE_EVENT` — `clock-in` or `clock-out`
+- `KALTOE_CLOCK_IN` — clock-in time, ISO8601
+- `KALTOE_CLOCK_OUT` — clock-out time, ISO8601 (clock-out only)
+
+Semantics:
+
+- Each hook fires **at most once per event per day**, even across app restarts. If the app launches after you already clocked in (e.g. Mac booted late), the hook still fires — late, but once.
+- 퇴근 is detected via Flex sync, so the clock-out hook can lag up to ~10 minutes. Syncs happen on app launch, every 10 minutes, and on wake from sleep.
+- Hooks are fire-and-forget: the app never waits on your script or reads its output. Backgrounded children (`caffeinate &`) keep running after the script exits.
+
+Example — keep the Mac awake while at work, lock the screen and clean up after leaving:
+
+```bash
+# on-clock-in
+#!/bin/zsh
+caffeinate -d & echo $! > /tmp/kaltoe-caffeinate.pid
+claude -p "prepare my morning briefing" > /dev/null 2>&1 &
+```
+
+```bash
+# on-clock-out
+#!/bin/zsh
+[ -f /tmp/kaltoe-caffeinate.pid ] && kill "$(cat /tmp/kaltoe-caffeinate.pid)" 2>/dev/null
+rm -f /tmp/kaltoe-caffeinate.pid
+pmset displaysleepnow   # lock the screen (with the default "require password immediately")
+```
+
+The morning `caffeinate -d` conveniently guarantees the Mac is still awake when clock-out is detected. `pmset displaysleepnow` needs no special permissions.
+
 ## Manual Time Entry
 
 When there's no Flex record for today (network issue, API change, or day not yet started in Flex), you can manually enter a start time:
