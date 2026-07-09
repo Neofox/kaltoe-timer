@@ -15,10 +15,7 @@ struct FlexTimerApp: App {
         MenuBarExtra {
             MenuBarView().environmentObject(state)
         } label: {
-            HStack(spacing: 3) {
-                Image(systemName: "timer")
-                Text(state.menuText)
-            }
+            MenuBarLabel(display: state.menuDisplay, text: state.menuText)
         }
         .menuBarExtraStyle(.window)
     }

@@ -4,18 +4,28 @@ A minimal macOS menu bar app for tracking work hours against your flex.team work
 
 ## What 칼퇴타이머 Shows
 
-The menu bar displays a timer icon with one of the following states:
+The menu bar displays an icon plus text, with one of the following phases:
 
-- **Counting**: `2:34` — currently clocked in, showing time remaining until your leave time (clock-in + 8h work + 1h break)
-- **Overtime**: `OT -2:59` — after leave time, showing the weekly overtime counter. It resets to -5:00 every Monday at 00:00 (the 5h weekly overtime target) and updates live once you're past your daily leave time
+- **To lunch**: `1:20` with a `fork.knife` icon — morning countdown to the lunch-leave moment (11:30 lunch start minus the 10-min early-leave allowance, i.e. counts down to 11:20)
+- **On break**: `BREAK 0:45` with a `cup.and.saucer` icon — during the 11:20–12:30 lunch window
+- **Counting**: `2:34` with a `timer` icon — currently clocked in (outside the lunch window), showing time remaining until your leave time (clock-in + 8h work + 1h break)
+- **Overtime**: `OT -2:59` with a `timer` icon — after leave time, showing the weekly overtime counter. It resets to -5:00 every Monday at 00:00 (the 5h weekly overtime target) and updates live once you're past your daily leave time
     - Negative means you're still short of this week's 5h overtime target
     - Positive means you've exceeded the weekly target
     - Working past your daily leave time moves the counter up; leaving early moves it down
 - **Not clocked in**: `--:--` — signed in but no active clock record
 - **Signed out**: `—` — no Flex session or logged out
 
+**Overwork warning colors**: once you're within 30 minutes of leave time (or working past it), the label switches from a plain icon+text to a colored capsule pill with white icon+text:
+
+- **Orange pill** — ≤ 30 min before leave time
+- **Red pill** — ≤ 10 min before leave time, or any time you're still clocked in past leave time
+
+The label returns to the plain (non-pill) style after clock-out or outside these windows.
+
 Click the menu item to open the dropdown:
 
+- While on break, shows a "Back at" row with the time work resumes (end of the lunch window)
 - Shows today's work record (start time, end time if clocked out, overtime balance for the week)
 - If no Flex record exists for today, offers a start-time picker (works offline)
 
@@ -55,6 +65,15 @@ defaults write com.perso.flextimer breakMinutes -float 45
 
 # Weekly overtime target in hours (default: 5.0)
 defaults write com.perso.flextimer weeklyOvertimeHours -float 6.0
+
+# Lunch break start, in minutes from midnight (default: 690 = 11:30)
+defaults write com.perso.flextimer lunchStartMinutes -float 690
+
+# Lunch break end / work resumes, in minutes from midnight (default: 750 = 12:30)
+defaults write com.perso.flextimer lunchEndMinutes -float 750
+
+# Allowed early departure to lunch, in minutes (default: 10)
+defaults write com.perso.flextimer lunchEarlyLeaveMinutes -float 10
 ```
 
 **Note**: When running the app unbundled (`swift run`), UserDefaults uses a different domain than `com.perso.flextimer`, so these commands won't affect it. Use them against the installed app only.
@@ -108,4 +127,4 @@ swift run
 ./scripts/bundle.sh
 ```
 
-All 39 tests pass, covering work-record merging, overtime calculations, and display formatting.
+All 58 tests pass, covering work-record merging, overtime calculations, and display formatting.

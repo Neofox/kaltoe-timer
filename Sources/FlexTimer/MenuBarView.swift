@@ -6,6 +6,11 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if case .onBreak = state.menuDisplay.state {
+                row("Back at", WorkCalculator.lunchWindow(on: Date(), rules: state.rules).endAt
+                    .formatted(date: .omitted, time: .shortened))
+            }
+
             if let today = state.today, state.hasSession {
                 row("Started", today.clockIn.formatted(date: .omitted, time: .shortened))
                 row("Leave at", WorkCalculator.leaveTime(clockIn: today.clockIn, rules: state.rules)
