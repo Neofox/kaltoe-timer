@@ -36,6 +36,7 @@ Build and install the app:
 ```bash
 ./scripts/bundle.sh
 cp -r "build/칼퇴타이머.app" /Applications
+# upgrading from v1? remove the old bundle first: rm -rf /Applications/FlexTimer.app
 ```
 
 Add to Login Items:

@@ -72,7 +72,7 @@ enum DisplayState: Equatable {
         switch self {
         case .toLunch: return "fork.knife"
         case .onBreak: return "cup.and.saucer"
-        default: return "timer"
+        case .noSession, .notClockedIn, .counting, .overtime: return "timer"
         }
     }
 }
