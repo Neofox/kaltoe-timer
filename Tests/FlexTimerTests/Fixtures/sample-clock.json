@@ -1,0 +1,1 @@
+{"records": [{"userIdHash": "SAMPLEUSER0", "records": [{"appliedDate": "2026-07-09", "appliedZoneId": "Asia/Seoul", "workClockRecordPacks": [{"onGoing": true, "startRecord": {"eventType": "START", "targetTime": 1783555200000, "realTime": 1783555200000, "recordType": "RECORD", "zoneId": "Asia/Seoul"}, "restRecords": []}]}]}]}

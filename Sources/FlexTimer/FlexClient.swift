@@ -15,6 +15,8 @@ final class FlexClient {
 
     func fetchWeek(from: Date, to: Date) async throws -> [WorkRecord] {
         guard let cookies = CookieVault.load(), !cookies.isEmpty else { throw FlexError.noSession }
+        // No discovered user id yet (first run / pre-login) — nothing to query.
+        guard !FlexAPIConfig.userIdHash.isEmpty else { throw FlexError.noSession }
         let header = cookies.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
 
         let schedulesRequest = FlexAPIConfig.schedulesRequest(from: from, to: to, cookieHeader: header)

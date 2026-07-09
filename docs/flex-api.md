@@ -1,7 +1,8 @@
 # Flex Private API — Discovery Notes
 
 **Discovered:** 2026-07-09, from the user's working extractor script
-(`docs/flex-extract/flex_work_time_extractor.mjs`). These are unofficial
+(`docs/flex-extract/flex_work_time_extractor.mjs`, kept locally, untracked —
+it was used with a personal session). These are unofficial
 endpoints (the same XHR the flex.team web app uses); they can change without
 notice. If sync breaks, re-capture with DevTools on
 `https://flex.team/time-tracking/my-work-record` and update
@@ -91,11 +92,9 @@ Response (shape used by the app):
 
 ## Fixtures
 
-- `Tests/FlexTimerTests/Fixtures/schedules.json` — real captured
-  work-schedules response (contains personal data; scrub before publishing
-  this repo).
-- `Tests/FlexTimerTests/Fixtures/clock.json` — real captured work-clock
-  response (same caveat).
+- `Tests/FlexTimerTests/Fixtures/sample-schedules.json` /
+  `sample-clock.json` — synthetic fixtures with the captured response
+  SHAPE but fabricated times and a fake userIdHash. Safe to publish.
 
 ## userIdHash auto-discovery
 
@@ -103,5 +102,6 @@ Response (shape used by the app):
 JSON containing `customerIdHash` and `userIdHash`. After login-window cookie
 capture, the app parses it and stores `userIdHash` in UserDefaults
 (key `flexUserIdHash`); `FlexAPIConfig.userIdHash` prefers that override and
-falls back to the captured default. This keeps the app working if the
-workspace/user context changes without a code edit.
+is empty until the first sign-in (FlexClient treats an empty hash as
+no-session). This keeps the app free of any hardcoded personal identifier
+and working across workspace/user changes without a code edit.

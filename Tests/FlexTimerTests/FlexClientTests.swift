@@ -8,36 +8,38 @@ final class FlexRecordParserTests: XCTestCase {
     }
 
     func testParsesMergedFixtures() throws {
-        let records = try FlexRecordParser.parse(schedules: try fixture("schedules"), clock: try fixture("clock"))
+        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
+                                                 clock: try fixture("sample-clock"))
 
         XCTAssertEqual(records.count, 7)
         XCTAssertEqual(records.map(\.clockIn), records.map(\.clockIn).sorted(), "must be sorted by clockIn")
 
-        XCTAssertEqual(records[0].clockIn, d(2026, 7, 1, 9, 3))
-        XCTAssertEqual(records[0].clockOut, d(2026, 7, 1, 21, 2))
+        XCTAssertEqual(records[0].clockIn, d(2026, 7, 1, 9, 0))
+        XCTAssertEqual(records[0].clockOut, d(2026, 7, 1, 19, 0))
 
-        XCTAssertEqual(records[1].clockIn, d(2026, 7, 2, 9, 1))
-        XCTAssertEqual(records[1].clockOut, d(2026, 7, 2, 18, 2))
+        XCTAssertEqual(records[1].clockIn, d(2026, 7, 2, 9, 10))
+        XCTAssertEqual(records[1].clockOut, d(2026, 7, 2, 18, 10))
 
-        XCTAssertEqual(records[2].clockIn, d(2026, 7, 3, 9, 5))
-        XCTAssertEqual(records[2].clockOut, d(2026, 7, 3, 18, 39))
+        XCTAssertEqual(records[2].clockIn, d(2026, 7, 3, 8, 55))
+        XCTAssertEqual(records[2].clockOut, d(2026, 7, 3, 18, 0))
 
         XCTAssertEqual(records[3].clockIn, d(2026, 7, 6, 9, 0))
-        XCTAssertEqual(records[3].clockOut, d(2026, 7, 6, 20, 35))
+        XCTAssertEqual(records[3].clockOut, d(2026, 7, 6, 20, 0))
 
-        XCTAssertEqual(records[4].clockIn, d(2026, 7, 7, 9, 0))
-        XCTAssertEqual(records[4].clockOut, d(2026, 7, 7, 19, 19))
+        XCTAssertEqual(records[4].clockIn, d(2026, 7, 7, 9, 5))
+        XCTAssertEqual(records[4].clockOut, d(2026, 7, 7, 18, 30))
 
-        XCTAssertEqual(records[5].clockIn, d(2026, 7, 8, 9, 6))
-        XCTAssertEqual(records[5].clockOut, d(2026, 7, 8, 19, 12))
+        XCTAssertEqual(records[5].clockIn, d(2026, 7, 8, 9, 0))
+        XCTAssertEqual(records[5].clockOut, d(2026, 7, 8, 18, 45))
 
-        // Last record is the ongoing day, sourced from clock.json (no clockOut).
+        // Last record is the ongoing day, sourced from the clock fixture (no clockOut).
         XCTAssertEqual(records[6].clockIn, d(2026, 7, 9, 9, 0))
         XCTAssertNil(records[6].clockOut)
     }
 
     func testWeekendDaysProduceNoRecords() throws {
-        let records = try FlexRecordParser.parse(schedules: try fixture("schedules"), clock: try fixture("clock"))
+        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
+                                                 clock: try fixture("sample-clock"))
         let dates = Set(records.map { Calendar(identifier: .gregorian).component(.day, from: $0.clockIn) })
         // 07-04 (REST_DAY) and 07-05 (WEEKLY_HOLIDAY) must not appear.
         XCTAssertFalse(dates.contains(4))
@@ -46,7 +48,7 @@ final class FlexRecordParserTests: XCTestCase {
 
     func testSchedulesAloneWithEmptyClockYieldsSixRecords() throws {
         let emptyClock = Data("{\"records\":[]}".utf8)
-        let records = try FlexRecordParser.parse(schedules: try fixture("schedules"), clock: emptyClock)
+        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"), clock: emptyClock)
         XCTAssertEqual(records.count, 6)
         // No ongoing 07-09 record is synthesized when the clock response is empty.
         XCTAssertFalse(records.contains { Calendar(identifier: .gregorian).component(.day, from: $0.clockIn) == 9 })
@@ -59,7 +61,7 @@ final class FlexRecordParserTests: XCTestCase {
 
     func testGarbageClockDataThrows() throws {
         XCTAssertThrowsError(
-            try FlexRecordParser.parse(schedules: try fixture("schedules"), clock: Data("not json".utf8)))
+            try FlexRecordParser.parse(schedules: try fixture("sample-schedules"), clock: Data("not json".utf8)))
     }
 }
 
@@ -72,6 +74,19 @@ final class FlexClientTests: XCTestCase {
             XCTFail("expected throw")
         } catch let e as FlexClient.FlexError {
             XCTAssertEqual(e, .noSession)
+        } catch { XCTFail("unexpected error \(error)") }
+    }
+
+    func testFetchWithCookiesButNoUserIdHashThrowsNoSession() async {
+        CookieVault.service = "com.perso.flextimer.test-\(UUID().uuidString)"
+        SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
+        defer { CookieVault.clear() }
+        CookieVault.saveStored([StoredCookie(name: "AID", value: "x", domain: ".flex.team", path: "/", expires: nil)])
+        do {
+            _ = try await FlexClient().fetchWeek(from: Date(), to: Date())
+            XCTFail("expected throw")
+        } catch let e as FlexClient.FlexError {
+            XCTAssertEqual(e, .noSession, "empty userIdHash must read as no session (nothing to query)")
         } catch { XCTFail("unexpected error \(error)") }
     }
 }

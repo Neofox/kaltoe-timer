@@ -108,12 +108,11 @@ See `docs/flex-api.md` for endpoint details, response schema, and how to re-capt
 
 ## Privacy Note
 
-This repository contains **real personal work records** in:
-
-- `Tests/FlexTimerTests/Fixtures/*.json` — captured API responses with timestamps and work intervals
-- `docs/flex-extract/` — personal time-tracking data
-
-Before publishing this repo publicly, **remove or anonymize these files**.
+The repository contains **no personal data**: test fixtures under
+`Tests/FlexTimerTests/Fixtures/` are synthetic (real API shape, fabricated
+times, fake user id), and no user identifier is hardcoded — each user's
+`userIdHash` is auto-discovered from their own Flex session at sign-in.
+(`docs/flex-extract/` is a local, untracked scratch area.)
 
 ## Building and Testing
 

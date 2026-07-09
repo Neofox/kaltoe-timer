@@ -42,7 +42,7 @@ final class LoginWindowController: NSObject, WKNavigationDelegate, NSWindowDeleg
             CookieVault.save(flexCookies)
             if let customerInfo = flexCookies.first(where: { $0.name == "V2_CUSTOMER_INFO" }),
                let hash = Self.userIdHash(fromCustomerInfoCookieValue: customerInfo.value) {
-                UserDefaults.standard.set(hash, forKey: "flexUserIdHash")
+                SettingsStore.defaults.set(hash, forKey: "flexUserIdHash")
             }
             let done = self.onSuccess
             self.onSuccess = nil
