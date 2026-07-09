@@ -96,3 +96,12 @@ Response (shape used by the app):
   this repo).
 - `Tests/FlexTimerTests/Fixtures/clock.json` — real captured work-clock
   response (same caveat).
+
+## userIdHash auto-discovery
+
+`V2_CUSTOMER_INFO` is a client-readable cookie whose (URL-decoded) value is
+JSON containing `customerIdHash` and `userIdHash`. After login-window cookie
+capture, the app parses it and stores `userIdHash` in UserDefaults
+(key `flexUserIdHash`); `FlexAPIConfig.userIdHash` prefers that override and
+falls back to the captured default. This keeps the app working if the
+workspace/user context changes without a code edit.
