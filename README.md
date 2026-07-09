@@ -35,14 +35,14 @@ Build and install the app:
 
 ```bash
 ./scripts/bundle.sh
-cp -r build/FlexTimer.app /Applications
+cp -r "build/칼퇴타이머.app" /Applications
 ```
 
 Add to Login Items:
 
 1. System Settings → General → Login Items
 2. Click the + icon
-3. Select `/Applications/FlexTimer.app`
+3. Select `/Applications/칼퇴타이머.app`
 
 ## Authentication
 
