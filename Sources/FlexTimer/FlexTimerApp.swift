@@ -3,12 +3,20 @@ import SwiftUI
 @main
 struct FlexTimerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @StateObject private var state: AppState
+
+    init() {
+        let s = AppState()
+        _state = StateObject(wrappedValue: s)
+        Task { @MainActor in s.start() }
+    }
 
     var body: some Scene {
         MenuBarExtra {
-            Button("Quit") { NSApp.terminate(nil) }
+            MenuBarView().environmentObject(state)
         } label: {
-            Text("⏳ --:--")
+            Text(state.menuText)
         }
+        .menuBarExtraStyle(.window)
     }
 }
