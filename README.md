@@ -1,8 +1,8 @@
-# FlexTimer
+# 칼퇴타이머 (FlexTimer)
 
-A minimal macOS menu bar app for tracking work hours against your flex.team work schedule. Shows live clock-in time, overtime tracking, and manual fallback time entry when Flex is unavailable.
+A minimal macOS menu bar app for tracking work hours against your flex.team work schedule, so you can 칼퇴 with confidence. Shows live clock-in time, overtime tracking, and manual fallback time entry when Flex is unavailable. (Internal module name: `FlexTimer`; bundle id `com.perso.flextimer`.)
 
-## What FlexTimer Shows
+## What 칼퇴타이머 Shows
 
 The menu bar displays a timer icon with one of the following states:
 

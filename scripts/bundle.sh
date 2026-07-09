@@ -4,8 +4,8 @@ cd "$(dirname "$0")/.."
 
 swift build -c release
 
-APP=build/FlexTimer.app
-rm -rf "$APP"
+APP=build/칼퇴타이머.app
+rm -rf "$APP" build/FlexTimer.app
 mkdir -p "$APP/Contents/MacOS"
 cp .build/release/FlexTimer "$APP/Contents/MacOS/FlexTimer"
 
@@ -14,7 +14,8 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>FlexTimer</string>
+  <key>CFBundleName</key><string>칼퇴타이머</string>
+  <key>CFBundleDisplayName</key><string>칼퇴타이머</string>
   <key>CFBundleIdentifier</key><string>com.perso.flextimer</string>
   <key>CFBundleExecutable</key><string>FlexTimer</string>
   <key>CFBundlePackageType</key><string>APPL</string>
