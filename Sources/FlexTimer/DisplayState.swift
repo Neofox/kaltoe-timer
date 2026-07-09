@@ -1,28 +1,78 @@
 import Foundation
 
+enum Urgency: Equatable {
+    case normal, warning, critical
+}
+
+struct MenuDisplay: Equatable {
+    var state: DisplayState
+    var urgency: Urgency
+}
+
 enum DisplayState: Equatable {
     case noSession
     case notClockedIn
-    case counting(timeLeft: TimeInterval)
+    case toLunch(timeLeft: TimeInterval)   // counting down to the lunch-leave moment
+    case onBreak(timeLeft: TimeInterval)   // counting down to work resuming
+    case counting(timeLeft: TimeInterval)  // counting down to leave time
     case overtime(weekly: TimeInterval)
 
-    /// Smart single value: countdown while on the clock before leave time,
-    /// weekly overtime position otherwise.
+    private static let warningThreshold: TimeInterval = 30 * 60
+    private static let criticalThreshold: TimeInterval = 10 * 60
+
+    /// Smart single value with day phases and an overwork urgency level.
+    static func computeDisplay(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
+                               now: Date, rules: WorkRules,
+                               calendar: Calendar = .current) -> MenuDisplay {
+        guard hasSession else { return MenuDisplay(state: .noSession, urgency: .normal) }
+        guard let today else { return MenuDisplay(state: .notClockedIn, urgency: .normal) }
+        let left = WorkCalculator.timeLeft(clockIn: today.clockIn, now: now, rules: rules)
+        if today.clockOut == nil && left > 0 {
+            let lunch = WorkCalculator.lunchWindow(on: now, rules: rules, calendar: calendar)
+            let leave = WorkCalculator.leaveTime(clockIn: today.clockIn, rules: rules)
+            if leave > lunch.endAt { // lunch phases only apply to a normally-shaped day
+                if now < lunch.leaveAt {
+                    return MenuDisplay(state: .toLunch(timeLeft: lunch.leaveAt.timeIntervalSince(now)),
+                                       urgency: .normal)
+                }
+                if now < lunch.endAt {
+                    return MenuDisplay(state: .onBreak(timeLeft: lunch.endAt.timeIntervalSince(now)),
+                                       urgency: .normal)
+                }
+            }
+            let urgency: Urgency = left <= criticalThreshold ? .critical
+                : left <= warningThreshold ? .warning : .normal
+            return MenuDisplay(state: .counting(timeLeft: left), urgency: urgency)
+        }
+        let weekly = WorkCalculator.weeklyOvertime(records: week, now: now, rules: rules)
+        // Past leave time with the day still open = overworking right now.
+        return MenuDisplay(state: .overtime(weekly: weekly),
+                           urgency: today.clockOut == nil ? .critical : .normal)
+    }
+
+    /// v1 compatibility wrapper — state only.
     static func compute(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
                         now: Date, rules: WorkRules) -> DisplayState {
-        guard hasSession else { return .noSession }
-        guard let today else { return .notClockedIn }
-        let left = WorkCalculator.timeLeft(clockIn: today.clockIn, now: now, rules: rules)
-        if today.clockOut == nil && left > 0 { return .counting(timeLeft: left) }
-        return .overtime(weekly: WorkCalculator.weeklyOvertime(records: week, now: now, rules: rules))
+        computeDisplay(hasSession: hasSession, today: today, week: week,
+                       now: now, rules: rules).state
     }
 
     var menuBarText: String {
         switch self {
         case .noSession: return "—"
         case .notClockedIn: return "--:--"
+        case .toLunch(let left): return Formatting.hm(left)
+        case .onBreak(let left): return "BREAK " + Formatting.hm(left)
         case .counting(let left): return Formatting.hm(left)
         case .overtime(let weekly): return "OT " + Formatting.signedHM(weekly)
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .toLunch: return "fork.knife"
+        case .onBreak: return "cup.and.saucer"
+        case .noSession, .notClockedIn, .counting, .overtime: return "timer"
         }
     }
 }

@@ -97,4 +97,24 @@ final class WorkCalculatorTests: XCTestCase {
         // Sunday belongs to the week started the previous Monday
         XCTAssertEqual(WorkCalculator.weekStart(of: d(2026, 7, 12, 23, 0), calendar: cal), d(2026, 7, 6, 0, 0))
     }
+
+    func testLunchWindowDefaults() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        let window = WorkCalculator.lunchWindow(on: d(2026, 7, 9, 14, 0), rules: rules, calendar: cal)
+        XCTAssertEqual(window.leaveAt, d(2026, 7, 9, 11, 20)) // 11:30 − 10 min allowance
+        XCTAssertEqual(window.endAt, d(2026, 7, 9, 12, 30))
+    }
+
+    func testLunchWindowCustomRules() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        var r = WorkRules()
+        r.lunchStart = 12 * 3600      // 12:00
+        r.lunchEnd = 13 * 3600        // 13:00
+        r.lunchEarlyLeave = 0
+        let window = WorkCalculator.lunchWindow(on: d(2026, 7, 9, 9, 0), rules: r, calendar: cal)
+        XCTAssertEqual(window.leaveAt, d(2026, 7, 9, 12, 0))
+        XCTAssertEqual(window.endAt, d(2026, 7, 9, 13, 0))
+    }
 }

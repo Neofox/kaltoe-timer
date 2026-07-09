@@ -5,6 +5,7 @@ import Foundation
 @MainActor
 final class AppState: ObservableObject {
     @Published var menuText = "--:--"
+    @Published var menuDisplay = MenuDisplay(state: .notClockedIn, urgency: .normal)
     @Published var week: [WorkRecord] = []
     @Published var lastSync: Date?
     @Published var syncError: String?
@@ -63,9 +64,11 @@ final class AppState: ObservableObject {
 
     func recompute(now: Date) {
         let record = todayRecord(now: now)
-        let state = DisplayState.compute(hasSession: hasSession, today: record,
-                                         week: weekIncludingManual(now: now), now: now, rules: rules)
-        menuText = state.menuBarText
+        let display = DisplayState.computeDisplay(hasSession: hasSession, today: record,
+                                                  week: weekIncludingManual(now: now),
+                                                  now: now, rules: rules)
+        menuDisplay = display
+        menuText = display.state.menuBarText
     }
 
     func refresh() async {
