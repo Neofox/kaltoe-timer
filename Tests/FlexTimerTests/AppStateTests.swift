@@ -50,4 +50,18 @@ final class AppStateTests: XCTestCase {
         state.recompute(now: d(2026, 7, 9, 15, 0))
         XCTAssertEqual(state.menuText, "—")
     }
+
+    func testWeekRolloverDropsLastWeeksRecordsFromSum() {
+        SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
+        let state = AppState()
+        state.hasSession = true
+        // Record from Friday 2026-07-10; now is Monday 2026-07-13 00:05 (new week)
+        state.week = [WorkRecord(clockIn: d(2026, 7, 10, 9, 0), clockOut: d(2026, 7, 10, 20, 1), flexWorkedNet: nil)]
+        state.recompute(now: d(2026, 7, 13, 0, 5))
+        // New week, no record today → not clocked in; weekly sum must NOT include Friday
+        XCTAssertEqual(state.menuText, "--:--")
+        XCTAssertEqual(WorkCalculator.weeklyOvertime(
+            records: state.weekIncludingManual(now: d(2026, 7, 13, 0, 5)),
+            now: d(2026, 7, 13, 0, 5), rules: state.rules), -5 * 3600)
+    }
 }

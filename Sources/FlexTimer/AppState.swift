@@ -35,7 +35,8 @@ final class AppState: ObservableObject {
 
     /// Week records including the synthetic manual record for today, if any.
     func weekIncludingManual(now: Date) -> [WorkRecord] {
-        var records = week
+        let weekStart = WorkCalculator.weekStart(of: now)
+        var records = week.filter { $0.clockIn >= weekStart }
         if !records.contains(where: { Calendar.current.isDate($0.clockIn, inSameDayAs: now) }),
            let manual = todayRecord(now: now) {
             records.append(manual)

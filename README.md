@@ -6,10 +6,11 @@ A minimal macOS menu bar app for tracking work hours against your flex.team work
 
 The menu bar displays a timer icon with one of the following states:
 
-- **Counting**: `2:34` — currently clocked in, showing elapsed work time since clock-in
-- **Overtime**: `OT -2:59` — after leave time (clock-in + 8h + 1h break), showing how far over/under the daily target
-    - Negative means you've worked more than the target (overtime paid)
-    - Positive means you've worked less (time owed)
+- **Counting**: `2:34` — currently clocked in, showing time remaining until your leave time (clock-in + 8h work + 1h break)
+- **Overtime**: `OT -2:59` — after leave time, showing the weekly overtime counter. It resets to -5:00 every Monday at 00:00 (the 5h weekly overtime target) and updates live once you're past your daily leave time
+    - Negative means you're still short of this week's 5h overtime target
+    - Positive means you've exceeded the weekly target
+    - Working past your daily leave time moves the counter up; leaving early moves it down
 - **Not clocked in**: `--:--` — signed in but no active clock record
 - **Signed out**: `—` — no Flex session or logged out
 
