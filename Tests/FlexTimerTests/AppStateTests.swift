@@ -91,4 +91,16 @@ final class AppStateTests: XCTestCase {
         state.recompute(now: d(2026, 7, 9, 10, 0))
         XCTAssertEqual(fired, ["on-clock-in"])
     }
+
+    func testSessionExpiryNotifiesViaAttachedNotifier() {
+        let state = AppState()
+        var posted = 0
+        state.sessionNotifier = SessionNotifier { posted += 1 }
+        state.sessionNotifier?.sessionBecame(state.hasSession)  // baseline, as start() does
+        let wasSignedIn = state.hasSession
+        state.hasSession = true      // ensure a true baseline regardless of Keychain state
+        state.hasSession = false     // expiry
+        XCTAssertEqual(posted, 1)
+        state.hasSession = wasSignedIn  // restore for other tests' AppState instances
+    }
 }

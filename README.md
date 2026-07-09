@@ -52,6 +52,7 @@ FlexTimer uses an embedded login window to authenticate with flex.team. Your ses
 - **Session cookies**: `AID` and `V2_WS_AID` are stored in Keychain and automatically included in API requests
 - **User ID**: Automatically discovered from the `V2_CUSTOMER_INFO` cookie and stored in UserDefaults (key: `flexUserIdHash`); falls back to a hardcoded default if not found
 - **Persistence**: You only need to log in once; the session persists across app restarts
+- **Expiry notification**: when the session expires, the app posts a macOS notification ("Flex session expired — sign in again to keep tracking."); clicking it opens the sign-in window. Approve the notification permission prompt on first launch to get it.
 
 ## Customizing Work Hours
 

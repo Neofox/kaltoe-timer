@@ -9,7 +9,9 @@ final class AppState: ObservableObject {
     @Published var week: [WorkRecord] = []
     @Published var lastSync: Date?
     @Published var syncError: String?
-    @Published var hasSession: Bool = CookieVault.load()?.isEmpty == false
+    @Published var hasSession: Bool = CookieVault.load()?.isEmpty == false {
+        didSet { sessionNotifier?.sessionBecame(hasSession) }
+    }
 
     var rules: WorkRules { SettingsStore.rules }
 
@@ -17,6 +19,8 @@ final class AppState: ObservableObject {
     private let login = LoginWindowController()
     /// Attached in start() only, so unit tests calling recompute never launch scripts.
     var hookRunner: HookRunner?
+    /// Attached in start() only, so unit tests never touch UNUserNotificationCenter.
+    var sessionNotifier: SessionNotifier?
     private var tickTimer: Timer?
     private var refreshTimer: Timer?
     private var wakeObserver: NSObjectProtocol?
@@ -62,6 +66,10 @@ final class AppState: ObservableObject {
             Task { @MainActor in await self?.refresh() }
         }
         hookRunner = HookRunner()
+        sessionNotifier = SessionNotifier.live { [weak self] in
+            Task { @MainActor in self?.signIn() }
+        }
+        sessionNotifier?.sessionBecame(hasSession)  // establish baseline
         Task { await refresh() }
     }
 
