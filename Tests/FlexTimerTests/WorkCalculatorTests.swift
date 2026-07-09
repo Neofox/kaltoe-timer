@@ -117,4 +117,87 @@ final class WorkCalculatorTests: XCTestCase {
         XCTAssertEqual(window.leaveAt, d(2026, 7, 9, 12, 0))
         XCTAssertEqual(window.endAt, d(2026, 7, 9, 13, 0))
     }
+
+    // MARK: - Family day
+
+    func testIsFamilyDayLastFridayOnly() {
+        XCTAssertTrue(WorkCalculator.isFamilyDay(d(2026, 7, 31, 12, 0)))   // last Friday of July
+        XCTAssertTrue(WorkCalculator.isFamilyDay(d(2026, 8, 28, 12, 0)))   // last Friday of August
+        XCTAssertFalse(WorkCalculator.isFamilyDay(d(2026, 7, 24, 12, 0)))  // Friday, not last
+        XCTAssertFalse(WorkCalculator.isFamilyDay(d(2026, 7, 30, 12, 0)))  // Thursday before it
+    }
+
+    func testFamilyDayLeaveTimeIsTwoHoursEarlier() {
+        // 09:00 + 6h target + 1h break = 16:00 on family day
+        XCTAssertEqual(WorkCalculator.leaveTime(clockIn: d(2026, 7, 31, 9, 0), rules: rules),
+                       d(2026, 7, 31, 16, 0))
+        // familyDayEarlyLeave = 0 disables it: 09:00 + 8h + 1h = 18:00
+        var noFamily = rules
+        noFamily.familyDayEarlyLeave = 0
+        XCTAssertEqual(WorkCalculator.leaveTime(clockIn: d(2026, 7, 31, 9, 0), rules: noFamily),
+                       d(2026, 7, 31, 18, 0))
+    }
+
+    func testFamilyDayEarlyLeaveIsFree() {
+        // In 09:00, out 16:00 → 7h gross − 1h break = 6h net = family-day target → 0 overtime
+        let r = WorkRecord(clockIn: d(2026, 7, 31, 9, 0), clockOut: d(2026, 7, 31, 16, 0), flexWorkedNet: nil)
+        XCTAssertEqual(WorkCalculator.dailyOvertime(record: r, now: d(2026, 7, 31, 23, 0), rules: rules), 0)
+    }
+
+    func testFamilyDayOpenRecordAccruesAfterEarlyLeaveTime() {
+        // Still clocked in at 16:30 on family day (leave was 16:00) → +30 min
+        let r = WorkRecord(clockIn: d(2026, 7, 31, 9, 0), clockOut: nil, flexWorkedNet: nil)
+        XCTAssertEqual(WorkCalculator.dailyOvertime(record: r, now: d(2026, 7, 31, 16, 30), rules: rules),
+                       30 * 60)
+    }
+
+    // MARK: - Adjusted weekly requirement
+
+    func testRequiredOvertimePlainWeek() {
+        // Week of Mon 2026-07-06: no day-offs, no family day → 5h
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [], weekOf: d(2026, 7, 8, 12, 0), rules: rules),
+                       5 * 3600)
+    }
+
+    func testRequiredOvertimeDeductsPerDayOff() {
+        let thu = Calendar.current.startOfDay(for: d(2026, 7, 9, 0, 0))
+        let fri = Calendar.current.startOfDay(for: d(2026, 7, 10, 0, 0))
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [thu], weekOf: d(2026, 7, 8, 12, 0), rules: rules),
+                       4 * 3600)
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [thu, fri], weekOf: d(2026, 7, 8, 12, 0), rules: rules),
+                       3 * 3600)
+    }
+
+    func testRequiredOvertimeIgnoresDayOffsOutsideWeek() {
+        let prevWeek = Calendar.current.startOfDay(for: d(2026, 7, 2, 0, 0))
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [prevWeek], weekOf: d(2026, 7, 8, 12, 0), rules: rules),
+                       5 * 3600)
+    }
+
+    func testRequiredOvertimeFamilyDayWeek() {
+        // Week of Mon 2026-07-27 contains family day Fri 2026-07-31 → 5 − 1 = 4h
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [], weekOf: d(2026, 7, 29, 12, 0), rules: rules),
+                       4 * 3600)
+    }
+
+    func testFamilyDayVacationCoincidenceDeductsOnce() {
+        // Vacation ON family day: family-day −1h applies, day-off count excludes it → 4h, not 3h
+        let familyFriday = Calendar.current.startOfDay(for: d(2026, 7, 31, 0, 0))
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [familyFriday], weekOf: d(2026, 7, 29, 12, 0), rules: rules),
+                       4 * 3600)
+    }
+
+    func testRequiredOvertimeFloorsAtZero() {
+        let days = (6...10).map { Calendar.current.startOfDay(for: d(2026, 7, $0, 0, 0)) }
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: Set(days), weekOf: d(2026, 7, 8, 12, 0), rules: rules),
+                       0)
+    }
+
+    func testWeeklyOvertimeUsesAdjustedRequirement() {
+        // One day-off Thursday, no records yet → counter = −4:00
+        let thu = Calendar.current.startOfDay(for: d(2026, 7, 9, 0, 0))
+        XCTAssertEqual(WorkCalculator.weeklyOvertime(records: [], dayOffs: [thu],
+                                                     now: d(2026, 7, 8, 12, 0), rules: rules),
+                       -4 * 3600)
+    }
 }
