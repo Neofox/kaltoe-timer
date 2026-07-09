@@ -7,6 +7,9 @@ struct WorkRules: Codable, Equatable {
     var lunchStart: TimeInterval = 690 * 60      // official break start, seconds from midnight (11:30)
     var lunchEnd: TimeInterval = 750 * 60        // break end / work resumes (12:30)
     var lunchEarlyLeave: TimeInterval = 10 * 60  // allowed early departure to lunch
+    var dayOffDeduction: TimeInterval = 1 * 3600     // weekly-required reduction per holiday/vacation weekday
+    var familyDayEarlyLeave: TimeInterval = 2 * 3600 // family-day daily-target reduction; 0 disables family day
+    var familyDayDeduction: TimeInterval = 1 * 3600  // weekly-required reduction for a family-day week
 }
 
 struct WorkRecord: Equatable {

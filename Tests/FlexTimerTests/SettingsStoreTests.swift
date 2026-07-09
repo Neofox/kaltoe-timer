@@ -44,4 +44,21 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(r.lunchEnd, 780 * 60)
         XCTAssertEqual(r.lunchEarlyLeave, 0)
     }
+
+    func testDefaultHolidayAndFamilyDayRules() {
+        let r = SettingsStore.rules
+        XCTAssertEqual(r.dayOffDeduction, 1 * 3600)
+        XCTAssertEqual(r.familyDayEarlyLeave, 2 * 3600)
+        XCTAssertEqual(r.familyDayDeduction, 1 * 3600)
+    }
+
+    func testOverriddenHolidayAndFamilyDayRules() {
+        SettingsStore.defaults.set(0.5, forKey: "dayOffDeductionHours")
+        SettingsStore.defaults.set(0.0, forKey: "familyDayEarlyLeaveHours")
+        SettingsStore.defaults.set(2.0, forKey: "familyDayDeductionHours")
+        let r = SettingsStore.rules
+        XCTAssertEqual(r.dayOffDeduction, 1800)
+        XCTAssertEqual(r.familyDayEarlyLeave, 0)
+        XCTAssertEqual(r.familyDayDeduction, 2 * 3600)
+    }
 }
