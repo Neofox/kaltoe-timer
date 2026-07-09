@@ -22,6 +22,7 @@ enum DisplayState: Equatable {
 
     /// Smart single value with day phases and an overwork urgency level.
     static func computeDisplay(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
+                               dayOffs: Set<Date> = [],
                                now: Date, rules: WorkRules,
                                calendar: Calendar = .current) -> MenuDisplay {
         guard hasSession else { return MenuDisplay(state: .noSession, urgency: .normal) }
@@ -44,7 +45,7 @@ enum DisplayState: Equatable {
                 : left <= warningThreshold ? .warning : .normal
             return MenuDisplay(state: .counting(timeLeft: left), urgency: urgency)
         }
-        let weekly = WorkCalculator.weeklyOvertime(records: week, now: now, rules: rules)
+        let weekly = WorkCalculator.weeklyOvertime(records: week, dayOffs: dayOffs, now: now, rules: rules)
         // Past leave time with the day still open = overworking right now.
         return MenuDisplay(state: .overtime(weekly: weekly),
                            urgency: today.clockOut == nil ? .critical : .normal)

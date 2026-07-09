@@ -9,10 +9,11 @@ The menu bar displays an icon plus text, with one of the following phases:
 - **To lunch**: `1:20` with a `fork.knife` icon — morning countdown to the lunch-leave moment (11:30 lunch start minus the 10-min early-leave allowance, i.e. counts down to 11:20)
 - **On break**: `BREAK 0:45` with a `cup.and.saucer` icon — during the 11:20–12:30 lunch window
 - **Counting**: `2:34` with a `timer` icon — currently clocked in (outside the lunch window), showing time remaining until your leave time (clock-in + 8h work + 1h break)
-- **Overtime**: `OT -2:59` with a `timer` icon — after leave time, showing the weekly overtime counter. It resets to -5:00 every Monday at 00:00 (the 5h weekly overtime target) and updates live once you're past your daily leave time
+- **Overtime**: `OT -2:59` with a `timer` icon — after leave time, showing the weekly overtime counter. It resets to -5:00 every Monday at 00:00 (the 5h weekly overtime target) and updates live once you're past your daily leave time. The requirement adjusts automatically: each holiday or vacation weekday reported by Flex deducts 1h, and a family-day week (last Friday of the month) deducts another 1h — e.g. a week with one public holiday plus family day requires 3h. On family day itself the daily target is 6h, so the countdown targets leaving 2h early and doing so costs nothing.
     - Negative means you're still short of this week's 5h overtime target
     - Positive means you've exceeded the weekly target
     - Working past your daily leave time moves the counter up; leaving early moves it down
+    - Offline manual entries carry no holiday data, so fully-offline weeks show the unadjusted requirement
 - **Not clocked in**: `--:--` — signed in but no active clock record
 - **Signed out**: `—` — no Flex session or logged out
 
@@ -76,6 +77,10 @@ defaults write com.perso.flextimer lunchEndMinutes -float 750
 
 # Allowed early departure to lunch, in minutes (default: 10)
 defaults write com.perso.flextimer lunchEarlyLeaveMinutes -float 10
+
+defaults write com.perso.flextimer dayOffDeductionHours -float 1 # weekly-required reduction per holiday/vacation day
+defaults write com.perso.flextimer familyDayEarlyLeaveHours -float 2 # family-day early leave; 0 disables family day
+defaults write com.perso.flextimer familyDayDeductionHours -float 1 # weekly-required reduction on family-day weeks
 ```
 
 **Note**: When running the app unbundled (`swift run`), UserDefaults uses a different domain than `com.perso.flextimer`, so these commands won't affect it. Use them against the installed app only.

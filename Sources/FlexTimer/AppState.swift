@@ -7,6 +7,7 @@ final class AppState: ObservableObject {
     @Published var menuText = "--:--"
     @Published var menuDisplay = MenuDisplay(state: .notClockedIn, urgency: .normal)
     @Published var week: [WorkRecord] = []
+    @Published var dayOffDates: Set<Date> = []
     @Published var lastSync: Date?
     @Published var syncError: String?
     @Published var hasSession: Bool = CookieVault.load()?.isEmpty == false {
@@ -78,6 +79,7 @@ final class AppState: ObservableObject {
         hookRunner?.evaluate(today: record, now: now)
         let display = DisplayState.computeDisplay(hasSession: hasSession, today: record,
                                                   week: weekIncludingManual(now: now),
+                                                  dayOffs: dayOffDates,
                                                   now: now, rules: rules)
         menuDisplay = display
         menuText = display.state.menuBarText
@@ -86,7 +88,9 @@ final class AppState: ObservableObject {
     func refresh() async {
         do {
             let now = Date()
-            week = try await client.fetchWeek(from: WorkCalculator.weekStart(of: now), to: now).records
+            let result = try await client.fetchWeek(from: WorkCalculator.weekStart(of: now), to: now)
+            week = result.records
+            dayOffDates = result.dayOffDates
             lastSync = now
             syncError = nil
             hasSession = true

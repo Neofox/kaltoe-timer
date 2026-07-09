@@ -38,7 +38,8 @@ struct MenuBarView: View {
 
             Divider()
             row("Week OT", Formatting.signedHM(WorkCalculator.weeklyOvertime(
-                records: state.weekIncludingManual(now: Date()), now: Date(), rules: state.rules)))
+                records: state.weekIncludingManual(now: Date()), dayOffs: state.dayOffDates,
+                now: Date(), rules: state.rules)))
 
             if let error = state.syncError {
                 Text(error).font(.caption).foregroundStyle(.orange)
