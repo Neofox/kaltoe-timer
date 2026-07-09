@@ -10,6 +10,9 @@ enum SettingsStore {
         if let h = defaults.object(forKey: "dailyWorkHours") as? Double { r.dailyWork = h * 3600 }
         if let m = defaults.object(forKey: "breakMinutes") as? Double { r.breakTime = m * 60 }
         if let h = defaults.object(forKey: "weeklyOvertimeHours") as? Double { r.weeklyOvertime = h * 3600 }
+        if let m = defaults.object(forKey: "lunchStartMinutes") as? Double { r.lunchStart = m * 60 }
+        if let m = defaults.object(forKey: "lunchEndMinutes") as? Double { r.lunchEnd = m * 60 }
+        if let m = defaults.object(forKey: "lunchEarlyLeaveMinutes") as? Double { r.lunchEarlyLeave = m * 60 }
         return r
     }
 

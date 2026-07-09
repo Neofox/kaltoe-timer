@@ -27,4 +27,21 @@ final class SettingsStoreTests: XCTestCase {
         SettingsStore.setManualStart(nil, on: day)
         XCTAssertNil(SettingsStore.manualStart(on: day))
     }
+
+    func testDefaultLunchRules() {
+        let r = SettingsStore.rules
+        XCTAssertEqual(r.lunchStart, 690 * 60)
+        XCTAssertEqual(r.lunchEnd, 750 * 60)
+        XCTAssertEqual(r.lunchEarlyLeave, 10 * 60)
+    }
+
+    func testOverriddenLunchRules() {
+        SettingsStore.defaults.set(720.0, forKey: "lunchStartMinutes")
+        SettingsStore.defaults.set(780.0, forKey: "lunchEndMinutes")
+        SettingsStore.defaults.set(0.0, forKey: "lunchEarlyLeaveMinutes")
+        let r = SettingsStore.rules
+        XCTAssertEqual(r.lunchStart, 720 * 60)
+        XCTAssertEqual(r.lunchEnd, 780 * 60)
+        XCTAssertEqual(r.lunchEarlyLeave, 0)
+    }
 }

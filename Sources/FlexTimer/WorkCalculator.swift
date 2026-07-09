@@ -4,6 +4,9 @@ struct WorkRules: Codable, Equatable {
     var dailyWork: TimeInterval = 8 * 3600       // net work target per day
     var breakTime: TimeInterval = 1 * 3600       // fixed lunch break
     var weeklyOvertime: TimeInterval = 5 * 3600  // required overtime per week
+    var lunchStart: TimeInterval = 690 * 60      // official break start, seconds from midnight (11:30)
+    var lunchEnd: TimeInterval = 750 * 60        // break end / work resumes (12:30)
+    var lunchEarlyLeave: TimeInterval = 10 * 60  // allowed early departure to lunch
 }
 
 struct WorkRecord: Equatable {
@@ -42,5 +45,14 @@ enum WorkCalculator {
         var cal = calendar
         cal.firstWeekday = 2
         return cal.dateInterval(of: .weekOfYear, for: date)!.start
+    }
+
+    /// The lunch window on `day`: (moment you may leave for lunch, moment work resumes).
+    /// Display only — does not affect leave time or overtime math.
+    static func lunchWindow(on day: Date, rules: WorkRules,
+                            calendar: Calendar = .current) -> (leaveAt: Date, endAt: Date) {
+        let midnight = calendar.startOfDay(for: day)
+        return (midnight.addingTimeInterval(rules.lunchStart - rules.lunchEarlyLeave),
+                midnight.addingTimeInterval(rules.lunchEnd))
     }
 }
