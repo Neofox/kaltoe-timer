@@ -78,4 +78,17 @@ final class AppStateTests: XCTestCase {
         state.recompute(now: d(2026, 7, 9, 17, 55))
         XCTAssertEqual(state.menuDisplay.urgency, .critical) // 5 min to 18:00
     }
+
+    func testRecomputeFiresHooksWhenRunnerAttached() {
+        SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
+        let state = AppState()
+        state.hasSession = true
+        state.week = [WorkRecord(clockIn: d(2026, 7, 9, 9, 0), clockOut: nil, flexWorkedNet: nil)]
+        var fired: [String] = []
+        state.hookRunner = HookRunner(defaults: SettingsStore.defaults) { url, _ in
+            fired.append(url.lastPathComponent)
+        }
+        state.recompute(now: d(2026, 7, 9, 10, 0))
+        XCTAssertEqual(fired, ["on-clock-in"])
+    }
 }

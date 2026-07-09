@@ -56,7 +56,16 @@ final class HookRunner {
         return df.string(from: date)
     }
 
-    /// Default executor. Real implementation lands with the AppState wiring task.
+    /// Fire-and-forget: launch the script detached, never wait or read output.
+    /// Missing or non-executable script is silently skipped. Backgrounded
+    /// children (e.g. `caffeinate &`) survive after the script exits.
     static func launchDetached(_ script: URL, _ env: [String: String]) {
+        guard FileManager.default.isExecutableFile(atPath: script.path) else { return }
+        let process = Process()
+        process.executableURL = script
+        process.environment = ProcessInfo.processInfo.environment.merging(env) { _, hook in hook }
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
     }
 }

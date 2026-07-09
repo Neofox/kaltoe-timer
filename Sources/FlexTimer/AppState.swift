@@ -15,6 +15,8 @@ final class AppState: ObservableObject {
 
     private let client = FlexClient()
     private let login = LoginWindowController()
+    /// Attached in start() only, so unit tests calling recompute never launch scripts.
+    var hookRunner: HookRunner?
     private var tickTimer: Timer?
     private var refreshTimer: Timer?
     private var wakeObserver: NSObjectProtocol?
@@ -59,11 +61,13 @@ final class AppState: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in await self?.refresh() }
         }
+        hookRunner = HookRunner()
         Task { await refresh() }
     }
 
     func recompute(now: Date) {
         let record = todayRecord(now: now)
+        hookRunner?.evaluate(today: record, now: now)
         let display = DisplayState.computeDisplay(hasSession: hasSession, today: record,
                                                   week: weekIncludingManual(now: now),
                                                   now: now, rules: rules)
