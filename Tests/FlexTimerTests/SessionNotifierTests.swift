@@ -40,4 +40,17 @@ final class SessionNotifierTests: XCTestCase {
         notifier.sessionBecame(false)   // expired
         XCTAssertEqual(posted, 1)
     }
+
+    @MainActor
+    func testLiveFactoryIsInertOutsideAppBundle() {
+        // Under swift test the main bundle is not a .app, so live() must return
+        // a notifier whose poster never touches UNUserNotificationCenter.
+        let live = SessionNotifier.live(onNotificationClick: {})
+        live.sessionBecame(true)
+        live.sessionBecame(false)  // would post if armed with a real center — must be a no-op
+        // Reaching here without a bundleProxy crash is the assertion; exercise
+        // the transition path once more for good measure.
+        live.sessionBecame(true)
+        live.sessionBecame(false)
+    }
 }
