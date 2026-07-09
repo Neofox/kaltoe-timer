@@ -66,6 +66,14 @@ final class HookRunnerTests: XCTestCase {
         XCTAssertEqual(fired.count, 1)
     }
 
+    func testReClockInDoesNotRefireEitherHook() {
+        let runner = makeRunner()
+        runner.evaluate(today: closedRecord, now: evening)  // fires both
+        runner.evaluate(today: openRecord, now: evening)    // clockOut reverted
+        runner.evaluate(today: closedRecord, now: evening)  // clocked out again
+        XCTAssertEqual(fired.count, 2)
+    }
+
     func testStaleKeysRemovedWhenNewDayFires() {
         defaults.set(true, forKey: "hookFired-clockIn-2026-07-08")
         defaults.set(true, forKey: "hookFired-clockOut-2026-07-08")

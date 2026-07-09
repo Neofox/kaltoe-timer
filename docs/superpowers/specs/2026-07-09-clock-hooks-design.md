@@ -77,15 +77,17 @@ Unit tests for `HookRunner` with injected `UserDefaults` (fresh suite per test) 
 
 New "Hooks" section documenting the directory, env vars, fire-and-forget semantics, `chmod +x` requirement, and three examples:
 
+`on-clock-in`:
+
 ```bash
-# on-clock-in
 #!/bin/zsh
 caffeinate -d & echo $! > /tmp/kaltoe-caffeinate.pid
 claude -p "prepare my morning briefing" > /dev/null 2>&1 &
 ```
 
+`on-clock-out`:
+
 ```bash
-# on-clock-out
 #!/bin/zsh
 [ -f /tmp/kaltoe-caffeinate.pid ] && kill "$(cat /tmp/kaltoe-caffeinate.pid)" 2>/dev/null
 rm -f /tmp/kaltoe-caffeinate.pid

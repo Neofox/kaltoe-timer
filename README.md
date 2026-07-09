@@ -94,26 +94,29 @@ Both are optional; a missing or non-executable file is skipped. Remember `chmod 
 Scripts receive environment variables:
 
 - `KALTOE_EVENT` — `clock-in` or `clock-out`
-- `KALTOE_CLOCK_IN` — clock-in time, ISO8601
-- `KALTOE_CLOCK_OUT` — clock-out time, ISO8601 (clock-out only)
+- `KALTOE_CLOCK_IN` — clock-in time, ISO8601 (UTC)
+- `KALTOE_CLOCK_OUT` — clock-out time, ISO8601 (UTC) (clock-out only)
 
 Semantics:
 
 - Each hook fires **at most once per event per day**, even across app restarts. If the app launches after you already clocked in (e.g. Mac booted late), the hook still fires — late, but once.
 - 퇴근 is detected via Flex sync, so the clock-out hook can lag up to ~10 minutes. Syncs happen on app launch, every 10 minutes, and on wake from sleep.
+- A 퇴근 that's only detected after midnight (e.g. you clocked out just before midnight and the next sync lands after, or the Mac was asleep until the next day) will not fire the clock-out hook — the day it belonged to has already rolled over.
 - Hooks are fire-and-forget: the app never waits on your script or reads its output. Backgrounded children (`caffeinate &`) keep running after the script exits.
 
 Example — keep the Mac awake while at work, lock the screen and clean up after leaving:
 
+`on-clock-in`:
+
 ```bash
-# on-clock-in
 #!/bin/zsh
 caffeinate -d & echo $! > /tmp/kaltoe-caffeinate.pid
 claude -p "prepare my morning briefing" > /dev/null 2>&1 &
 ```
 
+`on-clock-out`:
+
 ```bash
-# on-clock-out
 #!/bin/zsh
 [ -f /tmp/kaltoe-caffeinate.pid ] && kill "$(cat /tmp/kaltoe-caffeinate.pid)" 2>/dev/null
 rm -f /tmp/kaltoe-caffeinate.pid

@@ -50,10 +50,16 @@ final class HookRunner {
         return true
     }
 
-    private static func dayString(_ date: Date) -> String {
+    private static let dayFormatter: DateFormatter = {
         let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.calendar = Calendar(identifier: .gregorian)
         df.dateFormat = "yyyy-MM-dd"
-        return df.string(from: date)
+        return df
+    }()
+
+    private static func dayString(_ date: Date) -> String {
+        dayFormatter.string(from: date)
     }
 
     /// Fire-and-forget: launch the script detached, never wait or read output.
