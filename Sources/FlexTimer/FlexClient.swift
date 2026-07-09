@@ -13,7 +13,7 @@ final class FlexClient {
         session = URLSession(configuration: config)
     }
 
-    func fetchWeek(from: Date, to: Date) async throws -> [WorkRecord] {
+    func fetchWeek(from: Date, to: Date) async throws -> ParseResult {
         guard let cookies = CookieVault.load(), !cookies.isEmpty else { throw FlexError.noSession }
         // No discovered user id yet (first run / pre-login) — nothing to query.
         guard !FlexAPIConfig.userIdHash.isEmpty else { throw FlexError.noSession }

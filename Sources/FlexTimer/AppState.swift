@@ -86,7 +86,7 @@ final class AppState: ObservableObject {
     func refresh() async {
         do {
             let now = Date()
-            week = try await client.fetchWeek(from: WorkCalculator.weekStart(of: now), to: now)
+            week = try await client.fetchWeek(from: WorkCalculator.weekStart(of: now), to: now).records
             lastSync = now
             syncError = nil
             hasSession = true

@@ -9,7 +9,7 @@ final class FlexRecordParserTests: XCTestCase {
 
     func testParsesMergedFixtures() throws {
         let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
-                                                 clock: try fixture("sample-clock"))
+                                                 clock: try fixture("sample-clock")).records
 
         XCTAssertEqual(records.count, 7)
         XCTAssertEqual(records.map(\.clockIn), records.map(\.clockIn).sorted(), "must be sorted by clockIn")
@@ -39,7 +39,7 @@ final class FlexRecordParserTests: XCTestCase {
 
     func testWeekendDaysProduceNoRecords() throws {
         let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
-                                                 clock: try fixture("sample-clock"))
+                                                 clock: try fixture("sample-clock")).records
         let dates = Set(records.map { Calendar(identifier: .gregorian).component(.day, from: $0.clockIn) })
         // 07-04 (REST_DAY) and 07-05 (WEEKLY_HOLIDAY) must not appear.
         XCTAssertFalse(dates.contains(4))
@@ -48,7 +48,7 @@ final class FlexRecordParserTests: XCTestCase {
 
     func testSchedulesAloneWithEmptyClockYieldsSixRecords() throws {
         let emptyClock = Data("{\"records\":[]}".utf8)
-        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"), clock: emptyClock)
+        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"), clock: emptyClock).records
         XCTAssertEqual(records.count, 6)
         // No ongoing 07-09 record is synthesized when the clock response is empty.
         XCTAssertFalse(records.contains { Calendar(identifier: .gregorian).component(.day, from: $0.clockIn) == 9 })
@@ -62,6 +62,17 @@ final class FlexRecordParserTests: XCTestCase {
     func testGarbageClockDataThrows() throws {
         XCTAssertThrowsError(
             try FlexRecordParser.parse(schedules: try fixture("sample-schedules"), clock: Data("not json".utf8)))
+    }
+
+    func testParseReportsWeekdayDayOffs() throws {
+        let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
+                                                clock: try fixture("sample-clock"))
+        let expected: Set<Date> = [
+            Calendar.current.startOfDay(for: d(2026, 7, 8, 0, 0)),   // half-day: dayOff + WORK blocks
+            Calendar.current.startOfDay(for: d(2026, 7, 10, 0, 0)),  // full-day vacation
+        ]
+        XCTAssertEqual(result.dayOffDates, expected)
+        // Weekend markers (REST_DAY 07-04, WEEKLY_HOLIDAY 07-05) are NOT day-offs.
     }
 }
 
