@@ -11,7 +11,11 @@ enum FlexAPIConfig {
     static let sessionCookieNames: Set<String> = ["AID", "V2_WS_AID"]
 
     /// Opaque per-user identifier appearing in both endpoint URLs.
-    static let userIdHash = "SCRUBBEDHASH"
+    /// Auto-discovered from the V2_CUSTOMER_INFO cookie at login; the
+    /// literal is the value captured during API discovery, as fallback.
+    static var userIdHash: String {
+        UserDefaults.standard.string(forKey: "flexUserIdHash") ?? "SCRUBBEDHASH"
+    }
 
     private static func dayString(_ date: Date) -> String {
         let df = DateFormatter()
