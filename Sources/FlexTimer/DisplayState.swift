@@ -23,14 +23,16 @@ enum DisplayState: Equatable {
     /// Smart single value with day phases and an overwork urgency level.
     static func computeDisplay(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
                                dayOffs: Set<Date> = [],
+                               timeOff: [Date: TimeInterval] = [:],
                                now: Date, rules: WorkRules,
                                calendar: Calendar = .current) -> MenuDisplay {
         guard hasSession else { return MenuDisplay(state: .noSession, urgency: .normal) }
         guard let today else { return MenuDisplay(state: .notClockedIn, urgency: .normal) }
-        let left = WorkCalculator.timeLeft(clockIn: today.clockIn, now: now, rules: rules)
+        let off = WorkCalculator.timeOff(on: today.clockIn, in: timeOff, calendar: calendar)
+        let left = WorkCalculator.timeLeft(clockIn: today.clockIn, now: now, rules: rules, timeOff: off)
         if today.clockOut == nil && left > 0 {
             let lunch = WorkCalculator.lunchWindow(on: now, rules: rules, calendar: calendar)
-            let leave = WorkCalculator.leaveTime(clockIn: today.clockIn, rules: rules)
+            let leave = WorkCalculator.leaveTime(clockIn: today.clockIn, rules: rules, timeOff: off)
             if leave > lunch.endAt { // lunch phases only apply to a normally-shaped day
                 if now < lunch.leaveAt {
                     return MenuDisplay(state: .toLunch(timeLeft: lunch.leaveAt.timeIntervalSince(now)),
@@ -45,7 +47,8 @@ enum DisplayState: Equatable {
                 : left <= warningThreshold ? .warning : .normal
             return MenuDisplay(state: .counting(timeLeft: left), urgency: urgency)
         }
-        let weekly = WorkCalculator.weeklyOvertime(records: week, dayOffs: dayOffs, now: now, rules: rules)
+        let weekly = WorkCalculator.weeklyOvertime(records: week, dayOffs: dayOffs,
+                                                   timeOff: timeOff, now: now, rules: rules)
         // Past leave time with the day still open = overworking right now.
         return MenuDisplay(state: .overtime(weekly: weekly),
                            urgency: today.clockOut == nil ? .critical : .normal)

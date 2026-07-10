@@ -8,6 +8,7 @@ final class AppState: ObservableObject {
     @Published var menuDisplay = MenuDisplay(state: .notClockedIn, urgency: .normal)
     @Published var week: [WorkRecord] = []
     @Published var dayOffDates: Set<Date> = []
+    @Published var timeOff: [Date: TimeInterval] = [:]
     @Published var lastSync: Date?
     @Published var syncError: String?
     @Published var hasSession: Bool = CookieVault.load()?.isEmpty == false {
@@ -83,6 +84,7 @@ final class AppState: ObservableObject {
         let display = DisplayState.computeDisplay(hasSession: hasSession, today: record,
                                                   week: weekIncludingManual(now: now),
                                                   dayOffs: dayOffDates,
+                                                  timeOff: timeOff,
                                                   now: now, rules: rules)
         menuDisplay = display
         menuText = display.state.menuBarText
@@ -96,6 +98,7 @@ final class AppState: ObservableObject {
             let result = try await client.fetchWeek(from: weekStart, to: max(now, weekEnd))
             week = result.records
             dayOffDates = result.dayOffDates
+            timeOff = result.timeOff
             lastSync = now
             syncError = nil
             hasSession = true

@@ -121,4 +121,22 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(posted, 1)
         state.hasSession = wasSignedIn  // restore for other tests' AppState instances
     }
+
+    func testHalfDayDrivesReducedCountdownAndWeeklySum() {
+        SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
+        let state = AppState()
+        state.hasSession = true
+        // Half-day Friday 2026-01-02, clocked in 08:55, 4h off → leave 12:55 (no lunch
+        // in the leave-time math; 12:35 is past the lunch-phase window, so the menu
+        // shows the plain countdown).
+        state.week = [WorkRecord(clockIn: d(2026, 1, 2, 8, 55), clockOut: nil, flexWorkedNet: nil)]
+        state.timeOff = [Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0)): 4 * 3600]
+
+        state.recompute(now: d(2026, 1, 2, 12, 35))
+        XCTAssertEqual(state.menuText, "0:20")
+
+        // Past 12:55 → overtime phase; weekly = −(5−1)h + accrued 5m = −3:55
+        state.recompute(now: d(2026, 1, 2, 13, 0))
+        XCTAssertEqual(state.menuText, "OT -3:55")
+    }
 }

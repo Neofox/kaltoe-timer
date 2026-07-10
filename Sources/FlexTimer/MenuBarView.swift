@@ -12,11 +12,13 @@ struct MenuBarView: View {
             }
 
             if let today = state.today, state.hasSession {
+                let off = WorkCalculator.timeOff(on: today.clockIn, in: state.timeOff)
                 row("Started", today.clockIn.formatted(date: .omitted, time: .shortened))
-                row("Leave at", WorkCalculator.leaveTime(clockIn: today.clockIn, rules: state.rules)
+                row("Leave at", WorkCalculator.leaveTime(clockIn: today.clockIn, rules: state.rules,
+                                                         timeOff: off)
                     .formatted(date: .omitted, time: .shortened))
                 row("Time left", Formatting.hms(WorkCalculator.timeLeft(
-                    clockIn: today.clockIn, now: Date(), rules: state.rules)))
+                    clockIn: today.clockIn, now: Date(), rules: state.rules, timeOff: off)))
             } else if state.hasSession {
                 Text("Not clocked in yet").foregroundStyle(.secondary)
             } else {
@@ -39,7 +41,7 @@ struct MenuBarView: View {
             Divider()
             row("Week OT", Formatting.signedHM(WorkCalculator.weeklyOvertime(
                 records: state.weekIncludingManual(now: Date()), dayOffs: state.dayOffDates,
-                now: Date(), rules: state.rules)))
+                timeOff: state.timeOff, now: Date(), rules: state.rules)))
 
             if let error = state.syncError {
                 Text(error).font(.caption).foregroundStyle(.orange)
