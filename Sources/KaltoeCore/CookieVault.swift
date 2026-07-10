@@ -1,5 +1,10 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+#if os(macOS)
 import Security
+#endif
 
 public struct StoredCookie: Codable, Equatable {
     public var name: String
@@ -17,6 +22,7 @@ public struct StoredCookie: Codable, Equatable {
     }
 }
 
+#if os(macOS)
 /// Stores the Flex session cookies as one JSON blob in the login Keychain.
 public enum CookieVault {
     /// Under XCTest the default points at a sacrificial item, so tests that
@@ -33,10 +39,6 @@ public enum CookieVault {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service,
          kSecAttrAccount as String: account]
-    }
-
-    public static func save(_ cookies: [HTTPCookie]) {
-        saveStored(cookies.map(StoredCookie.init))
     }
 
     public static func saveStored(_ cookies: [StoredCookie]) {
@@ -60,5 +62,67 @@ public enum CookieVault {
 
     public static func clear() {
         SecItemDelete(baseQuery as CFDictionary)
+    }
+}
+#else
+/// Linux: the session lives as JSON at ~/.config/kaltoe-timer/session.json
+/// (0600), written by the tray frontend at login and read/updated here.
+/// `expires` dates are Unix epoch seconds (the tray writes GLib to_unix()).
+public enum CookieVault {
+    struct SessionFile: Codable {
+        var userIdHash: String
+        var cookies: [StoredCookie]
+    }
+
+    /// Test seam — points reads/writes at a scratch file.
+    public static var sessionFileOverride: URL?
+
+    static var sessionFileURL: URL {
+        if let sessionFileOverride { return sessionFileOverride }
+        let base = ProcessInfo.processInfo.environment["KALTOE_CONFIG_DIR"]
+            .map(URL.init(fileURLWithPath:))
+            ?? FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".config/kaltoe-timer", isDirectory: true)
+        return base.appendingPathComponent("session.json")
+    }
+
+    private static func readFile() -> SessionFile? {
+        guard let data = try? Data(contentsOf: sessionFileURL) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .secondsSince1970
+        return try? decoder.decode(SessionFile.self, from: data)
+    }
+
+    public static func load() -> [StoredCookie]? {
+        guard let file = readFile(), !file.cookies.isEmpty else { return nil }
+        return file.cookies
+    }
+
+    /// The per-user Flex id captured at login; empty before first sign-in.
+    public static func loadUserIdHash() -> String {
+        readFile()?.userIdHash ?? ""
+    }
+
+    public static func saveStored(_ cookies: [StoredCookie]) {
+        // Preserve the hash the tray wrote — cookie refreshes must not drop it.
+        let file = SessionFile(userIdHash: readFile()?.userIdHash ?? "", cookies: cookies)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970
+        guard let data = try? encoder.encode(file) else { return }
+        try? FileManager.default.createDirectory(at: sessionFileURL.deletingLastPathComponent(),
+                                                 withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: sessionFileURL.path, contents: data,
+                                       attributes: [.posixPermissions: 0o600])
+    }
+
+    public static func clear() {
+        try? FileManager.default.removeItem(at: sessionFileURL)
+    }
+}
+#endif
+
+extension CookieVault {
+    public static func save(_ cookies: [HTTPCookie]) {
+        saveStored(cookies.map(StoredCookie.init))
     }
 }

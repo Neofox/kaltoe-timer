@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Flex private API constants, captured 2026-07-09 (see docs/flex-api.md).
 /// Unofficial endpoints — if Flex changes them, this file and the fixtures
@@ -11,10 +14,14 @@ public enum FlexAPIConfig {
     public static let sessionCookieNames: Set<String> = ["AID", "V2_WS_AID"]
 
     /// Opaque per-user identifier appearing in both endpoint URLs.
-    /// Auto-discovered from the V2_CUSTOMER_INFO cookie at login and stored
-    /// in UserDefaults; empty until the first sign-in.
+    /// macOS: auto-discovered at login, stored in UserDefaults.
+    /// Linux: read from session.json (written by the tray frontend at login).
     public static var userIdHash: String {
+        #if os(macOS)
         SettingsStore.defaults.string(forKey: "flexUserIdHash") ?? ""
+        #else
+        CookieVault.loadUserIdHash()
+        #endif
     }
 
     private static func dayString(_ date: Date) -> String {

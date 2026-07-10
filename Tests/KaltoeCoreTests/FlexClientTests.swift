@@ -150,7 +150,7 @@ final class FlexRecordParserTests: XCTestCase {
 
 final class FlexClientTests: XCTestCase {
     func testFetchWithoutSessionThrowsNoSession() async {
-        CookieVault.service = "com.perso.flextimer.test-\(UUID().uuidString)"
+        useScratchVault()
         defer { CookieVault.clear() }
         do {
             _ = try await FlexClient().fetchWeek(from: Date(), to: Date())
@@ -161,7 +161,7 @@ final class FlexClientTests: XCTestCase {
     }
 
     func testFetchWithCookiesButNoUserIdHashThrowsNoSession() async {
-        CookieVault.service = "com.perso.flextimer.test-\(UUID().uuidString)"
+        useScratchVault()
         SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
         defer { CookieVault.clear() }
         CookieVault.saveStored([StoredCookie(name: "AID", value: "x", domain: ".flex.team", path: "/", expires: nil)])
