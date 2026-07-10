@@ -7,6 +7,13 @@ final class CookieVaultTests: XCTestCase {
     }
     override func tearDown() { CookieVault.clear() }
 
+    func testDefaultServiceIsSacrificialUnderXCTest() {
+        // Guards the securityd-prompt fix: when XCTest is loaded, the default
+        // service must NOT be the real session item, so AppState() in tests
+        // never triggers a keychain consent prompt for the user's Flex session.
+        XCTAssertEqual(CookieVault.defaultService, "com.perso.flextimer.session.test")
+    }
+
     func testRoundTripAndClear() {
         let cookies = [
             StoredCookie(name: "SID", value: "abc123", domain: ".flex.team", path: "/", expires: nil),

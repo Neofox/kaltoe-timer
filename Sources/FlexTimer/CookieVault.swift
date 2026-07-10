@@ -19,7 +19,14 @@ struct StoredCookie: Codable, Equatable {
 
 /// Stores the Flex session cookies as one JSON blob in the login Keychain.
 enum CookieVault {
-    static var service = "com.perso.flextimer.session"
+    /// Under XCTest the default points at a sacrificial item, so tests that
+    /// construct AppState (whose init reads the vault) never touch the user's
+    /// real session item — reading a foreign-ACL item is what triggers the
+    /// securityd consent prompt for xctest and hangs unattended test runs.
+    static let defaultService = NSClassFromString("XCTestCase") == nil
+        ? "com.perso.flextimer.session"
+        : "com.perso.flextimer.session.test"
+    static var service = defaultService
     private static let account = "flex"
 
     private static var baseQuery: [String: Any] {
