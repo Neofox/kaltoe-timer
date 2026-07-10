@@ -25,4 +25,36 @@ final class StatusLineTests: XCTestCase {
         let json = String(data: try StatusLine.encoder().encode(line), encoding: .utf8) ?? ""
         XCTAssertTrue(json.contains(#""lastSync":"1970-01-01T00:00:00Z""#), json)
     }
+
+    func testDetailFieldsOmittedByDefault() throws {
+        let line = StatusLine(display: MenuDisplay(state: .noSession, urgency: .normal),
+                              hasSession: false, lastSync: nil, syncError: nil)
+        let json = String(data: try StatusLine.encoder().encode(line), encoding: .utf8) ?? ""
+        XCTAssertFalse(json.contains("started"), json)
+        XCTAssertFalse(json.contains("leaveAt"), json)
+        XCTAssertFalse(json.contains("weekOvertime"), json)
+    }
+
+    func testDetailFieldsEncodeWhenSet() throws {
+        let line = StatusLine(display: MenuDisplay(state: .counting(timeLeft: 3600), urgency: .normal),
+                              hasSession: true, lastSync: nil, syncError: nil,
+                              started: Date(timeIntervalSince1970: 0),
+                              leaveAt: Date(timeIntervalSince1970: 9 * 3600),
+                              weekOvertime: 240)
+        let json = String(data: try StatusLine.encoder().encode(line), encoding: .utf8) ?? ""
+        XCTAssertTrue(json.contains(#""started":"1970-01-01T00:00:00Z""#), json)
+        XCTAssertTrue(json.contains(#""leaveAt":"1970-01-01T09:00:00Z""#), json)
+        XCTAssertTrue(json.contains(#""weekOvertime":240"#), json)
+    }
+
+    func testWeekOvertimeRoundsToWholeMinutesTowardZero() {
+        func line(_ ot: TimeInterval) -> StatusLine {
+            StatusLine(display: MenuDisplay(state: .notClockedIn, urgency: .normal),
+                       hasSession: true, lastSync: nil, syncError: nil,
+                       started: nil, leaveAt: nil, weekOvertime: ot)
+        }
+        XCTAssertEqual(line(250).weekOvertime, 240)    // 4m10s -> 4m
+        XCTAssertEqual(line(-250).weekOvertime, -240)  // -4m10s -> -4m (toward zero, matches signedHM)
+        XCTAssertEqual(line(0).weekOvertime, 0)
+    }
 }

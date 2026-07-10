@@ -30,13 +30,27 @@ final class HeadlessState {
     }
 
     func status(now: Date) -> StatusLine {
+        let today = weekData.todayRecord(now: now)
+        let week = weekData.weekIncludingManual(now: now)
+        let rules = SettingsStore.rules
         let display = DisplayState.computeDisplay(hasSession: hasSession,
-                                                  today: weekData.todayRecord(now: now),
-                                                  week: weekData.weekIncludingManual(now: now),
+                                                  today: today,
+                                                  week: week,
                                                   dayOffs: weekData.dayOffDates,
                                                   timeOff: weekData.timeOff,
-                                                  now: now, rules: SettingsStore.rules)
+                                                  now: now, rules: rules)
+        var leaveAt: Date?
+        if hasSession, let today {
+            let off = WorkCalculator.timeOff(on: today.clockIn, in: weekData.timeOff)
+            leaveAt = WorkCalculator.leaveTime(clockIn: today.clockIn, rules: rules, timeOff: off)
+        }
+        let weekOvertime: TimeInterval? = hasSession
+            ? WorkCalculator.weeklyOvertime(records: week, dayOffs: weekData.dayOffDates,
+                                            timeOff: weekData.timeOff, now: now, rules: rules)
+            : nil
         return StatusLine(display: display, hasSession: hasSession,
-                          lastSync: lastSync, syncError: syncError)
+                          lastSync: lastSync, syncError: syncError,
+                          started: hasSession ? today?.clockIn : nil,
+                          leaveAt: leaveAt, weekOvertime: weekOvertime)
     }
 }
