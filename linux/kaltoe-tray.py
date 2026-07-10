@@ -120,6 +120,7 @@ class TrayApp:
                 self.proc.wait(timeout=3)
             except subprocess.TimeoutExpired:
                 self.proc.kill()
+                self.proc.wait()
         self.proc = None
 
     def on_core_dead(self, message):
