@@ -1,5 +1,6 @@
 import AppKit
 import WebKit
+import KaltoeCore
 
 /// Shows the real flex.team login page in a webview; when the session cookies
 /// appear, saves them to the CookieVault, closes, and fires onSuccess.

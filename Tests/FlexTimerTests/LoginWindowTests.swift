@@ -1,5 +1,6 @@
 import XCTest
 @testable import FlexTimer
+import KaltoeCore
 
 final class LoginWindowTests: XCTestCase {
     func testUserIdHashDecoding() {

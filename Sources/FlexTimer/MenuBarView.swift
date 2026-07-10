@@ -1,4 +1,5 @@
 import SwiftUI
+import KaltoeCore
 
 struct MenuBarView: View {
     @EnvironmentObject var state: AppState

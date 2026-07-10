@@ -6,8 +6,8 @@ import Foundation
 /// (`on-clock-in`, `on-clock-out`). Dedupe state persists in UserDefaults as
 /// `hookFired-<event>-yyyy-MM-dd`, so app restarts never re-fire, but an app
 /// launched after the real event still fires once (late detection).
-final class HookRunner {
-    static var hooksDirectory: URL {
+public final class HookRunner {
+    public static var hooksDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("칼퇴타이머/hooks", isDirectory: true)
     }
@@ -16,13 +16,13 @@ final class HookRunner {
     private let execute: (URL, [String: String]) -> Void
     private let iso = ISO8601DateFormatter()
 
-    init(defaults: UserDefaults = SettingsStore.defaults,
+    public init(defaults: UserDefaults = SettingsStore.defaults,
          execute: @escaping (URL, [String: String]) -> Void = HookRunner.launchDetached) {
         self.defaults = defaults
         self.execute = execute
     }
 
-    func evaluate(today: WorkRecord?, now: Date) {
+    public func evaluate(today: WorkRecord?, now: Date) {
         guard let record = today else { return }
         let day = Self.dayString(now)
         if markFiredIfNeeded("clockIn", day: day) {
@@ -65,7 +65,7 @@ final class HookRunner {
     /// Fire-and-forget: launch the script detached, never wait or read output.
     /// Missing or non-executable script is silently skipped. Backgrounded
     /// children (e.g. `caffeinate &`) survive after the script exits.
-    static func launchDetached(_ script: URL, _ env: [String: String]) {
+    public static func launchDetached(_ script: URL, _ env: [String: String]) {
         guard FileManager.default.isExecutableFile(atPath: script.path) else { return }
         let process = Process()
         process.executableURL = script

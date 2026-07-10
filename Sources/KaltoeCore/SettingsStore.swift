@@ -2,10 +2,10 @@ import Foundation
 
 /// Rules and manual overrides, stored in UserDefaults so they are tweakable
 /// without a rebuild (see README for `defaults write` commands).
-enum SettingsStore {
-    static var defaults = UserDefaults.standard
+public enum SettingsStore {
+    public static var defaults = UserDefaults.standard
 
-    static var rules: WorkRules {
+    public static var rules: WorkRules {
         var r = WorkRules()
         if let h = defaults.object(forKey: "dailyWorkHours") as? Double { r.dailyWork = h * 3600 }
         if let m = defaults.object(forKey: "breakMinutes") as? Double { r.breakTime = m * 60 }
@@ -25,11 +25,11 @@ enum SettingsStore {
         return "manualStart-" + df.string(from: day)
     }
 
-    static func manualStart(on day: Date) -> Date? {
+    public static func manualStart(on day: Date) -> Date? {
         defaults.object(forKey: key(for: day)) as? Date
     }
 
-    static func setManualStart(_ date: Date?, on day: Date) {
+    public static func setManualStart(_ date: Date?, on day: Date) {
         if let date { defaults.set(date, forKey: key(for: day)) }
         else { defaults.removeObject(forKey: key(for: day)) }
     }

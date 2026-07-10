@@ -1,5 +1,15 @@
 import XCTest
 @testable import FlexTimer
+import KaltoeCore
+
+/// Date in Asia/Seoul, gregorian.
+/// Duplicated from KaltoeCoreTests/WorkCalculatorTests.swift: separate test
+/// targets don't share top-level helpers across the split.
+private func d(_ y: Int, _ mo: Int, _ da: Int, _ h: Int, _ mi: Int) -> Date {
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+    return cal.date(from: DateComponents(year: y, month: mo, day: da, hour: h, minute: mi))!
+}
 
 @MainActor
 final class AppStateTests: XCTestCase {

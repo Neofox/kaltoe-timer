@@ -3,17 +3,17 @@ import Foundation
 /// Flex private API constants, captured 2026-07-09 (see docs/flex-api.md).
 /// Unofficial endpoints — if Flex changes them, this file and the fixtures
 /// are the only places to update.
-enum FlexAPIConfig {
-    static let loginURL = URL(string: "https://flex.team/sign-in")!
+public enum FlexAPIConfig {
+    public static let loginURL = URL(string: "https://flex.team/sign-in")!
 
     /// Cookies that must all exist for a session to count as logged in.
     /// AID is the auth token; V2_WS_AID carries the workspace context.
-    static let sessionCookieNames: Set<String> = ["AID", "V2_WS_AID"]
+    public static let sessionCookieNames: Set<String> = ["AID", "V2_WS_AID"]
 
     /// Opaque per-user identifier appearing in both endpoint URLs.
     /// Auto-discovered from the V2_CUSTOMER_INFO cookie at login and stored
     /// in UserDefaults; empty until the first sign-in.
-    static var userIdHash: String {
+    public static var userIdHash: String {
         SettingsStore.defaults.string(forKey: "flexUserIdHash") ?? ""
     }
 

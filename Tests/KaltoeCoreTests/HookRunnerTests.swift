@@ -1,5 +1,5 @@
 import XCTest
-@testable import FlexTimer
+@testable import KaltoeCore
 
 final class HookRunnerTests: XCTestCase {
     private var defaults: UserDefaults!

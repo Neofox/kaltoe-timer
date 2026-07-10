@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import KaltoeCore
 
 /// Menu bar label: template-rendered icon+text normally; at warning/critical
 /// urgency, pre-renders a colored capsule pill (white icon+text on

@@ -1,5 +1,5 @@
 import XCTest
-@testable import FlexTimer
+@testable import KaltoeCore
 
 /// Date in Asia/Seoul, gregorian.
 func d(_ y: Int, _ mo: Int, _ da: Int, _ h: Int, _ mi: Int) -> Date {

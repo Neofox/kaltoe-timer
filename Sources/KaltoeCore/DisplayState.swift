@@ -1,15 +1,20 @@
 import Foundation
 
-enum Urgency: Equatable {
+public enum Urgency: String, Equatable {
     case normal, warning, critical
 }
 
-struct MenuDisplay: Equatable {
-    var state: DisplayState
-    var urgency: Urgency
+public struct MenuDisplay: Equatable {
+    public var state: DisplayState
+    public var urgency: Urgency
+
+    public init(state: DisplayState, urgency: Urgency) {
+        self.state = state
+        self.urgency = urgency
+    }
 }
 
-enum DisplayState: Equatable {
+public enum DisplayState: Equatable {
     case noSession
     case notClockedIn
     case toLunch(timeLeft: TimeInterval)   // counting down to the lunch-leave moment
@@ -21,7 +26,7 @@ enum DisplayState: Equatable {
     private static let criticalThreshold: TimeInterval = 10 * 60
 
     /// Smart single value with day phases and an overwork urgency level.
-    static func computeDisplay(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
+    public static func computeDisplay(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
                                dayOffs: Set<Date> = [],
                                timeOff: [Date: TimeInterval] = [:],
                                now: Date, rules: WorkRules,
@@ -55,13 +60,13 @@ enum DisplayState: Equatable {
     }
 
     /// v1 compatibility wrapper — state only.
-    static func compute(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
+    public static func compute(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
                         now: Date, rules: WorkRules) -> DisplayState {
         computeDisplay(hasSession: hasSession, today: today, week: week,
                        now: now, rules: rules).state
     }
 
-    var menuBarText: String {
+    public var menuBarText: String {
         switch self {
         case .noSession: return "—"
         case .notClockedIn: return "--:--"
@@ -72,7 +77,7 @@ enum DisplayState: Equatable {
         }
     }
 
-    var iconName: String {
+    public var iconName: String {
         switch self {
         case .toLunch: return "fork.knife"
         case .onBreak: return "cup.and.saucer"

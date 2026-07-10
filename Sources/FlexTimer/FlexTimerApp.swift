@@ -1,4 +1,5 @@
 import SwiftUI
+import KaltoeCore
 
 @main
 struct FlexTimerApp: App {

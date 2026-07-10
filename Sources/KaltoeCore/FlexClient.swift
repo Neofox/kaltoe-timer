@@ -1,11 +1,11 @@
 import Foundation
 
-final class FlexClient {
-    enum FlexError: Error, Equatable { case noSession, sessionExpired, badResponse }
+public final class FlexClient {
+    public enum FlexError: Error, Equatable { case noSession, sessionExpired, badResponse }
 
     private let session: URLSession
 
-    init() {
+    public init() {
         // No automatic cookie storage/redirect surprises: we manage cookies ourselves.
         let config = URLSessionConfiguration.ephemeral
         config.httpCookieStorage = nil
@@ -13,7 +13,7 @@ final class FlexClient {
         session = URLSession(configuration: config)
     }
 
-    func fetchWeek(from: Date, to: Date) async throws -> ParseResult {
+    public func fetchWeek(from: Date, to: Date) async throws -> ParseResult {
         guard let cookies = CookieVault.load(), !cookies.isEmpty else { throw FlexError.noSession }
         // No discovered user id yet (first run / pre-login) — nothing to query.
         guard !FlexAPIConfig.userIdHash.isEmpty else { throw FlexError.noSession }

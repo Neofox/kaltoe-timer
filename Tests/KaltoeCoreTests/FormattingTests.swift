@@ -1,5 +1,5 @@
 import XCTest
-@testable import FlexTimer
+@testable import KaltoeCore
 
 final class FormattingTests: XCTestCase {
     func testHM() {

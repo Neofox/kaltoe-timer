@@ -2,10 +2,10 @@ import Foundation
 
 /// Parsed week: work records, holiday/vacation weekdays, and per-day
 /// approved partial time off (seconds). Weekends excluded from both.
-struct ParseResult: Equatable {
-    var records: [WorkRecord]
-    var dayOffDates: Set<Date>
-    var timeOff: [Date: TimeInterval] = [:]
+public struct ParseResult: Equatable {
+    public var records: [WorkRecord]
+    public var dayOffDates: Set<Date>
+    public var timeOff: [Date: TimeInterval] = [:]
 }
 
 /// Parses and merges the two Flex endpoints into `[WorkRecord]`.

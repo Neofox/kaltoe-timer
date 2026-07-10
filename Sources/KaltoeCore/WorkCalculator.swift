@@ -1,42 +1,68 @@
 import Foundation
 
-struct WorkRules: Codable, Equatable {
-    var dailyWork: TimeInterval = 8 * 3600       // net work target per day
-    var breakTime: TimeInterval = 1 * 3600       // fixed lunch break
-    var weeklyOvertime: TimeInterval = 5 * 3600  // required overtime per week
-    var lunchStart: TimeInterval = 690 * 60      // official break start, seconds from midnight (11:30)
-    var lunchEnd: TimeInterval = 750 * 60        // break end / work resumes (12:30)
-    var lunchEarlyLeave: TimeInterval = 10 * 60  // allowed early departure to lunch
-    var dayOffDeduction: TimeInterval = 1 * 3600     // weekly-required reduction per holiday/vacation weekday
-    var familyDayEarlyLeave: TimeInterval = 2 * 3600 // family-day daily-target reduction; 0 disables family day
-    var familyDayDeduction: TimeInterval = 1 * 3600  // weekly-required reduction for a family-day week
+public struct WorkRules: Codable, Equatable {
+    public var dailyWork: TimeInterval = 8 * 3600       // net work target per day
+    public var breakTime: TimeInterval = 1 * 3600       // fixed lunch break
+    public var weeklyOvertime: TimeInterval = 5 * 3600  // required overtime per week
+    public var lunchStart: TimeInterval = 690 * 60      // official break start, seconds from midnight (11:30)
+    public var lunchEnd: TimeInterval = 750 * 60        // break end / work resumes (12:30)
+    public var lunchEarlyLeave: TimeInterval = 10 * 60  // allowed early departure to lunch
+    public var dayOffDeduction: TimeInterval = 1 * 3600     // weekly-required reduction per holiday/vacation weekday
+    public var familyDayEarlyLeave: TimeInterval = 2 * 3600 // family-day daily-target reduction; 0 disables family day
+    public var familyDayDeduction: TimeInterval = 1 * 3600  // weekly-required reduction for a family-day week
+
+    public init(dailyWork: TimeInterval = 8 * 3600,
+                breakTime: TimeInterval = 1 * 3600,
+                weeklyOvertime: TimeInterval = 5 * 3600,
+                lunchStart: TimeInterval = 690 * 60,
+                lunchEnd: TimeInterval = 750 * 60,
+                lunchEarlyLeave: TimeInterval = 10 * 60,
+                dayOffDeduction: TimeInterval = 1 * 3600,
+                familyDayEarlyLeave: TimeInterval = 2 * 3600,
+                familyDayDeduction: TimeInterval = 1 * 3600) {
+        self.dailyWork = dailyWork
+        self.breakTime = breakTime
+        self.weeklyOvertime = weeklyOvertime
+        self.lunchStart = lunchStart
+        self.lunchEnd = lunchEnd
+        self.lunchEarlyLeave = lunchEarlyLeave
+        self.dayOffDeduction = dayOffDeduction
+        self.familyDayEarlyLeave = familyDayEarlyLeave
+        self.familyDayDeduction = familyDayDeduction
+    }
 }
 
-struct WorkRecord: Equatable {
-    var clockIn: Date
-    var clockOut: Date?                 // nil = still on the clock
-    var flexWorkedNet: TimeInterval?    // net worked time as reported by Flex, if available
+public struct WorkRecord: Equatable {
+    public var clockIn: Date
+    public var clockOut: Date?                 // nil = still on the clock
+    public var flexWorkedNet: TimeInterval?    // net worked time as reported by Flex, if available
+
+    public init(clockIn: Date, clockOut: Date?, flexWorkedNet: TimeInterval?) {
+        self.clockIn = clockIn
+        self.clockOut = clockOut
+        self.flexWorkedNet = flexWorkedNet
+    }
 }
 
-enum WorkCalculator {
-    static func leaveTime(clockIn: Date, rules: WorkRules, timeOff: TimeInterval = 0) -> Date {
+public enum WorkCalculator {
+    public static func leaveTime(clockIn: Date, rules: WorkRules, timeOff: TimeInterval = 0) -> Date {
         let target = dailyTarget(on: clockIn, rules: rules, timeOff: timeOff)
         return clockIn.addingTimeInterval(target + breakDuration(target: target, rules: rules))
     }
 
-    static func timeLeft(clockIn: Date, now: Date, rules: WorkRules, timeOff: TimeInterval = 0) -> TimeInterval {
+    public static func timeLeft(clockIn: Date, now: Date, rules: WorkRules, timeOff: TimeInterval = 0) -> TimeInterval {
         leaveTime(clockIn: clockIn, rules: rules, timeOff: timeOff).timeIntervalSince(now)
     }
 
     /// The day's break: full lunch normally; none when approved time off cuts
     /// the target to a half day or less (per policy: a 4h half-day has no lunch).
-    static func breakDuration(target: TimeInterval, rules: WorkRules) -> TimeInterval {
+    public static func breakDuration(target: TimeInterval, rules: WorkRules) -> TimeInterval {
         target > rules.dailyWork / 2 ? rules.breakTime : 0
     }
 
     /// Approved time-off seconds for the day containing `day` (0 if none).
     /// `map` keys must be `startOfDay`-normalized (parser convention).
-    static func timeOff(on day: Date, in map: [Date: TimeInterval],
+    public static func timeOff(on day: Date, in map: [Date: TimeInterval],
                         calendar: Calendar = .current) -> TimeInterval {
         map[calendar.startOfDay(for: day)] ?? 0
     }
@@ -44,7 +70,7 @@ enum WorkCalculator {
     /// Overtime contributed by one record. Completed day: net worked − daily target
     /// (both signs count; the target is family-day- and time-off-aware). Open day:
     /// 0 until leave time, then accrues live.
-    static func dailyOvertime(record: WorkRecord, now: Date, rules: WorkRules,
+    public static func dailyOvertime(record: WorkRecord, now: Date, rules: WorkRules,
                               timeOff: [Date: TimeInterval] = [:]) -> TimeInterval {
         let off = Self.timeOff(on: record.clockIn, in: timeOff)
         let target = dailyTarget(on: record.clockIn, rules: rules, timeOff: off)
@@ -59,7 +85,7 @@ enum WorkCalculator {
     /// Weekly counter: −(adjusted required) + Σ daily overtime. Negative = still owed.
     /// `dayOffs`/`timeOff` keys must be `Calendar.current.startOfDay`-normalized dates —
     /// week-range filtering compares instants.
-    static func weeklyOvertime(records: [WorkRecord], dayOffs: Set<Date> = [],
+    public static func weeklyOvertime(records: [WorkRecord], dayOffs: Set<Date> = [],
                                timeOff: [Date: TimeInterval] = [:],
                                now: Date, rules: WorkRules) -> TimeInterval {
         records.reduce(-requiredOvertime(dayOffs: dayOffs, timeOff: timeOff, weekOf: now, rules: rules)) {
@@ -69,7 +95,7 @@ enum WorkCalculator {
 
     /// Family day: the last Friday of the calendar month (disabled when
     /// rules.familyDayEarlyLeave == 0 — callers check that, not this).
-    static func isFamilyDay(_ date: Date, calendar: Calendar = .current) -> Bool {
+    public static func isFamilyDay(_ date: Date, calendar: Calendar = .current) -> Bool {
         guard calendar.component(.weekday, from: date) == 6 else { return false } // Friday
         guard let nextWeek = calendar.date(byAdding: .day, value: 7, to: date) else { return false }
         return !calendar.isDate(nextWeek, equalTo: date, toGranularity: .month)   // +7d leaves the month
@@ -77,7 +103,7 @@ enum WorkCalculator {
 
     /// Net work target for a given day: dailyWork, reduced on family day, then
     /// reduced by approved time off; floored at 0.
-    static func dailyTarget(on day: Date, rules: WorkRules, timeOff: TimeInterval = 0,
+    public static func dailyTarget(on day: Date, rules: WorkRules, timeOff: TimeInterval = 0,
                             calendar: Calendar = .current) -> TimeInterval {
         var target = rules.dailyWork
         if rules.familyDayEarlyLeave > 0, isFamilyDay(day, calendar: calendar) {
@@ -92,7 +118,7 @@ enum WorkCalculator {
     /// contains family day (family day itself never double-counts). Floored at 0.
     /// `dayOffs`/`timeOff` keys must be `Calendar.current.startOfDay`-normalized dates —
     /// week-range filtering compares instants.
-    static func requiredOvertime(dayOffs: Set<Date>, timeOff: [Date: TimeInterval] = [:],
+    public static func requiredOvertime(dayOffs: Set<Date>, timeOff: [Date: TimeInterval] = [:],
                                  weekOf now: Date, rules: WorkRules,
                                  calendar: Calendar = .current) -> TimeInterval {
         let start = weekStart(of: now, calendar: calendar)
@@ -113,7 +139,7 @@ enum WorkCalculator {
     }
 
     /// Monday 00:00 of the week containing `date`.
-    static func weekStart(of date: Date, calendar: Calendar = .current) -> Date {
+    public static func weekStart(of date: Date, calendar: Calendar = .current) -> Date {
         var cal = calendar
         cal.firstWeekday = 2
         return cal.dateInterval(of: .weekOfYear, for: date)!.start
@@ -121,7 +147,7 @@ enum WorkCalculator {
 
     /// The lunch window on `day`: (moment you may leave for lunch, moment work resumes).
     /// Display only — does not affect leave time or overtime math.
-    static func lunchWindow(on day: Date, rules: WorkRules,
+    public static func lunchWindow(on day: Date, rules: WorkRules,
                             calendar: Calendar = .current) -> (leaveAt: Date, endAt: Date) {
         let midnight = calendar.startOfDay(for: day)
         return (midnight.addingTimeInterval(rules.lunchStart - rules.lunchEarlyLeave),

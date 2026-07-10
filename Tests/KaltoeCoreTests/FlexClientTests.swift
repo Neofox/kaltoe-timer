@@ -1,5 +1,5 @@
 import XCTest
-@testable import FlexTimer
+@testable import KaltoeCore
 
 final class FlexRecordParserTests: XCTestCase {
     func fixture(_ name: String) throws -> Data {
