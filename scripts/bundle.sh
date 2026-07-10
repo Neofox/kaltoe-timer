@@ -41,4 +41,4 @@ else
   echo "WARNING: ad-hoc signed — keychain will re-prompt after every rebuild."
   echo "Create the one-time 'kaltoe-dev' certificate (README: Code signing) to fix."
 fi
-echo "Built $APP — copy to /Applications and add to Login Items."
+echo "Built $APP — copy to /Applications (adds itself to Login Items on first launch)."

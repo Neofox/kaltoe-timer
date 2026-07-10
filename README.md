@@ -40,11 +40,10 @@ cp -r "build/칼퇴타이머.app" /Applications
 # upgrading from v1? remove the old bundle first: rm -rf /Applications/FlexTimer.app
 ```
 
-Add to Login Items:
-
-1. System Settings → General → Login Items
-2. Click the + icon
-3. Select `/Applications/칼퇴타이머.app`
+The app adds itself to Login Items on first launch (you'll see a one-time
+macOS notice). To stop it starting automatically, turn it off under System
+Settings → General → Login Items — the app respects that and won't re-add
+itself.
 
 ### Code signing (one-time, recommended)
 
