@@ -223,7 +223,7 @@ final class WorkCalculatorTests: XCTestCase {
         let r = WorkRecord(clockIn: d(2026, 1, 2, 8, 55), clockOut: d(2026, 1, 2, 12, 30),
                            flexWorkedNet: 2 * 3600 + 35 * 60)
         XCTAssertEqual(WorkCalculator.dailyOvertime(record: r, now: d(2026, 1, 2, 23, 0), rules: rules,
-                                                    timeOff: [friday: 4 * 3600]),
+                                                    timeOff: [friday: 4.0 * 3600]),
                        -(1 * 3600 + 25 * 60))
     }
 
@@ -232,7 +232,7 @@ final class WorkCalculatorTests: XCTestCase {
         let friday = Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0))
         let r = WorkRecord(clockIn: d(2026, 1, 2, 9, 0), clockOut: d(2026, 1, 2, 12, 30), flexWorkedNet: nil)
         XCTAssertEqual(WorkCalculator.dailyOvertime(record: r, now: d(2026, 1, 2, 23, 0), rules: rules,
-                                                    timeOff: [friday: 4 * 3600]),
+                                                    timeOff: [friday: 4.0 * 3600]),
                        -30 * 60)
     }
 
@@ -241,7 +241,7 @@ final class WorkCalculatorTests: XCTestCase {
         let friday = Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0))
         let r = WorkRecord(clockIn: d(2026, 1, 2, 8, 55), clockOut: nil, flexWorkedNet: nil)
         XCTAssertEqual(WorkCalculator.dailyOvertime(record: r, now: d(2026, 1, 2, 13, 25), rules: rules,
-                                                    timeOff: [friday: 4 * 3600]),
+                                                    timeOff: [friday: 4.0 * 3600]),
                        30 * 60)
     }
 
@@ -258,15 +258,15 @@ final class WorkCalculatorTests: XCTestCase {
 
     func testTimeOffLookupNormalizesToStartOfDay() {
         let friday = Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0))
-        XCTAssertEqual(WorkCalculator.timeOff(on: d(2026, 1, 2, 14, 33), in: [friday: 4 * 3600]),
+        XCTAssertEqual(WorkCalculator.timeOff(on: d(2026, 1, 2, 14, 33), in: [friday: 4.0 * 3600]),
                        4 * 3600)
-        XCTAssertEqual(WorkCalculator.timeOff(on: d(2026, 1, 3, 14, 33), in: [friday: 4 * 3600]), 0)
+        XCTAssertEqual(WorkCalculator.timeOff(on: d(2026, 1, 3, 14, 33), in: [friday: 4.0 * 3600]), 0)
     }
 
     func testRequiredOvertimeDeductsFullHourPerTimeOffDay() {
         // Half-day Thursday deducts the FULL dayOffDeduction (policy decision)
         let thu = Calendar.current.startOfDay(for: d(2026, 7, 9, 0, 0))
-        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [], timeOff: [thu: 4 * 3600],
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [], timeOff: [thu: 4.0 * 3600],
                                                        weekOf: d(2026, 7, 8, 12, 0), rules: rules),
                        4 * 3600)
     }
@@ -275,14 +275,14 @@ final class WorkCalculatorTests: XCTestCase {
         // Holiday Thursday + half-day Friday → 5 − 1 − 1 = 3h
         let thu = Calendar.current.startOfDay(for: d(2026, 7, 9, 0, 0))
         let fri = Calendar.current.startOfDay(for: d(2026, 7, 10, 0, 0))
-        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [thu], timeOff: [fri: 4 * 3600],
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [thu], timeOff: [fri: 4.0 * 3600],
                                                        weekOf: d(2026, 7, 8, 12, 0), rules: rules),
                        3 * 3600)
     }
 
     func testRequiredOvertimeSameDayHolidayAndTimeOffDeductsOnce() {
         let thu = Calendar.current.startOfDay(for: d(2026, 7, 9, 0, 0))
-        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [thu], timeOff: [thu: 4 * 3600],
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [thu], timeOff: [thu: 4.0 * 3600],
                                                        weekOf: d(2026, 7, 8, 12, 0), rules: rules),
                        4 * 3600)
     }
@@ -290,14 +290,14 @@ final class WorkCalculatorTests: XCTestCase {
     func testRequiredOvertimeHalfDayOnFamilyDayNoDoubleCount() {
         // Half-day ON family day (2026-07-31): family −1h only → 4h
         let familyFriday = Calendar.current.startOfDay(for: d(2026, 7, 31, 0, 0))
-        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [], timeOff: [familyFriday: 4 * 3600],
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [], timeOff: [familyFriday: 4.0 * 3600],
                                                        weekOf: d(2026, 7, 29, 12, 0), rules: rules),
                        4 * 3600)
     }
 
     func testRequiredOvertimeIgnoresTimeOffOutsideWeek() {
         let prevWeek = Calendar.current.startOfDay(for: d(2026, 7, 2, 0, 0))
-        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [], timeOff: [prevWeek: 4 * 3600],
+        XCTAssertEqual(WorkCalculator.requiredOvertime(dayOffs: [], timeOff: [prevWeek: 4.0 * 3600],
                                                        weekOf: d(2026, 7, 8, 12, 0), rules: rules),
                        5 * 3600)
     }
@@ -308,7 +308,7 @@ final class WorkCalculatorTests: XCTestCase {
         let friday = Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0))
         let fri = WorkRecord(clockIn: d(2026, 1, 2, 8, 55), clockOut: d(2026, 1, 2, 12, 30),
                              flexWorkedNet: 2 * 3600 + 35 * 60)
-        XCTAssertEqual(WorkCalculator.weeklyOvertime(records: [fri], timeOff: [friday: 4 * 3600],
+        XCTAssertEqual(WorkCalculator.weeklyOvertime(records: [fri], timeOff: [friday: 4.0 * 3600],
                                                      now: d(2026, 1, 2, 23, 0), rules: rules),
                        -(5 * 3600 + 25 * 60))
     }

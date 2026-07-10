@@ -69,5 +69,26 @@ extension CookieVaultTests {
             atPath: CookieVault.sessionFileOverride!.path)
         XCTAssertEqual((attrs[.posixPermissions] as? NSNumber)?.intValue, 0o600)
     }
+
+    func testSessionFileStaysOwnerOnlyAfterOverwrite() throws {
+        // saveStored called twice on the same path (a cookie refresh) must not
+        // relax permissions on the second, overwriting write.
+        CookieVault.saveStored([StoredCookie(name: "AID", value: "x", domain: ".flex.team",
+                                             path: "/", expires: nil)])
+        CookieVault.saveStored([StoredCookie(name: "AID", value: "y", domain: ".flex.team",
+                                             path: "/", expires: nil)])
+        let attrs = try FileManager.default.attributesOfItem(
+            atPath: CookieVault.sessionFileOverride!.path)
+        XCTAssertEqual((attrs[.posixPermissions] as? NSNumber)?.intValue, 0o600)
+        XCTAssertEqual(CookieVault.load()?.map(\.value), ["y"])
+    }
+
+    func testWellFormedEmptyCookiesArrayLoadsAsNil() throws {
+        let url = CookieVault.sessionFileOverride!
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        try #"{"userIdHash":"u123","cookies":[]}"#.data(using: .utf8)!.write(to: url)
+        XCTAssertNil(CookieVault.load())
+    }
 }
 #endif
