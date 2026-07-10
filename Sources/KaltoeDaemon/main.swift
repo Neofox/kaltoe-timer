@@ -30,7 +30,8 @@ Task { @MainActor in
     var lastEmitAt = Date.distantPast
     var tick = 0
     while true {
-        if tick % 600 == 0 || refreshFlag.consume() { await state.refresh() }
+        let forced = refreshFlag.consume()
+        if tick % 600 == 0 || forced { await state.refresh() }
         let now = Date()
         let line = state.status(now: now)
         if line != lastEmitted || now.timeIntervalSince(lastEmitAt) >= 60 {
@@ -43,7 +44,7 @@ Task { @MainActor in
             }
         }
         tick += 1
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        do { try await Task.sleep(nanoseconds: 1_000_000_000) } catch { break }
     }
 }
 

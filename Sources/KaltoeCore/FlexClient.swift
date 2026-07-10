@@ -13,6 +13,9 @@ public final class FlexClient {
         let config = URLSessionConfiguration.ephemeral
         config.httpCookieStorage = nil
         config.httpShouldSetCookies = false
+        // Two sequential requests happen per refresh; keep each bounded so the
+        // daemon's 60 s heartbeat can never be starved by a hung connection.
+        config.timeoutIntervalForRequest = 15
         session = URLSession(configuration: config)
     }
 
