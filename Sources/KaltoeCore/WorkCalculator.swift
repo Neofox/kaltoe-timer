@@ -11,25 +11,8 @@ public struct WorkRules: Codable, Equatable {
     public var familyDayEarlyLeave: TimeInterval = 2 * 3600 // family-day daily-target reduction; 0 disables family day
     public var familyDayDeduction: TimeInterval = 1 * 3600  // weekly-required reduction for a family-day week
 
-    public init(dailyWork: TimeInterval = 8 * 3600,
-                breakTime: TimeInterval = 1 * 3600,
-                weeklyOvertime: TimeInterval = 5 * 3600,
-                lunchStart: TimeInterval = 690 * 60,
-                lunchEnd: TimeInterval = 750 * 60,
-                lunchEarlyLeave: TimeInterval = 10 * 60,
-                dayOffDeduction: TimeInterval = 1 * 3600,
-                familyDayEarlyLeave: TimeInterval = 2 * 3600,
-                familyDayDeduction: TimeInterval = 1 * 3600) {
-        self.dailyWork = dailyWork
-        self.breakTime = breakTime
-        self.weeklyOvertime = weeklyOvertime
-        self.lunchStart = lunchStart
-        self.lunchEnd = lunchEnd
-        self.lunchEarlyLeave = lunchEarlyLeave
-        self.dayOffDeduction = dayOffDeduction
-        self.familyDayEarlyLeave = familyDayEarlyLeave
-        self.familyDayDeduction = familyDayDeduction
-    }
+    public init() {}
+
 }
 
 public struct WorkRecord: Equatable {

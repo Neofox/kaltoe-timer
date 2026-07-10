@@ -14,8 +14,11 @@ final class SettingsStoreTests: XCTestCase {
         SettingsStore.defaults.set(7.0, forKey: "dailyWorkHours")
         SettingsStore.defaults.set(30.0, forKey: "breakMinutes")
         SettingsStore.defaults.set(4.0, forKey: "weeklyOvertimeHours")
-        XCTAssertEqual(SettingsStore.rules,
-                       WorkRules(dailyWork: 7 * 3600, breakTime: 30 * 60, weeklyOvertime: 4 * 3600))
+        var expected = WorkRules()
+        expected.dailyWork = 7 * 3600
+        expected.breakTime = 30 * 60
+        expected.weeklyOvertime = 4 * 3600
+        XCTAssertEqual(SettingsStore.rules, expected)
     }
 
     func testManualStartRoundTripAndClear() {
