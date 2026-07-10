@@ -4,18 +4,26 @@ Tray timer for flex.team work hours — the Linux port of the macOS menu bar app
 
 ## Requirements
 
-Ubuntu 22.04+ with GNOME (or any desktop with AppIndicator/StatusNotifier
-support). Install the system dependencies:
+Ubuntu 22.04+ (GNOME) or Fedora (KDE Plasma), x86_64.
 
-    sudo apt install python3-gi gir1.2-ayatanaappindicator3-0.1 \
+Ubuntu:
+
+    sudo apt install python3-gi python3-gi-cairo gir1.2-ayatanaappindicator3-0.1 \
                      gir1.2-webkit2-4.1 libnotify-bin
+
+Fedora:
+
+    sudo dnf install python3-gobject python3-cairo gtk3 \
+                     libayatana-appindicator-gtk3 webkit2gtk4.1 libnotify
 
 On stock Ubuntu GNOME the AppIndicator extension
 (`gnome-shell-extension-appindicator`) must be enabled — it ships enabled on
-Ubuntu 22.04+.
+Ubuntu 22.04+. KDE Plasma needs nothing extra; the countdown is drawn into
+the tray icon itself there (Plasma has no tray label). Set
+`KALTOE_TRAY_MODE=label` or `=texticon` to override the automatic choice.
 
-Make sure your system timezone is set correctly (check with `timedatectl`) —
-all times (lunch, break, leave time, overtime) follow the system timezone.
+Make sure your system timezone is correct (`timedatectl`) — all times follow
+the system clock.
 
 ## Install
 
