@@ -19,24 +19,41 @@ struct WorkRecord: Equatable {
 }
 
 enum WorkCalculator {
-    static func leaveTime(clockIn: Date, rules: WorkRules) -> Date {
-        clockIn.addingTimeInterval(dailyTarget(on: clockIn, rules: rules) + rules.breakTime)
+    static func leaveTime(clockIn: Date, rules: WorkRules, timeOff: TimeInterval = 0) -> Date {
+        let target = dailyTarget(on: clockIn, rules: rules, timeOff: timeOff)
+        return clockIn.addingTimeInterval(target + breakDuration(target: target, rules: rules))
     }
 
-    static func timeLeft(clockIn: Date, now: Date, rules: WorkRules) -> TimeInterval {
-        leaveTime(clockIn: clockIn, rules: rules).timeIntervalSince(now)
+    static func timeLeft(clockIn: Date, now: Date, rules: WorkRules, timeOff: TimeInterval = 0) -> TimeInterval {
+        leaveTime(clockIn: clockIn, rules: rules, timeOff: timeOff).timeIntervalSince(now)
+    }
+
+    /// The day's break: full lunch normally; none when approved time off cuts
+    /// the target to a half day or less (per policy: a 4h half-day has no lunch).
+    static func breakDuration(target: TimeInterval, rules: WorkRules) -> TimeInterval {
+        target > rules.dailyWork / 2 ? rules.breakTime : 0
+    }
+
+    /// Approved time-off seconds for the day containing `day` (0 if none).
+    /// `map` keys must be `startOfDay`-normalized (parser convention).
+    static func timeOff(on day: Date, in map: [Date: TimeInterval],
+                        calendar: Calendar = .current) -> TimeInterval {
+        map[calendar.startOfDay(for: day)] ?? 0
     }
 
     /// Overtime contributed by one record. Completed day: net worked − daily target
-    /// (both signs count; the target is family-day-aware). Open day: 0 until leave
-    /// time, then accrues live.
-    static func dailyOvertime(record: WorkRecord, now: Date, rules: WorkRules) -> TimeInterval {
+    /// (both signs count; the target is family-day- and time-off-aware). Open day:
+    /// 0 until leave time, then accrues live.
+    static func dailyOvertime(record: WorkRecord, now: Date, rules: WorkRules,
+                              timeOff: [Date: TimeInterval] = [:]) -> TimeInterval {
+        let off = Self.timeOff(on: record.clockIn, in: timeOff)
+        let target = dailyTarget(on: record.clockIn, rules: rules, timeOff: off)
         if let out = record.clockOut {
             let net = record.flexWorkedNet
-                ?? max(0, out.timeIntervalSince(record.clockIn) - rules.breakTime)
-            return net - dailyTarget(on: record.clockIn, rules: rules)
+                ?? max(0, out.timeIntervalSince(record.clockIn) - breakDuration(target: target, rules: rules))
+            return net - target
         }
-        return max(0, now.timeIntervalSince(leaveTime(clockIn: record.clockIn, rules: rules)))
+        return max(0, now.timeIntervalSince(leaveTime(clockIn: record.clockIn, rules: rules, timeOff: off)))
     }
 
     /// Weekly counter: −(adjusted required) + Σ daily overtime. Negative = still owed.
@@ -57,10 +74,15 @@ enum WorkCalculator {
         return !calendar.isDate(nextWeek, equalTo: date, toGranularity: .month)   // +7d leaves the month
     }
 
-    /// Net work target for a given day: dailyWork, reduced on family day.
-    static func dailyTarget(on day: Date, rules: WorkRules, calendar: Calendar = .current) -> TimeInterval {
-        guard rules.familyDayEarlyLeave > 0, isFamilyDay(day, calendar: calendar) else { return rules.dailyWork }
-        return rules.dailyWork - rules.familyDayEarlyLeave
+    /// Net work target for a given day: dailyWork, reduced on family day, then
+    /// reduced by approved time off; floored at 0.
+    static func dailyTarget(on day: Date, rules: WorkRules, timeOff: TimeInterval = 0,
+                            calendar: Calendar = .current) -> TimeInterval {
+        var target = rules.dailyWork
+        if rules.familyDayEarlyLeave > 0, isFamilyDay(day, calendar: calendar) {
+            target -= rules.familyDayEarlyLeave
+        }
+        return max(0, target - timeOff)
     }
 
     /// Required overtime for the week containing `now`: base − dayOffDeduction per

@@ -200,4 +200,66 @@ final class WorkCalculatorTests: XCTestCase {
                                                      now: d(2026, 7, 8, 12, 0), rules: rules),
                        -4 * 3600)
     }
+
+    // MARK: - Time off (half/full-day leave)
+
+    func testHalfDayLeaveTimeHasNoLunchBreak() {
+        // 4h off → 4h target → 08:55 + 4h, no break (reduced target ≤ dailyWork/2)
+        XCTAssertEqual(WorkCalculator.leaveTime(clockIn: d(2026, 1, 2, 8, 55), rules: rules,
+                                                timeOff: 4 * 3600),
+                       d(2026, 1, 2, 12, 55))
+    }
+
+    func testSmallTimeOffKeepsLunchBreak() {
+        // 2h off → 6h target > 4h → break stays: 09:00 + 6h + 1h = 16:00
+        XCTAssertEqual(WorkCalculator.leaveTime(clockIn: d(2026, 7, 6, 9, 0), rules: rules,
+                                                timeOff: 2 * 3600),
+                       d(2026, 7, 6, 16, 0))
+    }
+
+    func testCompletedHalfDayOvertimeAgainstReducedTarget() {
+        // Net 2h35m (from Flex) vs 4h target → −1h25m
+        let friday = Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0))
+        let r = WorkRecord(clockIn: d(2026, 1, 2, 8, 55), clockOut: d(2026, 1, 2, 12, 30),
+                           flexWorkedNet: 2 * 3600 + 35 * 60)
+        XCTAssertEqual(WorkCalculator.dailyOvertime(record: r, now: d(2026, 1, 2, 23, 0), rules: rules,
+                                                    timeOff: [friday: 4 * 3600]),
+                       -(1 * 3600 + 25 * 60))
+    }
+
+    func testCompletedHalfDayFallbackNetSkipsBreak() {
+        // No flexWorkedNet: net = gross (no break at ≤4h target). 09:00–12:30 = 3h30m vs 4h → −30m
+        let friday = Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0))
+        let r = WorkRecord(clockIn: d(2026, 1, 2, 9, 0), clockOut: d(2026, 1, 2, 12, 30), flexWorkedNet: nil)
+        XCTAssertEqual(WorkCalculator.dailyOvertime(record: r, now: d(2026, 1, 2, 23, 0), rules: rules,
+                                                    timeOff: [friday: 4 * 3600]),
+                       -30 * 60)
+    }
+
+    func testOpenHalfDayAccruesAfterReducedLeaveTime() {
+        // Leave 12:55; still on the clock at 13:25 → +30m
+        let friday = Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0))
+        let r = WorkRecord(clockIn: d(2026, 1, 2, 8, 55), clockOut: nil, flexWorkedNet: nil)
+        XCTAssertEqual(WorkCalculator.dailyOvertime(record: r, now: d(2026, 1, 2, 13, 25), rules: rules,
+                                                    timeOff: [friday: 4 * 3600]),
+                       30 * 60)
+    }
+
+    func testFamilyDayPlusTimeOffStacksAndFloorsAtZero() {
+        // Family day 2026-07-31: 8h − 2h family − 4h off = 2h target; 09:00 + 2h = 11:00, no break
+        XCTAssertEqual(WorkCalculator.leaveTime(clockIn: d(2026, 7, 31, 9, 0), rules: rules,
+                                                timeOff: 4 * 3600),
+                       d(2026, 7, 31, 11, 0))
+        // 8h off on family day → floor at 0 target → leave = clockIn
+        XCTAssertEqual(WorkCalculator.leaveTime(clockIn: d(2026, 7, 31, 9, 0), rules: rules,
+                                                timeOff: 8 * 3600),
+                       d(2026, 7, 31, 9, 0))
+    }
+
+    func testTimeOffLookupNormalizesToStartOfDay() {
+        let friday = Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0))
+        XCTAssertEqual(WorkCalculator.timeOff(on: d(2026, 1, 2, 14, 33), in: [friday: 4 * 3600]),
+                       4 * 3600)
+        XCTAssertEqual(WorkCalculator.timeOff(on: d(2026, 1, 3, 14, 33), in: [friday: 4 * 3600]), 0)
+    }
 }
