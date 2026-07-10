@@ -111,6 +111,7 @@ class TrayApp:
         if self.texticon:
             self.icon_temp = tempfile.mkdtemp(prefix="kaltoe-tray-")
             self.indicator.set_icon_theme_path(self.icon_temp)
+            self._set_text_icon("--:--", "normal")
         self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
         if not self.texticon:
             self.indicator.set_label("--:--", LABEL_GUIDE)
@@ -200,6 +201,9 @@ class TrayApp:
         self.proc = None
 
     def on_core_dead(self, message):
+        self.leave_at_dt = None
+        for item in (self.started_item, self.leave_item, self.timeleft_item, self.ot_item):
+            item.hide()
         if self.texticon:
             self._set_text_icon("--:--", "normal")
         else:
