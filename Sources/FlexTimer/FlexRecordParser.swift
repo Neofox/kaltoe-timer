@@ -126,14 +126,27 @@ enum FlexRecordParser {
                 }
             }
 
-            let workBlocks = day.timeBlocks.filter { $0.type == "WORK" }
-            guard !workBlocks.isEmpty else { continue }
-            let starts = workBlocks.compactMap { $0.value?.startTimestamp?.timestamp }
-            let ends = workBlocks.compactMap { $0.value?.endTimestampExclusive?.timestamp }
-            guard let minStart = starts.min(), let maxEnd = ends.max() else { continue }
+            let workIntervals: [(start: Int64, end: Int64)] = day.timeBlocks
+                .filter { $0.type == "WORK" }
+                .compactMap { b in
+                    guard let s = b.value?.startTimestamp?.timestamp,
+                          let e = b.value?.endTimestampExclusive?.timestamp else { return nil }
+                    return (s, e)
+                }
+            guard let minStart = workIntervals.map(\.start).min(),
+                  let maxEnd = workIntervals.map(\.end).max() else { continue }
+            let grossMs = workIntervals.reduce(Int64(0)) { $0 + ($1.end - $1.start) }
+            let restMs = day.timeBlocks
+                .filter { $0.type == "REST" }
+                .reduce(Int64(0)) { total, b in
+                    guard let s = b.value?.startTimestamp?.timestamp,
+                          let e = b.value?.endTimestampExclusive?.timestamp else { return total }
+                    // Only the portion overlapping WORK intervals counts as deducted rest.
+                    return total + workIntervals.reduce(0) { $0 + max(0, min(e, $1.end) - max(s, $1.start)) }
+                }
             records[day.date] = WorkRecord(clockIn: date(msSince1970: minStart),
                                             clockOut: date(msSince1970: maxEnd),
-                                            flexWorkedNet: nil)
+                                            flexWorkedNet: TimeInterval(grossMs - restMs) / 1000)
         }
 
         // Step 2: ongoing days from work-clock, skipping dates already covered by step 1.

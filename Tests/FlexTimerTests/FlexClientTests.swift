@@ -125,6 +125,27 @@ final class FlexRecordParserTests: XCTestCase {
                                                 clock: try fixture("sample-clock"))
         XCTAssertTrue(result.timeOff.isEmpty)
     }
+
+    func testFlexWorkedNetComputedFromWorkMinusRest() throws {
+        // Existing fixture 07-01: WORK 09:00–19:00 (10h), REST 1h → net 9h.
+        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
+                                                 clock: try fixture("sample-clock")).records
+        XCTAssertEqual(records[0].flexWorkedNet, 9 * 3600)
+    }
+
+    func testFlexWorkedNetOnHalfDay() throws {
+        // 2026-01-02: WORK 08:55–12:30 (3h35m), REST 11:30–12:30 (1h) → net 2h35m.
+        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-timeoff"),
+                                                 clock: emptyClock).records
+        let rec = records.first { Calendar.current.isDate($0.clockIn, inSameDayAs: d(2026, 1, 2, 12, 0)) }
+        XCTAssertEqual(rec?.flexWorkedNet, 2 * 3600 + 35 * 60)
+    }
+
+    func testOngoingClockRecordHasNilFlexWorkedNet() throws {
+        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
+                                                 clock: try fixture("sample-clock")).records
+        XCTAssertNil(records[6].flexWorkedNet, "open day from work-clock has no net yet")
+    }
 }
 
 final class FlexClientTests: XCTestCase {
