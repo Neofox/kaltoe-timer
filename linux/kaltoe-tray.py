@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import urllib.parse
+from datetime import datetime, timezone
 from pathlib import Path
 
 import gi
@@ -154,6 +155,14 @@ class TrayApp:
 
     # ---- status rendering ----
 
+    @staticmethod
+    def _local_sync_label(iso_utc):
+        try:
+            dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
+        except ValueError:
+            return iso_utc
+        return dt.astimezone().strftime("%Y-%m-%d %H:%M")
+
     def apply_status(self, raw):
         try:
             status = json.loads(raw)
@@ -174,7 +183,7 @@ class TrayApp:
         if status.get("syncError"):
             parts.append(status["syncError"])
         if status.get("lastSync"):
-            parts.append("Synced " + status["lastSync"].replace("T", " ")[:16])
+            parts.append("Synced " + self._local_sync_label(status["lastSync"]))
         self.status_item.set_label(" · ".join(parts) or "OK")
         self.sign_in_item.set_visible(not has_session)
         self.sign_out_item.set_visible(has_session)

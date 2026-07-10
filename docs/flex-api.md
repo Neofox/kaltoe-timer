@@ -116,3 +116,12 @@ capture, the app parses it and stores `userIdHash` in UserDefaults
 is empty until the first sign-in (FlexClient treats an empty hash as
 no-session). This keeps the app free of any hardcoded personal identifier
 and working across workspace/user changes without a code edit.
+
+## Client timeout
+
+`FlexClient` sets `timeoutIntervalForRequest = 15` (seconds), down from
+URLSession's 60s default. This was driven by the Linux daemon's need to
+guarantee a heartbeat within its 60s cycle, but it intentionally applies on
+macOS too: flex.team responds in well under 15s in practice, and a timeout's
+failure mode is a benign `syncError` plus retry on the next poll, not a
+crash or data loss.

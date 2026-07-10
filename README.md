@@ -190,7 +190,7 @@ swift run
 ./scripts/bundle.sh
 ```
 
-All 112 tests pass, covering work-record merging, overtime calculations, and display formatting.
+All 118 tests pass on macOS (105 on Linux, where the AppKit shell isn't built), covering work-record merging, overtime calculations, and display formatting.
 
 ## Linux build
 
