@@ -57,12 +57,13 @@ enum WorkCalculator {
     }
 
     /// Weekly counter: −(adjusted required) + Σ daily overtime. Negative = still owed.
-    /// `dayOffs` elements must be `Calendar.current.startOfDay`-normalized dates —
+    /// `dayOffs`/`timeOff` keys must be `Calendar.current.startOfDay`-normalized dates —
     /// week-range filtering compares instants.
     static func weeklyOvertime(records: [WorkRecord], dayOffs: Set<Date> = [],
+                               timeOff: [Date: TimeInterval] = [:],
                                now: Date, rules: WorkRules) -> TimeInterval {
-        records.reduce(-requiredOvertime(dayOffs: dayOffs, weekOf: now, rules: rules)) {
-            $0 + dailyOvertime(record: $1, now: now, rules: rules)
+        records.reduce(-requiredOvertime(dayOffs: dayOffs, timeOff: timeOff, weekOf: now, rules: rules)) {
+            $0 + dailyOvertime(record: $1, now: now, rules: rules, timeOff: timeOff)
         }
     }
 
@@ -86,11 +87,13 @@ enum WorkCalculator {
     }
 
     /// Required overtime for the week containing `now`: base − dayOffDeduction per
-    /// holiday/vacation weekday − familyDayDeduction if the week contains family day
-    /// (family day itself never double-counts as a day-off). Floored at 0.
-    /// `dayOffs` elements must be `Calendar.current.startOfDay`-normalized dates —
+    /// holiday/vacation weekday and per day with any approved time off (half or
+    /// full — policy: full deduction either way) − familyDayDeduction if the week
+    /// contains family day (family day itself never double-counts). Floored at 0.
+    /// `dayOffs`/`timeOff` keys must be `Calendar.current.startOfDay`-normalized dates —
     /// week-range filtering compares instants.
-    static func requiredOvertime(dayOffs: Set<Date>, weekOf now: Date, rules: WorkRules,
+    static func requiredOvertime(dayOffs: Set<Date>, timeOff: [Date: TimeInterval] = [:],
+                                 weekOf now: Date, rules: WorkRules,
                                  calendar: Calendar = .current) -> TimeInterval {
         let start = weekStart(of: now, calendar: calendar)
         guard let end = calendar.date(byAdding: .day, value: 7, to: start) else { return rules.weeklyOvertime }
@@ -102,7 +105,7 @@ enum WorkCalculator {
             familyDay = friday
             required -= rules.familyDayDeduction
         }
-        let deductionDays = dayOffs
+        let deductionDays = dayOffs.union(timeOff.keys)
             .filter { $0 >= start && $0 < end }
             .filter { day in familyDay.map { !calendar.isDate(day, inSameDayAs: $0) } ?? true }
         required -= rules.dayOffDeduction * Double(deductionDays.count)
