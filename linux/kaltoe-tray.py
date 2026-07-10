@@ -9,7 +9,7 @@ import json
 import os
 import subprocess
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import gi
