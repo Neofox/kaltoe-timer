@@ -17,6 +17,7 @@ final class AppState: ObservableObject {
     }
 
     var rules: WorkRules { SettingsStore.rules }
+    var weekData: WeekData { WeekData(records: week, dayOffDates: dayOffDates, timeOff: timeOff) }
 
     private let client = FlexClient()
     private let login = LoginWindowController()
@@ -34,24 +35,12 @@ final class AppState: ObservableObject {
 
     /// Flex record for the day if present, else a synthetic record from manual entry.
     func todayRecord(now: Date) -> WorkRecord? {
-        if let flex = week.first(where: { Calendar.current.isDate($0.clockIn, inSameDayAs: now) }) {
-            return flex
-        }
-        if let manual = SettingsStore.manualStart(on: now) {
-            return WorkRecord(clockIn: manual, clockOut: nil, flexWorkedNet: nil)
-        }
-        return nil
+        weekData.todayRecord(now: now)
     }
 
     /// Week records including the synthetic manual record for today, if any.
     func weekIncludingManual(now: Date) -> [WorkRecord] {
-        let weekStart = WorkCalculator.weekStart(of: now)
-        var records = week.filter { $0.clockIn >= weekStart }
-        if !records.contains(where: { Calendar.current.isDate($0.clockIn, inSameDayAs: now) }),
-           let manual = todayRecord(now: now) {
-            records.append(manual)
-        }
-        return records
+        weekData.weekIncludingManual(now: now)
     }
 
     /// Kick off timers and the first fetch. Call once from the App.

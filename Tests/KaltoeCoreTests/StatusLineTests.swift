@@ -1,0 +1,28 @@
+import XCTest
+@testable import KaltoeCore
+
+final class StatusLineTests: XCTestCase {
+    func testMapsDisplayFields() {
+        let line = StatusLine(display: MenuDisplay(state: .overtime(weekly: -59 * 60),
+                                                   urgency: .critical),
+                              hasSession: true, lastSync: nil, syncError: nil)
+        XCTAssertEqual(line.text, "OT -0:59")
+        XCTAssertEqual(line.icon, "timer")
+        XCTAssertEqual(line.urgency, "critical")
+    }
+
+    func testEncodesStableSortedJSONOmittingNils() throws {
+        let line = StatusLine(display: MenuDisplay(state: .noSession, urgency: .normal),
+                              hasSession: false, lastSync: nil, syncError: nil)
+        let json = String(data: try StatusLine.encoder().encode(line), encoding: .utf8)
+        XCTAssertEqual(json, #"{"hasSession":false,"icon":"timer","text":"—","urgency":"normal"}"#)
+    }
+
+    func testEncodesLastSyncAsISO8601() throws {
+        let line = StatusLine(display: MenuDisplay(state: .notClockedIn, urgency: .normal),
+                              hasSession: true,
+                              lastSync: Date(timeIntervalSince1970: 0), syncError: nil)
+        let json = String(data: try StatusLine.encoder().encode(line), encoding: .utf8) ?? ""
+        XCTAssertTrue(json.contains(#""lastSync":"1970-01-01T00:00:00Z""#), json)
+    }
+}
