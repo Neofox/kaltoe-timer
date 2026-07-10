@@ -146,7 +146,7 @@ enum FlexRecordParser {
                 }
             records[day.date] = WorkRecord(clockIn: date(msSince1970: minStart),
                                             clockOut: date(msSince1970: maxEnd),
-                                            flexWorkedNet: TimeInterval(grossMs - restMs) / 1000)
+                                            flexWorkedNet: TimeInterval(max(0, grossMs - restMs)) / 1000)
         }
 
         // Step 2: ongoing days from work-clock, skipping dates already covered by step 1.

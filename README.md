@@ -179,4 +179,4 @@ swift run
 ./scripts/bundle.sh
 ```
 
-All 95 tests pass, covering work-record merging, overtime calculations, and display formatting.
+All 112 tests pass, covering work-record merging, overtime calculations, and display formatting.

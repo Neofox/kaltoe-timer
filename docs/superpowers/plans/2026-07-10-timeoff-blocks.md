@@ -15,7 +15,7 @@
 - Break rule: full `rules.breakTime` when the reduced daily target > `rules.dailyWork / 2` (i.e. > 4h at defaults), otherwise 0.
 - Weekly requirement: any day with approved time off (half or full) deducts the full `dayOffDeduction`; family day never double-counts; floor at 0.
 - All date-keyed sets/maps use `Calendar.current.startOfDay`-normalized keys (existing `dayOffDates` convention). Only Mon–Fri dates enter `dayOffDates`/`timeOff`.
-- Run tests via `scripts/run-tests-tempkeychain.sh` (created in Task 1). Plain unattended `swift test` hangs on a securityd keychain-consent prompt — if a run stalls >5 min, kill it; do not wait.
+- Tests run with plain `swift test` (the temp-keychain script this plan originally mandated was made obsolete mid-branch by 278a040 — sacrificial keychain service under XCTest — and has been removed).
 - Existing behavior for days without time off must not change, EXCEPT completed schedule days now carry `flexWorkedNet` (actual rest instead of the assumed 1h break) — this is the in-scope accuracy bonus.
 
 ---

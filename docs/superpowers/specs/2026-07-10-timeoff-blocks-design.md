@@ -120,3 +120,4 @@ and the full-deduction decision makes the fraction useless.
 - `legalTimeBlocks`, `approvals[]` top-level array (redundant with
   block-level approval).
 - Hourly-leave lunch policy beyond the ≤4h/> 4h break rule.
+- Known limitation: a HALF_DAY_AM day clocked in before lunch still shows the lunch-phase countdowns even though the no-lunch leave-time math adds no break (leave time lands after lunch end, so the display guard keeps the phases). Display-only; accepted at final review.
