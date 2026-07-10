@@ -74,6 +74,57 @@ final class FlexRecordParserTests: XCTestCase {
         XCTAssertEqual(result.dayOffDates, expected)
         // Weekend markers (REST_DAY 07-04, WEEKLY_HOLIDAY 07-05) are NOT day-offs.
     }
+
+    // MARK: - Time-off blocks (docs/superpowers/specs/2026-07-10-timeoff-blocks-design.md)
+
+    private var emptyClock: Data { Data("{\"records\":[]}".utf8) }
+
+    func testFullDayTimeOffBlockDecodesAndJoinsDayOffDates() throws {
+        // FORBIDDEN_TIME_OFF has no startTimestamp — decoding must not throw (regression).
+        let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-timeoff"),
+                                                clock: emptyClock)
+        XCTAssertTrue(result.dayOffDates.contains(Calendar.current.startOfDay(for: d(2025, 11, 24, 0, 0))),
+                      "allDay time-off block must count as a full weekday off")
+    }
+
+    func testHalfDayProducesTimeOffSeconds() throws {
+        let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-timeoff"),
+                                                clock: emptyClock)
+        let friday = Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0))
+        XCTAssertEqual(result.timeOff[friday], 240 * 60)
+        XCTAssertFalse(result.dayOffDates.contains(friday), "half-day is not a full day off")
+    }
+
+    func testHalfDayStillProducesWorkRecord() throws {
+        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-timeoff"),
+                                                 clock: emptyClock).records
+        let rec = records.first { Calendar.current.isDate($0.clockIn, inSameDayAs: d(2026, 1, 2, 12, 0)) }
+        XCTAssertEqual(rec?.clockIn, d(2026, 1, 2, 8, 55))
+        XCTAssertEqual(rec?.clockOut, d(2026, 1, 2, 12, 30))
+    }
+
+    func testHolidayAndWeekendMarkersOnTimeOffFixture() throws {
+        let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-timeoff"),
+                                                clock: emptyClock)
+        // Weekday CUSTOM_HOLIDAY (Thu 2026-01-01) is a day off.
+        XCTAssertTrue(result.dayOffDates.contains(Calendar.current.startOfDay(for: d(2026, 1, 1, 0, 0))))
+        // Sunday with WEEKLY_HOLIDAY + CUSTOM_HOLIDAY is NOT (weekday filter).
+        XCTAssertFalse(result.dayOffDates.contains(Calendar.current.startOfDay(for: d(2026, 3, 1, 0, 0))))
+    }
+
+    func testUnapprovedTimeOffIgnored() throws {
+        let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-timeoff"),
+                                                clock: emptyClock)
+        let monday = Calendar.current.startOfDay(for: d(2026, 3, 2, 0, 0))
+        XCTAssertNil(result.timeOff[monday], "PENDING approval must not count")
+        XCTAssertFalse(result.dayOffDates.contains(monday))
+    }
+
+    func testExistingFixtureHasNoTimeOffEntries() throws {
+        let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
+                                                clock: try fixture("sample-clock"))
+        XCTAssertTrue(result.timeOff.isEmpty)
+    }
 }
 
 final class FlexClientTests: XCTestCase {

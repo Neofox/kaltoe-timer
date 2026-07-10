@@ -47,6 +47,17 @@ Response (shape used by the app):
 
 - `type == "WORK"` blocks carry the day's worked interval(s); `REST` blocks
   are breaks.
+- Personal leave is a `timeBlocks[]` entry, NOT a `dayOffs[]` entry. Observed
+  types: `ANNUAL_TIME_OFF` (half-day: `allDay: false`,
+  `timeOffRegisterUnit: "HALF_DAY_AM"|"HALF_DAY_PM"`, `usedMinutes: 240`,
+  real start/end timestamps) and `FORBIDDEN_TIME_OFF` (full day:
+  `allDay: true`, `timeOffRegisterUnit: "DAY"`, `usedMinutes: 480`,
+  **no timestamps**). Type names vary — the parser matches on shape:
+  `usedMinutes > 0` + `approval.status == "APPROVED"`.
+- `dayOffs[]` only carries holiday/weekend markers: `CUSTOM_HOLIDAY`
+  (public/company holiday), `WEEKLY_HOLIDAY` (usually Sunday), `REST_DAY`
+  (usually Saturday). A date can carry several (e.g. 2026-03-01:
+  WEEKLY_HOLIDAY + CUSTOM_HOLIDAY).
 - Completed (non-ongoing) days come from here.
 
 ## Endpoint 2 — work clock (live/ongoing records)

@@ -1,10 +1,11 @@
 import Foundation
 
-/// Parsed week: work records plus holiday/vacation weekdays (days whose
-/// dayOffs contain a non-weekend-marker entry; weekends themselves excluded).
+/// Parsed week: work records, holiday/vacation weekdays, and per-day
+/// approved partial time off (seconds). Weekends excluded from both.
 struct ParseResult: Equatable {
     var records: [WorkRecord]
     var dayOffDates: Set<Date>
+    var timeOff: [Date: TimeInterval] = [:]
 }
 
 /// Parses and merges the two Flex endpoints into `[WorkRecord]`.
@@ -32,8 +33,15 @@ enum FlexRecordParser {
     }
 
     private struct TimeBlockValue: Decodable {
-        let startTimestamp: Timestamp
-        let endTimestampExclusive: Timestamp
+        let startTimestamp: Timestamp?
+        let endTimestampExclusive: Timestamp?
+        let allDay: Bool?
+        let usedMinutes: Int?
+        let approval: Approval?
+    }
+
+    private struct Approval: Decodable {
+        let status: String?
     }
 
     private struct Timestamp: Decodable {
@@ -88,20 +96,40 @@ enum FlexRecordParser {
 
         var records: [String: WorkRecord] = [:]  // keyed by date string, for dedupe against clock.json
         var dayOffDates: Set<Date> = []
+        var timeOff: [Date: TimeInterval] = [:]
 
         // Step 1: completed days from work-schedules — one record per day,
         // earliest WORK start to latest WORK end.
         for day in schedules.dailySchedules {
+            let dayDate = dayFormatter.date(from: day.date)
+            let isWeekday = dayDate.map { (2...6).contains(Calendar.current.component(.weekday, from: $0)) } ?? false
+
             if let offs = day.dayOffs,
                offs.contains(where: { !weekendMarkers.contains($0.type) }),
-               let dayDate = dayFormatter.date(from: day.date),
-               (2...6).contains(Calendar.current.component(.weekday, from: dayDate)) {  // Mon–Fri
+               let dayDate, isWeekday {
                 dayOffDates.insert(Calendar.current.startOfDay(for: dayDate))
             }
+
+            // Personal leave arrives as time blocks, not dayOffs. Type names vary
+            // (ANNUAL_TIME_OFF, FORBIDDEN_TIME_OFF, ...) so match on shape:
+            // usedMinutes + APPROVED. Full-day blocks carry no timestamps.
+            if let dayDate, isWeekday {
+                let key = Calendar.current.startOfDay(for: dayDate)
+                for block in day.timeBlocks {
+                    guard let v = block.value, let minutes = v.usedMinutes, minutes > 0,
+                          v.approval?.status == "APPROVED" else { continue }
+                    if v.allDay == true {
+                        dayOffDates.insert(key)
+                    } else {
+                        timeOff[key, default: 0] += TimeInterval(minutes) * 60
+                    }
+                }
+            }
+
             let workBlocks = day.timeBlocks.filter { $0.type == "WORK" }
             guard !workBlocks.isEmpty else { continue }
-            let starts = workBlocks.compactMap { $0.value?.startTimestamp.timestamp }
-            let ends = workBlocks.compactMap { $0.value?.endTimestampExclusive.timestamp }
+            let starts = workBlocks.compactMap { $0.value?.startTimestamp?.timestamp }
+            let ends = workBlocks.compactMap { $0.value?.endTimestampExclusive?.timestamp }
             guard let minStart = starts.min(), let maxEnd = ends.max() else { continue }
             records[day.date] = WorkRecord(clockIn: date(msSince1970: minStart),
                                             clockOut: date(msSince1970: maxEnd),
@@ -122,6 +150,7 @@ enum FlexRecordParser {
         }
 
         return ParseResult(records: records.values.sorted { $0.clockIn < $1.clockIn },
-                           dayOffDates: dayOffDates)
+                           dayOffDates: dayOffDates,
+                           timeOff: timeOff)
     }
 }

@@ -1,0 +1,102 @@
+{
+    "userIdHash": "SAMPLEUSER0",
+    "dailySchedules": [
+        { "date": "2026-01-01", "timezone": "Asia/Seoul", "dayOffs": [{ "type": "CUSTOM_HOLIDAY" }], "timeBlocks": [] },
+        {
+            "date": "2026-01-02",
+            "timezone": "Asia/Seoul",
+            "dayOffs": [],
+            "timeBlocks": [
+                {
+                    "type": "WORK",
+                    "value": {
+                        "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1767311700000 },
+                        "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1767324600000 },
+                        "eventStatus": "RECORD",
+                        "eventSource": "WORK_CLOCK",
+                        "allDay": false
+                    }
+                },
+                {
+                    "type": "REST",
+                    "value": {
+                        "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1767321000000 },
+                        "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1767324600000 },
+                        "eventStatus": "RECORD",
+                        "eventSource": "WORK_CLOCK",
+                        "allDay": false
+                    }
+                },
+                {
+                    "type": "ANNUAL_TIME_OFF",
+                    "value": {
+                        "allDay": false,
+                        "timezoneAtRegistration": "Asia/Seoul",
+                        "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1767324600000 },
+                        "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1767339000000 },
+                        "status": "APPROVAL_COMPLETED",
+                        "timeOffRegisterUnit": "HALF_DAY_PM",
+                        "restMinutes": 0,
+                        "usedMinutes": 240,
+                        "usedPaidMinutes": 240,
+                        "approval": { "status": "APPROVED" }
+                    }
+                }
+            ]
+        },
+        {
+            "date": "2025-11-24",
+            "timezone": "Asia/Seoul",
+            "dayOffs": [],
+            "timeBlocks": [
+                {
+                    "type": "FORBIDDEN_TIME_OFF",
+                    "value": {
+                        "allDay": true,
+                        "timezoneAtRegistration": "Asia/Seoul",
+                        "timeOffEventId": "0000000",
+                        "status": "APPROVAL_COMPLETED",
+                        "memo": "",
+                        "timeOffRegisterUnit": "DAY",
+                        "restMinutes": 0,
+                        "usedMinutes": 480,
+                        "usedPaidMinutes": 480,
+                        "approval": { "approvalId": "x", "status": "APPROVED" },
+                        "cancelApprovals": [],
+                        "metadata": { "referenceId": "0000000" }
+                    }
+                }
+            ],
+            "approvals": [{ "category": "TIME_OFF", "status": "APPROVED" }],
+            "legalTimeBlocks": []
+        },
+        {
+            "date": "2026-03-01",
+            "timezone": "Asia/Seoul",
+            "dayOffs": [{ "type": "WEEKLY_HOLIDAY" }, { "type": "CUSTOM_HOLIDAY" }],
+            "timeBlocks": []
+        },
+        {
+            "date": "2026-03-02",
+            "timezone": "Asia/Seoul",
+            "dayOffs": [],
+            "timeBlocks": [
+                {
+                    "type": "ANNUAL_TIME_OFF",
+                    "value": {
+                        "allDay": false,
+                        "timezoneAtRegistration": "Asia/Seoul",
+                        "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1772416200000 },
+                        "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1772430600000 },
+                        "status": "APPROVAL_PENDING",
+                        "timeOffRegisterUnit": "HALF_DAY_PM",
+                        "restMinutes": 0,
+                        "usedMinutes": 240,
+                        "usedPaidMinutes": 240,
+                        "approval": { "status": "PENDING" }
+                    }
+                }
+            ]
+        }
+    ]
+}
