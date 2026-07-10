@@ -63,41 +63,56 @@ LABEL_GUIDE = "OT +88:88"  # widest label, reserves tray width
 TRAY_MODE = os.environ.get("KALTOE_TRAY_MODE") or (
     "texticon" if "KDE" in os.environ.get("XDG_CURRENT_DESKTOP", "") else "label")
 
-ICON_HEIGHT = 22
+ICON_SIZE = 64
 PILL_COLORS = {"warning": (1.0, 0.584, 0.0), "critical": (1.0, 0.231, 0.188)}
+FONT_PROBE_SIZE = 40
 
 
 def render_text_icon(text, urgency, out_path):
-    """Render the tray label into a PNG: plain light-gray text normally,
-    white-on-orange/red capsule at warning/critical (the Mac pill)."""
-    # Measure first with a throwaway surface.
-    probe = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)
-    layout = PangoCairo.create_layout(cairo.Context(probe))
-    layout.set_font_description(Pango.FontDescription("Sans Bold 11"))
-    layout.set_text(text, -1)
-    text_w, text_h = layout.get_pixel_size()
+    """Render the tray label into a square PNG so Plasma shows it at full
+    panel height: auto-fitted text (stacked at the first space), plain
+    light-gray normally, white on an orange/red rounded square at
+    warning/critical (the Mac pill)."""
+    stacked = text.replace(" ", "\n", 1)
+    pad = 8 if urgency in PILL_COLORS else 3
+    avail = ICON_SIZE - 2 * pad
 
-    pad = 6 if urgency in PILL_COLORS else 2
-    width = text_w + 2 * pad
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, ICON_HEIGHT)
+    def make_layout(cr, size):
+        layout = PangoCairo.create_layout(cr)
+        layout.set_font_description(Pango.FontDescription(f"Sans Bold {size}"))
+        layout.set_alignment(Pango.Alignment.CENTER)
+        layout.set_text(stacked, -1)
+        return layout
+
+    # Measure at a probe size, then scale to fit the padded canvas
+    # (Pango pixel metrics scale ~linearly with font size).
+    probe_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)
+    probe = make_layout(cairo.Context(probe_surface), FONT_PROBE_SIZE)
+    probe_w, probe_h = probe.get_pixel_size()
+    size = max(1, int(FONT_PROBE_SIZE * min(avail / probe_w, avail / probe_h)))
+
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, ICON_SIZE, ICON_SIZE)
     cr = cairo.Context(surface)
 
     if urgency in PILL_COLORS:
         r, g, b = PILL_COLORS[urgency]
-        radius = ICON_HEIGHT / 2 - 1
+        radius = 12
+        inset = 1
+        right, bottom = ICON_SIZE - inset, ICON_SIZE - inset
         cr.set_source_rgb(r, g, b)
-        cr.arc(radius + 1, ICON_HEIGHT / 2, radius, 0.5 * 3.14159, 1.5 * 3.14159)
-        cr.arc(width - radius - 1, ICON_HEIGHT / 2, radius, 1.5 * 3.14159, 0.5 * 3.14159)
+        cr.arc(inset + radius, inset + radius, radius, 3.14159, 1.5 * 3.14159)
+        cr.arc(right - radius, inset + radius, radius, 1.5 * 3.14159, 2 * 3.14159)
+        cr.arc(right - radius, bottom - radius, radius, 0, 0.5 * 3.14159)
+        cr.arc(inset + radius, bottom - radius, radius, 0.5 * 3.14159, 3.14159)
         cr.close_path()
         cr.fill()
         cr.set_source_rgb(1, 1, 1)
     else:
         cr.set_source_rgb(0.875, 0.875, 0.875)  # dfdfdf, matches static icons
 
-    layout = PangoCairo.create_layout(cr)
-    layout.set_font_description(Pango.FontDescription("Sans Bold 11"))
-    layout.set_text(text, -1)
-    cr.move_to(pad, (ICON_HEIGHT - text_h) / 2)
+    layout = make_layout(cr, size)
+    text_w, text_h = layout.get_pixel_size()
+    cr.move_to((ICON_SIZE - text_w) / 2, (ICON_SIZE - text_h) / 2)
     PangoCairo.show_layout(cr, layout)
     surface.write_to_png(out_path)
 
