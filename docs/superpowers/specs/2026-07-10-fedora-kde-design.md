@@ -1,16 +1,21 @@
-# Fedora KDE Plasma Support — Design
+# Linux Tray v2: Fedora KDE Support + Menu Detail Rows — Design
 
 2026-07-10
 
 ## Goal
 
-A coworker runs Fedora with KDE Plasma. Make the existing Linux tarball work
-there: verify the Ubuntu-built binary runs on Fedora, document dnf
-dependencies, and — the real feature — render the countdown text into the
-tray icon on KDE, because Plasma's StatusNotifierItem tray has no label
-field (GNOME shows `set_label` text; Plasma shows only the icon).
+Two improvements shipping in one tarball update:
 
-Same single tarball ships to both the Ubuntu and Fedora coworkers.
+1. **Fedora KDE Plasma support** for a new coworker: verify the
+   Ubuntu-built binary runs on Fedora, document dnf dependencies, and — the
+   real feature — render the countdown text into the tray icon on KDE,
+   because Plasma's StatusNotifierItem tray has no label field (GNOME shows
+   `set_label` text; Plasma shows only the icon).
+2. **Menu detail rows** (all desktops): the tray menu currently shows only
+   sync status + actions; the Mac dropdown shows Started / Leave at /
+   Time left / Week OT. Bring those rows to Linux.
+
+Same single tarball ships to the Ubuntu and Fedora coworkers.
 
 ## 1. Fedora compatibility verification (container, no code)
 
@@ -70,7 +75,37 @@ on Ubuntu.
 squashing can only be confirmed on the coworker's machine. If it squashes,
 follow-up: render compact stacked two-line text into a square icon.
 
-## 3. Docs
+## 3. Menu detail rows (all desktops)
+
+Mirror the Mac dropdown's info rows in the tray menu.
+
+**NDJSON contract extension** (`Sources/KaltoeCore/StatusLine.swift`) —
+three new optional fields, omitted when unavailable (signed out or not
+clocked in), so the existing golden-JSON test stays valid:
+
+- `started: Date?` — today's clock-in (ISO8601 on the wire, like `lastSync`)
+- `leaveAt: Date?` — `WorkCalculator.leaveTime(clockIn:rules:timeOff:)`
+- `weekOvertime: Int?` — `WorkCalculator.weeklyOvertime(...)` in seconds,
+  **rounded to the whole minute** so change-driven emission stays
+  minute-cadenced (matches the Mac's `+0:04` display precision)
+
+**Daemon** (`Sources/KaltoeDaemon/HeadlessState.swift`): `status(now:)`
+populates the three fields under the same conditions the Mac menu uses —
+`started`/`leaveAt` when a session exists and today has a record;
+`weekOvertime` whenever a session exists. `StatusLine` gains a second
+initializer parameter set; the mapping is unit-tested in
+`StatusLineTests`/new daemon-side coverage via KaltoeCore tests.
+
+**Tray** (`linux/kaltoe-tray.py`): insensitive info rows above the action
+items, matching the Mac order — `Started 09:05`, `Leave at 18:05`,
+`Time left 2:40:59`, `Week OT +0:04` — hidden when their field is absent.
+Times render local via the existing ISO→local helper. "Time left" ticks
+per second from a `GLib.timeout_add_seconds(1)` timer computing
+`max(0, leaveAt − now)` tray-side — pure subtraction; leave-time semantics
+stay in the daemon. `weekOvertime` renders as the Mac does: explicit sign,
+`+H:MM`/`-H:MM`. The Mac's break-only "Back at" row is out of scope.
+
+## 4. Docs
 
 - `linux/README-linux.md`: add a Fedora/KDE subsection under Requirements —
   the `dnf install` line (exact names from §1) — and a note that on KDE the
@@ -81,7 +116,7 @@ follow-up: render compact stacked two-line text into a square icon.
 - `build/설치가이드-INSTALL-GUIDE.md` (untracked): Ubuntu section retitled
   to cover Linux generally with the two install command variants.
 
-## 4. Testing
+## 5. Testing
 
 - `--render-test` PNGs generated in the Fedora container for
   (`2:34`/normal, `2:34`/warning, `OT -0:59`/critical) and visually checked.
@@ -90,7 +125,9 @@ follow-up: render compact stacked two-line text into a square icon.
 - `python3 -m py_compile linux/kaltoe-tray.py`; mode-selection logic unit
   check via `--render-test` on the Mac is impossible (no cairo) — container
   covers it.
-- `swift test` (118) untouched — no Swift changes in this spec.
-- Rebuild the tarball; final gate remains the coworker's live Plasma
-  smoke test (tray shows readable countdown, pill colors at thresholds,
-  login works).
+- `swift test` grows: StatusLine tests for the three new fields (present,
+  omitted-when-nil, minute rounding of `weekOvertime`) plus the existing
+  118 stay green.
+- Rebuild the tarball; final gates are the coworkers' live smoke tests —
+  Plasma: readable countdown icon, pill colors, login; GNOME: new menu
+  rows show and tick.
