@@ -29,5 +29,16 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 </plist>
 EOF
 
-codesign --force -s - "$APP"
+# Sign with the stable self-signed identity when present (see README:
+# "Code signing"); ad-hoc otherwise. Ad-hoc identities change every build,
+# which makes the Keychain re-prompt for the session item after each upgrade.
+IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | grep -o '"kaltoe-dev"' | head -1 || true)
+if [ -n "$IDENTITY" ]; then
+  codesign --force -s kaltoe-dev "$APP"
+  echo "Signed with kaltoe-dev (stable identity — keychain 항상 허용 survives rebuilds)."
+else
+  codesign --force -s - "$APP"
+  echo "WARNING: ad-hoc signed — keychain will re-prompt after every rebuild."
+  echo "Create the one-time 'kaltoe-dev' certificate (README: Code signing) to fix."
+fi
 echo "Built $APP — copy to /Applications and add to Login Items."

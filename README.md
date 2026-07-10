@@ -46,6 +46,17 @@ Add to Login Items:
 2. Click the + icon
 3. Select `/Applications/칼퇴타이머.app`
 
+### Code signing (one-time, recommended)
+
+Without this, macOS treats every rebuild as a new app and re-asks for keychain
+access to your Flex session after each upgrade ("칼퇴타이머 wants to use
+'com.perso.flextimer.session'"). Create a stable self-signed identity once and
+`bundle.sh` picks it up automatically:
+
+1. Open **Keychain Access** → menu **Keychain Access → Certificate Assistant → Create a Certificate…**
+2. Name: `kaltoe-dev` · Identity Type: **Self-Signed Root** · Certificate Type: **Code Signing** → Create
+3. Rebuild and reinstall. On the app's next keychain prompt, click **항상 허용 (Always Allow)** — with a stable identity it now sticks across all future rebuilds.
+
 ## Authentication
 
 FlexTimer uses an embedded login window to authenticate with flex.team. Your session is stored securely in the macOS Keychain:
