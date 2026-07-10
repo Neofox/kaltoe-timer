@@ -14,6 +14,13 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
+# WebKitGTK's DMABUF/GPU renderer crash-loops on some Wayland+driver combos
+# (confirmed on Fedora KDE: repeated internallyFailedLoadTimerFired plus a
+# Wayland protocol error that kills the whole app). The login window is the
+# only web content we render, so software rendering costs nothing.
+# setdefault keeps it overridable (WEBKIT_DISABLE_DMABUF_RENDERER=0).
+os.environ.setdefault("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+
 try:
     import cairo
     import gi
