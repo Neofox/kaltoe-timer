@@ -191,3 +191,14 @@ swift run
 ```
 
 All 112 tests pass, covering work-record merging, overtime calculations, and display formatting.
+
+## Linux build
+
+A Linux (Ubuntu) port ships as a tray app: the portable `KaltoeCore` logic is
+compiled into a headless `kaltoe-core` daemon and fronted by
+`linux/kaltoe-tray.py` (AppIndicator + WebKitGTK login). Build the
+distributable with:
+
+    ./scripts/build-linux.sh   # requires Docker; outputs build/kaltoe-timer-linux-x86_64.tar.gz
+
+Install instructions for the recipient are in `linux/README-linux.md`.
