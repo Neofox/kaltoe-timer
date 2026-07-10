@@ -54,6 +54,7 @@ class TrayApp:
         self.core_gen = 0
         self.buf = b""
         self.has_session = None
+        self.leave_at_dt = None
         self.login_window = None
         self.indicator = AppIndicator.Indicator.new(
             "kaltoe-timer", "kaltoe-timer", AppIndicator.IndicatorCategory.APPLICATION_STATUS)
@@ -62,11 +63,30 @@ class TrayApp:
         self.indicator.set_label("--:--", LABEL_GUIDE)
         self._build_menu()
         self.start_core()
+        GLib.timeout_add_seconds(1, self._tick)
 
     # ---- menu ----
 
     def _build_menu(self):
         menu = Gtk.Menu()
+        self.started_item = Gtk.MenuItem(label="")
+        self.started_item.set_sensitive(False)
+        menu.append(self.started_item)
+
+        self.leave_item = Gtk.MenuItem(label="")
+        self.leave_item.set_sensitive(False)
+        menu.append(self.leave_item)
+
+        self.timeleft_item = Gtk.MenuItem(label="")
+        self.timeleft_item.set_sensitive(False)
+        menu.append(self.timeleft_item)
+
+        self.ot_item = Gtk.MenuItem(label="")
+        self.ot_item.set_sensitive(False)
+        menu.append(self.ot_item)
+
+        menu.append(Gtk.SeparatorMenuItem())
+
         self.status_item = Gtk.MenuItem(label="Starting…")
         self.status_item.set_sensitive(False)
         menu.append(self.status_item)
@@ -95,6 +115,8 @@ class TrayApp:
 
         menu.show_all()
         self.restart_item.hide()
+        for item in (self.started_item, self.leave_item, self.timeleft_item, self.ot_item):
+            item.hide()
         self.indicator.set_menu(menu)
 
     # ---- core subprocess ----
@@ -163,6 +185,23 @@ class TrayApp:
             return iso_utc
         return dt.astimezone().strftime("%Y-%m-%d %H:%M")
 
+    @staticmethod
+    def _parse_iso(iso_utc):
+        try:
+            return datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return None
+
+    @staticmethod
+    def _local_hhmm(dt):
+        return dt.astimezone().strftime("%H:%M")
+
+    @staticmethod
+    def _signed_hm(seconds):
+        minutes = abs(int(seconds)) // 60
+        sign = "-" if seconds < 0 and minutes > 0 else "+"
+        return f"{sign}{minutes // 60}:{minutes % 60:02d}"
+
     def apply_status(self, raw):
         try:
             status = json.loads(raw)
@@ -185,6 +224,23 @@ class TrayApp:
         if status.get("lastSync"):
             parts.append("Synced " + self._local_sync_label(status["lastSync"]))
         self.status_item.set_label(" · ".join(parts) or "OK")
+
+        started = self._parse_iso(status.get("started"))
+        self.leave_at_dt = self._parse_iso(status.get("leaveAt"))
+        week_ot = status.get("weekOvertime")
+
+        self.started_item.set_visible(started is not None)
+        if started:
+            self.started_item.set_label(f"Started {self._local_hhmm(started)}")
+        self.leave_item.set_visible(self.leave_at_dt is not None)
+        if self.leave_at_dt:
+            self.leave_item.set_label(f"Leave at {self._local_hhmm(self.leave_at_dt)}")
+        self.timeleft_item.set_visible(self.leave_at_dt is not None)
+        self.ot_item.set_visible(week_ot is not None)
+        if week_ot is not None:
+            self.ot_item.set_label(f"Week OT {self._signed_hm(week_ot)}")
+        self._tick()
+
         self.sign_in_item.set_visible(not has_session)
         self.sign_out_item.set_visible(has_session)
 
@@ -193,6 +249,13 @@ class TrayApp:
                             "Flex session expired — sign in again to keep tracking."],
                            check=False)
         self.has_session = has_session
+
+    def _tick(self):
+        if self.leave_at_dt:
+            left = max(0, int((self.leave_at_dt - datetime.now().astimezone()).total_seconds()))
+            self.timeleft_item.set_label(
+                f"Time left {left // 3600}:{(left % 3600) // 60:02d}:{left % 60:02d}")
+        return True
 
     # ---- login (mirrors macOS LoginWindowController) ----
 
