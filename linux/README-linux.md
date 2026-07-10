@@ -1,4 +1,4 @@
-# 칼퇴타이머 for Linux (Ubuntu)
+# 칼퇴타이머 for Linux (Ubuntu / Fedora KDE)
 
 Tray timer for flex.team work hours — the Linux port of the macOS menu bar app.
 
@@ -13,7 +13,7 @@ Ubuntu:
 
 Fedora:
 
-    sudo dnf install python3-gobject python3-cairo gtk3 \
+    sudo dnf install python3-gobject python3-cairo gtk3 gobject-introspection \
                      libayatana-appindicator-gtk3 webkit2gtk4.1 libnotify
 
 On stock Ubuntu GNOME the AppIndicator extension
