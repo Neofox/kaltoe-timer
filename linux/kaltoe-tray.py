@@ -14,21 +14,21 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
-import cairo
-import gi
-
 try:
+    import cairo
+    import gi
+
     gi.require_version("Gtk", "3.0")
     gi.require_version("WebKit2", "4.1")
     gi.require_version("Soup", "3.0")
     gi.require_version("Pango", "1.0")
     gi.require_version("PangoCairo", "1.0")
-except ValueError as e:
+except (ImportError, ValueError) as e:
     raise SystemExit(
         f"Missing GTK/WebKit introspection data ({e}).\n"
         "Install the dependencies:\n"
         "  sudo apt install python3-gi gir1.2-ayatanaappindicator3-0.1 "
-        "gir1.2-webkit2-4.1 libnotify-bin")
+        "gir1.2-webkit2-4.1 libnotify-bin python3-gi-cairo")
 try:
     gi.require_version("AyatanaAppIndicator3", "0.1")
     from gi.repository import AyatanaAppIndicator3 as AppIndicator
@@ -403,7 +403,9 @@ class TrayApp:
 
 
 def main():
-    if len(sys.argv) >= 5 and sys.argv[1] == "--render-test":
+    if sys.argv[1:2] == ["--render-test"]:
+        if len(sys.argv) < 5:
+            raise SystemExit("usage: kaltoe-tray.py --render-test <out.png> <text> <urgency>")
         render_text_icon(sys.argv[3], sys.argv[4], sys.argv[2])
         print(f"wrote {sys.argv[2]}")
         return
