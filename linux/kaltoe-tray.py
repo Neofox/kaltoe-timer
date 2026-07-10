@@ -8,16 +8,21 @@ Design: docs/superpowers/specs/2026-07-10-linux-build-design.md.
 import json
 import os
 import subprocess
+import sys
+import tempfile
 import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
+import cairo
 import gi
 
 try:
     gi.require_version("Gtk", "3.0")
     gi.require_version("WebKit2", "4.1")
     gi.require_version("Soup", "3.0")
+    gi.require_version("Pango", "1.0")
+    gi.require_version("PangoCairo", "1.0")
 except ValueError as e:
     raise SystemExit(
         f"Missing GTK/WebKit introspection data ({e}).\n"
@@ -35,7 +40,7 @@ except ValueError:  # older distros ship the pre-Ayatana name
         raise SystemExit(
             "No AppIndicator introspection data found.\n"
             "Install it:  sudo apt install gir1.2-ayatanaappindicator3-0.1")
-from gi.repository import GLib, Gtk, WebKit2
+from gi.repository import GLib, Gtk, Pango, PangoCairo, WebKit2
 
 APP_DIR = Path(__file__).resolve().parent
 CORE_BIN = str(APP_DIR / "kaltoe-core")
@@ -46,6 +51,48 @@ LOGIN_URL = "https://flex.team/sign-in"
 SESSION_COOKIE_NAMES = {"AID", "V2_WS_AID"}  # mirrors FlexAPIConfig.sessionCookieNames
 ICON_BASE = {"timer": "kaltoe-timer", "fork.knife": "kaltoe-fork", "cup.and.saucer": "kaltoe-cup"}
 LABEL_GUIDE = "OT +88:88"  # widest label, reserves tray width
+# Plasma's StatusNotifierItem tray has no label field, so on KDE the
+# countdown text is rendered into the icon itself.
+TRAY_MODE = os.environ.get("KALTOE_TRAY_MODE") or (
+    "texticon" if "KDE" in os.environ.get("XDG_CURRENT_DESKTOP", "") else "label")
+
+ICON_HEIGHT = 22
+PILL_COLORS = {"warning": (1.0, 0.584, 0.0), "critical": (1.0, 0.231, 0.188)}
+
+
+def render_text_icon(text, urgency, out_path):
+    """Render the tray label into a PNG: plain light-gray text normally,
+    white-on-orange/red capsule at warning/critical (the Mac pill)."""
+    # Measure first with a throwaway surface.
+    probe = cairo.ImageSurface(cairo.FORMAT_ARGB32, 1, 1)
+    layout = PangoCairo.create_layout(cairo.Context(probe))
+    layout.set_font_description(Pango.FontDescription("Sans Bold 11"))
+    layout.set_text(text, -1)
+    text_w, text_h = layout.get_pixel_size()
+
+    pad = 6 if urgency in PILL_COLORS else 2
+    width = text_w + 2 * pad
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, ICON_HEIGHT)
+    cr = cairo.Context(surface)
+
+    if urgency in PILL_COLORS:
+        r, g, b = PILL_COLORS[urgency]
+        radius = ICON_HEIGHT / 2 - 1
+        cr.set_source_rgb(r, g, b)
+        cr.arc(radius + 1, ICON_HEIGHT / 2, radius, 0.5 * 3.14159, 1.5 * 3.14159)
+        cr.arc(width - radius - 1, ICON_HEIGHT / 2, radius, 1.5 * 3.14159, 0.5 * 3.14159)
+        cr.close_path()
+        cr.fill()
+        cr.set_source_rgb(1, 1, 1)
+    else:
+        cr.set_source_rgb(0.875, 0.875, 0.875)  # dfdfdf, matches static icons
+
+    layout = PangoCairo.create_layout(cr)
+    layout.set_font_description(Pango.FontDescription("Sans Bold 11"))
+    layout.set_text(text, -1)
+    cr.move_to(pad, (ICON_HEIGHT - text_h) / 2)
+    PangoCairo.show_layout(cr, layout)
+    surface.write_to_png(out_path)
 
 
 class TrayApp:
@@ -59,8 +106,14 @@ class TrayApp:
         self.indicator = AppIndicator.Indicator.new(
             "kaltoe-timer", "kaltoe-timer", AppIndicator.IndicatorCategory.APPLICATION_STATUS)
         self.indicator.set_icon_theme_path(ICON_DIR)
+        self.texticon = TRAY_MODE == "texticon"
+        self.icon_flip = False
+        if self.texticon:
+            self.icon_temp = tempfile.mkdtemp(prefix="kaltoe-tray-")
+            self.indicator.set_icon_theme_path(self.icon_temp)
         self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
-        self.indicator.set_label("--:--", LABEL_GUIDE)
+        if not self.texticon:
+            self.indicator.set_label("--:--", LABEL_GUIDE)
         self._build_menu()
         self.start_core()
         GLib.timeout_add_seconds(1, self._tick)
@@ -147,8 +200,11 @@ class TrayApp:
         self.proc = None
 
     def on_core_dead(self, message):
-        self.indicator.set_label("--:--", LABEL_GUIDE)
-        self.indicator.set_icon_full("kaltoe-timer", "core stopped")
+        if self.texticon:
+            self._set_text_icon("--:--", "normal")
+        else:
+            self.indicator.set_label("--:--", LABEL_GUIDE)
+            self.indicator.set_icon_full("kaltoe-timer", "core stopped")
         self.status_item.set_label(message)
         self.restart_item.show()
 
@@ -212,8 +268,11 @@ class TrayApp:
         urgency = status.get("urgency", "normal")
         if urgency in ("warning", "critical"):
             icon = f"{icon}-{urgency}"
-        self.indicator.set_label(text, LABEL_GUIDE)
-        self.indicator.set_icon_full(icon, text)
+        if self.texticon:
+            self._set_text_icon(text, urgency)
+        else:
+            self.indicator.set_label(text, LABEL_GUIDE)
+            self.indicator.set_icon_full(icon, text)
 
         has_session = status.get("hasSession", False)
         parts = []
@@ -249,6 +308,13 @@ class TrayApp:
                             "Flex session expired — sign in again to keep tracking."],
                            check=False)
         self.has_session = has_session
+
+    def _set_text_icon(self, text, urgency):
+        # AppIndicator caches icons by name — alternate names to force reload.
+        self.icon_flip = not self.icon_flip
+        name = "kaltoe-live-a" if self.icon_flip else "kaltoe-live-b"
+        render_text_icon(text, urgency, os.path.join(self.icon_temp, name + ".png"))
+        self.indicator.set_icon_full(name, text)
 
     def _tick(self):
         if self.leave_at_dt:
@@ -337,6 +403,10 @@ class TrayApp:
 
 
 def main():
+    if len(sys.argv) >= 5 and sys.argv[1] == "--render-test":
+        render_text_icon(sys.argv[3], sys.argv[4], sys.argv[2])
+        print(f"wrote {sys.argv[2]}")
+        return
     if not os.path.exists(CORE_BIN):
         raise SystemExit(f"kaltoe-core binary not found next to this script: {CORE_BIN}\n"
                          "Run from the installed directory (see README-linux.md).")
