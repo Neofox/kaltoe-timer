@@ -129,7 +129,7 @@ class TrayApp:
             "kaltoe-timer", "kaltoe-timer", AppIndicator.IndicatorCategory.APPLICATION_STATUS)
         self.indicator.set_icon_theme_path(ICON_DIR)
         self.texticon = TRAY_MODE == "texticon"
-        self.icon_flip = False
+        self.icon_seq = 0
         if self.texticon:
             self.icon_temp = tempfile.mkdtemp(prefix="kaltoe-tray-")
             self.indicator.set_icon_theme_path(self.icon_temp)
@@ -336,11 +336,18 @@ class TrayApp:
         self.has_session = has_session
 
     def _set_text_icon(self, text, urgency):
-        # AppIndicator caches icons by name — alternate names to force reload.
-        self.icon_flip = not self.icon_flip
-        name = "kaltoe-live-a" if self.icon_flip else "kaltoe-live-b"
+        # Icons travel by NAME (appindicator → SNI → Plasma's icon loader),
+        # and Plasma caches pixmaps per name for the whole session — reusing
+        # names froze the tray at the first renders (seen live: icon 15 min
+        # behind the menu). A never-reused name defeats every cache layer;
+        # prune old files so the temp dir stays at two PNGs.
+        self.icon_seq += 1
+        name = f"kaltoe-live-{self.icon_seq}"
         render_text_icon(text, urgency, os.path.join(self.icon_temp, name + ".png"))
         self.indicator.set_icon_full(name, text)
+        stale = os.path.join(self.icon_temp, f"kaltoe-live-{self.icon_seq - 2}.png")
+        if os.path.exists(stale):
+            os.remove(stale)
 
     def _tick(self):
         if self.leave_at_dt:
