@@ -1,0 +1,43 @@
+{
+    "records": [
+        {
+            "userIdHash": "SAMPLEUSER0",
+            "records": [
+                {
+                    "appliedDate": "2026-07-15",
+                    "appliedZoneId": "Asia/Seoul",
+                    "workClockRecordPacks": [
+                        {
+                            "onGoing": true,
+                            "startRecord": {
+                                "eventType": "START",
+                                "targetTime": 1784071080000,
+                                "realTime": 1784071080000,
+                                "customerWorkFormId": "992463",
+                                "recordType": "RECORD",
+                                "zoneId": "Asia/Seoul"
+                            },
+                            "switchRecords": [
+                                {
+                                    "eventType": "SWITCH",
+                                    "targetTime": 1784071800000,
+                                    "customerWorkFormId": "992465",
+                                    "recordType": "PLAN_BY_WORK_SCHEDULE",
+                                    "zoneId": "Asia/Seoul"
+                                },
+                                {
+                                    "eventType": "SWITCH",
+                                    "targetTime": 1784082600000,
+                                    "customerWorkFormId": "992463",
+                                    "recordType": "PLAN_BY_WORK_SCHEDULE",
+                                    "zoneId": "Asia/Seoul"
+                                }
+                            ],
+                            "restRecords": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

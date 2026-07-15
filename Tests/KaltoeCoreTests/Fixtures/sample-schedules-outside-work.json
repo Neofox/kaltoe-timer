@@ -1,0 +1,61 @@
+{
+    "userIdHash": "SAMPLEUSER0",
+    "dailySchedules": [
+        {
+            "date": "2026-07-14",
+            "timezone": "Asia/Seoul",
+            "dayOffs": [],
+            "timeBlocks": [
+                {
+                    "type": "WORK",
+                    "value": {
+                        "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1783987200000 },
+                        "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1784019600000 },
+                        "eventStatus": "RECORD",
+                        "eventSource": "WORK_CLOCK"
+                    }
+                },
+                {
+                    "type": "REST",
+                    "value": {
+                        "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1783996200000 },
+                        "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1783999800000 },
+                        "eventStatus": "RECORD",
+                        "eventSource": "WORK_CLOCK"
+                    }
+                },
+                {
+                    "type": "WORK",
+                    "value": {
+                        "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1783990800000 },
+                        "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1783998000000 },
+                        "workFormId": "992465",
+                        "eventStatus": "RECORD",
+                        "eventSource": "NORMAL",
+                        "approval": { "status": "APPROVED" },
+                        "allDay": false
+                    }
+                }
+            ]
+        },
+        {
+            "date": "2026-07-15",
+            "timezone": "Asia/Seoul",
+            "dayOffs": [],
+            "timeBlocks": [
+                {
+                    "type": "WORK",
+                    "value": {
+                        "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1784071800000 },
+                        "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1784082600000 },
+                        "workFormId": "992465",
+                        "eventStatus": "RECORD",
+                        "eventSource": "NORMAL",
+                        "approval": { "status": "WAITING" },
+                        "allDay": false
+                    }
+                }
+            ]
+        }
+    ]
+}

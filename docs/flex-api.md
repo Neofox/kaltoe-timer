@@ -90,9 +90,16 @@ Response (shape used by the app):
 
 ## Merge strategy (mirrors the extractor script; confirmed against fixtures)
 
-1. Take `WORK` blocks from **work-schedules** as completed `WorkRecord`s
-   (`clockIn` = start, `clockOut` = end). The ongoing day has NO timeBlocks
-   in this response (confirmed: 2026-07-09 while clocked in → empty).
+1. Take `WORK` blocks from **work-schedules** with
+   `eventSource == "WORK_CLOCK"` as completed `WorkRecord`s
+   (`clockIn` = start, `clockOut` = end). Actual recorded work/rest always
+   carries `WORK_CLOCK`; requests such as 외근/외출 arrive as `WORK` blocks with
+   `eventSource: "NORMAL"` that duplicate clock time and appear even while the
+   day is still ongoing — counting them fabricated a completed 3h day and
+   masked the real ongoing record (observed 2026-07-15; see
+   docs/FLEX_OUTSIDE_WORK_INTEGRATION.md). Blocks without `eventSource` are
+   kept for safety. Note this means a request-only day with no clock record
+   (e.g. approved 외근 without clocking in) produces no work record.
 2. Take `onGoing` packs from **work-clock** as open `WorkRecord`s
    (`clockIn` = start, `clockOut` = nil), skipping dates already covered
    by step 1.

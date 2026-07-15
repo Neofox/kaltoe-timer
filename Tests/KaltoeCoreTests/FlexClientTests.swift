@@ -141,6 +141,32 @@ final class FlexRecordParserTests: XCTestCase {
         XCTAssertEqual(rec?.flexWorkedNet, 2 * 3600 + 35 * 60)
     }
 
+    // MARK: - Outside-work request overlays (docs/FLEX_OUTSIDE_WORK_INTEGRATION.md)
+
+    func testOngoingDayWithOutsideWorkRequestUsesClockStart() throws {
+        // 2026-07-15: clocked in 08:18 (ongoing), with a pending 외근 request
+        // 08:30–11:30 that Flex returns as a schedule WORK block (eventSource
+        // NORMAL). The overlay must not masquerade as a completed day.
+        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-outside-work"),
+                                                 clock: try fixture("sample-clock-outside-work")).records
+        let rec = records.first { Calendar.current.isDate($0.clockIn, inSameDayAs: d(2026, 7, 15, 12, 0)) }
+        XCTAssertEqual(rec?.clockIn, d(2026, 7, 15, 8, 18), "started-at must come from the clock record")
+        XCTAssertNil(rec?.clockOut, "day is still ongoing")
+        XCTAssertNil(rec?.flexWorkedNet, "no finalized net for an open day")
+    }
+
+    func testCompletedDayIgnoresOutsideWorkOverlayInNet() throws {
+        // 2026-07-14: actual WORK_CLOCK 09:00–18:00 with 1h rest, plus an
+        // approved 외근 overlay 10:00–12:00 duplicating part of the same work.
+        // Net must be 8h, not 8h + the overlay's 2h.
+        let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-outside-work"),
+                                                 clock: try fixture("sample-clock-outside-work")).records
+        let rec = records.first { Calendar.current.isDate($0.clockIn, inSameDayAs: d(2026, 7, 14, 12, 0)) }
+        XCTAssertEqual(rec?.clockIn, d(2026, 7, 14, 9, 0))
+        XCTAssertEqual(rec?.clockOut, d(2026, 7, 14, 18, 0))
+        XCTAssertEqual(rec?.flexWorkedNet, 8 * 3600)
+    }
+
     func testOngoingClockRecordHasNilFlexWorkedNet() throws {
         let records = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
                                                  clock: try fixture("sample-clock")).records

@@ -38,6 +38,7 @@ enum FlexRecordParser {
         let allDay: Bool?
         let usedMinutes: Int?
         let approval: Approval?
+        let eventSource: String?
     }
 
     private struct Approval: Decodable {
@@ -126,8 +127,15 @@ enum FlexRecordParser {
                 }
             }
 
+            // Only eventSource WORK_CLOCK blocks are actual recorded work/rest.
+            // Requests like 외근/외출 arrive as WORK blocks with eventSource NORMAL —
+            // overlays that duplicate clock time and appear even while the day is
+            // still ongoing (docs/FLEX_OUTSIDE_WORK_INTEGRATION.md).
+            let isRecorded: (TimeBlock) -> Bool = { block in
+                block.value?.eventSource.map { $0 == "WORK_CLOCK" } ?? true
+            }
             let workIntervals: [(start: Int64, end: Int64)] = day.timeBlocks
-                .filter { $0.type == "WORK" }
+                .filter { $0.type == "WORK" && isRecorded($0) }
                 .compactMap { b in
                     guard let s = b.value?.startTimestamp?.timestamp,
                           let e = b.value?.endTimestampExclusive?.timestamp else { return nil }
@@ -137,7 +145,7 @@ enum FlexRecordParser {
                   let maxEnd = workIntervals.map(\.end).max() else { continue }
             let grossMs = workIntervals.reduce(Int64(0)) { $0 + ($1.end - $1.start) }
             let restMs = day.timeBlocks
-                .filter { $0.type == "REST" }
+                .filter { $0.type == "REST" && isRecorded($0) }
                 .reduce(Int64(0)) { total, b in
                     guard let s = b.value?.startTimestamp?.timestamp,
                           let e = b.value?.endTimestampExclusive?.timestamp else { return total }
