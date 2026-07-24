@@ -3,13 +3,18 @@ import Foundation
 /// Runs user hook scripts on detected 출근/퇴근, at most once per event per day.
 ///
 /// Scripts are optional executables in `~/Library/Application Support/칼퇴타이머/hooks/`
-/// (`on-clock-in`, `on-clock-out`). Dedupe state persists in UserDefaults as
-/// `hookFired-<event>-yyyy-MM-dd`, so app restarts never re-fire, but an app
-/// launched after the real event still fires once (late detection).
+/// on macOS, `~/.config/kaltoe-timer/hooks/` on Linux (`on-clock-in`, `on-clock-out`).
+/// Dedupe state persists in UserDefaults as `hookFired-<event>-yyyy-MM-dd`, so app
+/// restarts never re-fire, but an app launched after the real event still fires
+/// once (late detection).
 public final class HookRunner {
     public static var hooksDirectory: URL {
+        #if os(macOS)
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("칼퇴타이머/hooks", isDirectory: true)
+        #else
+        LinuxPaths.configDirectory.appendingPathComponent("hooks", isDirectory: true)
+        #endif
     }
 
     private let defaults: UserDefaults
@@ -47,6 +52,11 @@ public final class HookRunner {
             defaults.removeObject(forKey: stale)
         }
         defaults.set(true, forKey: key)
+        #if !os(macOS)
+        // Linux corelibs never flushes UserDefaults on set(); without this,
+        // hooks re-fire on every daemon restart.
+        defaults.synchronize()
+        #endif
         return true
     }
 

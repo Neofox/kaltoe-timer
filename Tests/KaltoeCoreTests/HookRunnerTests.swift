@@ -28,7 +28,11 @@ final class HookRunnerTests: XCTestCase {
         let runner = makeRunner()
         runner.evaluate(today: openRecord, now: morning)
         XCTAssertEqual(fired.count, 1)
+        #if os(macOS)
         XCTAssertTrue(fired[0].script.path.hasSuffix("칼퇴타이머/hooks/on-clock-in"))
+        #else
+        XCTAssertTrue(fired[0].script.path.hasSuffix("kaltoe-timer/hooks/on-clock-in"))
+        #endif
         XCTAssertEqual(fired[0].env["KALTOE_EVENT"], "clock-in")
         XCTAssertEqual(ISO8601DateFormatter().date(from: fired[0].env["KALTOE_CLOCK_IN"] ?? ""),
                        openRecord.clockIn)
@@ -43,7 +47,11 @@ final class HookRunnerTests: XCTestCase {
         runner.evaluate(today: openRecord, now: morning)   // clock-in fires
         runner.evaluate(today: closedRecord, now: evening) // clock-out fires
         XCTAssertEqual(fired.count, 2)
+        #if os(macOS)
         XCTAssertTrue(fired[1].script.path.hasSuffix("칼퇴타이머/hooks/on-clock-out"))
+        #else
+        XCTAssertTrue(fired[1].script.path.hasSuffix("kaltoe-timer/hooks/on-clock-out"))
+        #endif
         XCTAssertEqual(fired[1].env["KALTOE_EVENT"], "clock-out")
         XCTAssertEqual(ISO8601DateFormatter().date(from: fired[1].env["KALTOE_CLOCK_IN"] ?? ""),
                        closedRecord.clockIn)
@@ -73,6 +81,14 @@ final class HookRunnerTests: XCTestCase {
         runner.evaluate(today: closedRecord, now: evening)  // clocked out again
         XCTAssertEqual(fired.count, 2)
     }
+
+    #if !os(macOS)
+    func testHooksDirectoryHonorsConfigDirOverride() {
+        setenv("KALTOE_CONFIG_DIR", "/tmp/kaltoe-test-config", 1)
+        defer { unsetenv("KALTOE_CONFIG_DIR") }
+        XCTAssertEqual(HookRunner.hooksDirectory.path, "/tmp/kaltoe-test-config/hooks")
+    }
+    #endif
 
     func testStaleKeysRemovedWhenNewDayFires() {
         defaults.set(true, forKey: "hookFired-clockIn-2026-07-08")
