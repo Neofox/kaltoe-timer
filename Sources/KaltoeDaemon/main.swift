@@ -25,6 +25,7 @@ Thread.detachNewThread {
 
 Task { @MainActor in
     let state = HeadlessState()
+    let hookRunner = HookRunner()
     let encoder = StatusLine.encoder()
     var lastEmitted: StatusLine?
     var lastEmitAt = Date.distantPast
@@ -33,6 +34,7 @@ Task { @MainActor in
         let forced = refreshFlag.consume()
         if tick % 600 == 0 || forced { await state.refresh() }
         let now = Date()
+        hookRunner.evaluate(today: state.weekData.todayRecord(now: now), now: now)
         let line = state.status(now: now)
         if line != lastEmitted || now.timeIntervalSince(lastEmitAt) >= 60 {
             if let data = try? encoder.encode(line),
