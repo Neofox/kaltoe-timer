@@ -49,7 +49,53 @@ countdown to leave time (timer), and the weekly overtime counter (`OT -2:59`)
 after leave time. The icon turns orange within 30 minutes of leave time and
 red within 10 minutes or while overworking.
 
+## Hooks
+
+Run your own scripts when 칼퇴타이머 detects clock-in (출근) or clock-out
+(퇴근). Drop executables at:
+
+    ~/.config/kaltoe-timer/hooks/
+    ├── on-clock-in
+    └── on-clock-out
+
+Both are optional; a missing or non-executable file is skipped. Remember
+`chmod +x`.
+
+Environment variables passed to the script:
+
+- `KALTOE_EVENT` — `clock-in` or `clock-out`
+- `KALTOE_CLOCK_IN` — clock-in time, ISO8601 (UTC)
+- `KALTOE_CLOCK_OUT` — clock-out time, ISO8601 (UTC) (clock-out only)
+
+Behavior:
+
+- Each hook fires **at most once per event per day**, even across restarts.
+  If the app starts after you already clocked in, the hook still fires —
+  late, but once.
+- Both events are detected via Flex sync (there is no manual start entry on
+  Linux), so hooks can lag up to ~10 minutes behind the real clock-in/out.
+- A clock-out that is only detected after midnight does not fire — the day
+  it belonged to has already rolled over.
+- Fire-and-forget: the app never waits on your script or reads its output.
+  Backgrounded children keep running after the script exits.
+
+Example — keep the machine awake while at work, lock the screen after
+leaving:
+
+`on-clock-in`:
+
+    #!/bin/bash
+    systemd-inhibit --what=idle --why="kaltoe: at work" sleep infinity &
+    echo $! > /tmp/kaltoe-inhibit.pid
+
+`on-clock-out`:
+
+    #!/bin/bash
+    [ -f /tmp/kaltoe-inhibit.pid ] && kill "$(cat /tmp/kaltoe-inhibit.pid)" 2>/dev/null
+    rm -f /tmp/kaltoe-inhibit.pid
+    loginctl lock-session
+
 ## Uninstall
 
     rm -rf ~/.local/share/kaltoe-timer ~/.config/kaltoe-timer \
-           ~/.config/autostart/kaltoe-timer.desktop
+           ~/.config/kaltoe-core.plist ~/.config/autostart/kaltoe-timer.desktop
