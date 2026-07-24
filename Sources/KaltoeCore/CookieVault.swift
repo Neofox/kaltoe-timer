@@ -79,11 +79,7 @@ public enum CookieVault {
 
     static var sessionFileURL: URL {
         if let sessionFileOverride { return sessionFileOverride }
-        let base = ProcessInfo.processInfo.environment["KALTOE_CONFIG_DIR"]
-            .map(URL.init(fileURLWithPath:))
-            ?? FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".config/kaltoe-timer", isDirectory: true)
-        return base.appendingPathComponent("session.json")
+        return LinuxPaths.configDirectory.appendingPathComponent("session.json")
     }
 
     private static func readFile() -> SessionFile? {
