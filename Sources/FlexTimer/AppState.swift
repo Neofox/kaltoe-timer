@@ -42,6 +42,12 @@ final class AppState: ObservableObject {
     private var unlockObserver: NSObjectProtocol?
     /// The in-flight unlock re-sync, held so the next unlock can cancel it.
     private var unlockResync: Task<Void, Never>?
+    /// Bumped on every refresh entry. A refresh whose generation is no longer
+    /// current has been superseded by a later one and must discard its result:
+    /// five call sites can overlap (launch, the 600s timer, wake, unlock,
+    /// sign-in), a fetch outlives the gap between them, and MainActor ordering
+    /// does not stop an older response from landing last and winning.
+    private var refreshGeneration = 0
 
     var today: WorkRecord? {
         todayRecord(now: Date())
@@ -124,12 +130,22 @@ final class AppState: ObservableObject {
                                 now: now, rules: rules)
     }
 
+    /// Fetch the week and publish it — unless a later `refresh()` started while
+    /// this one was awaiting, in which case every write is skipped, `recompute`
+    /// included: a superseded refresh publishes nothing at all.
+    ///
+    /// The rule is "the most recently *started* refresh wins", deliberately, even
+    /// when it is the one that failed: its verdict is the more current
+    /// information, and it is deterministic, which arrival order is not.
     func refresh() async {
+        refreshGeneration += 1
+        let generation = refreshGeneration
         do {
             let now = Date()
             let weekStart = WorkCalculator.weekStart(of: now)
             let weekEnd = Calendar.current.date(byAdding: .day, value: 6, to: weekStart) ?? now
             let result = try await client.fetchWeek(from: weekStart, to: max(now, weekEnd))
+            guard generation == refreshGeneration else { return }
             week = result.records
             dayOffDates = result.dayOffDates
             timeOff = result.timeOff
@@ -137,8 +153,10 @@ final class AppState: ObservableObject {
             syncError = nil
             hasSession = true
         } catch let e as FlexClient.FlexError where e == .noSession || e == .sessionExpired {
+            guard generation == refreshGeneration else { return }
             hasSession = false
         } catch {
+            guard generation == refreshGeneration else { return }
             syncError = "Flex sync failed — showing last known data"
         }
         recompute(now: Date())

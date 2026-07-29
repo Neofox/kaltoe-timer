@@ -151,16 +151,57 @@ final class AppStateTests: XCTestCase {
     /// The cap→critical path through `recompute`. `computeDisplay` now takes the
     /// weekly total as a parameter, so the KaltoeCore tests can no longer catch a
     /// caller that computes it wrongly — this is the only test that does.
+    ///
+    /// Two parts, because `hasReachedWeeklyCap` is a one-sided `>=` threshold and
+    /// each way of getting the total wrong moves it in a *fixed* direction:
+    ///   0 ≤ (timeOff dropped) ≤ correct ≤ (state.week substituted)
+    /// Passing `0` and dropping `timeOff:` under-count, so part 1 sits exactly on
+    /// the cap and asserts `.critical`. Substituting `state.week` for
+    /// `weekIncludingManual(now:)` over-counts, which can never pull an at-cap
+    /// fixture back below the cap, so part 2 sits below it — with a stale
+    /// previous-week record present — and asserts `.normal`.
+    ///
+    /// Formulas: target = 8h − familyDay(2h, last Friday only) − timeOff;
+    /// break = 1h when target > 4h; net = clockOut − clockIn − break;
+    /// daily OT = net − target; weekly = Σ max(0, daily OT); cap = 12h.
+    /// 2026-07-27 is a Monday and 07-31 is the last Friday of July, so nothing
+    /// below is a family day.
     func testWeeklyCapDrivesCriticalUrgencyThroughRecompute() {
         SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
         let state = AppState()
         state.hasSession = true
-        // Four 12h-elapsed days from Monday 2026-07-27 = 11h net each = +3h each = 12h, exactly the cap.
-        state.week = (27...30).map {
+
+        // Part 1 — exactly on the cap, and only once time off is counted.
+        // Mon–Wed 07-27..29, 08:00–20:00: 12h − 1h break = 11h net, target 8h → +3h
+        //   each, 9h for the three.
+        // Thu 07-30, 08:00–18:00 with 2h time off: target 8h − 2h = 6h, still > 4h so
+        //   the 1h break applies; 10h − 1h = 9h net → 9h − 6h = +3h.
+        // Correct total 9h + 3h = 12h == the 12h cap → .critical.
+        // Drop `timeOff:` and Thursday's target is 8h → 9h − 8h = +1h, total 10h
+        //   < 12h; the day is settled, so urgency falls to .normal.
+        state.week = (27...29).map {
             WorkRecord(clockIn: d(2026, 7, $0, 8, 0), clockOut: d(2026, 7, $0, 20, 0), flexWorkedNet: nil)
-        }
+        } + [WorkRecord(clockIn: d(2026, 7, 30, 8, 0), clockOut: d(2026, 7, 30, 18, 0), flexWorkedNet: nil)]
+        state.timeOff = [Calendar.current.startOfDay(for: d(2026, 7, 30, 0, 0)): 2 * 3600]
         state.recompute(now: d(2026, 7, 30, 20, 30))
         XCTAssertEqual(state.menuDisplay.urgency, .critical)
+
+        // Part 2 — below the cap, with a previous-week record still sitting in
+        // `state.week`. No time off here.
+        // Mon–Wed 07-27..29 as above = 9h; Thu 07-30, 08:00–17:00 is 9h − 1h = 8h net
+        //   == the 8h target → +0h. Correct total 9h < 12h, day settled → .normal.
+        // Monday 07-20 08:00–20:00 is another +3h but belongs to the *previous* week,
+        //   so `weekIncludingManual(now:)` filters it out (clockIn < weekStart 07-27).
+        //   A naive `state.week` counts it: 9h + 3h = 12h == the cap → .critical.
+        state.timeOff = [:]
+        state.week = [WorkRecord(clockIn: d(2026, 7, 20, 8, 0), clockOut: d(2026, 7, 20, 20, 0),
+                                 flexWorkedNet: nil)]
+            + (27...29).map {
+                WorkRecord(clockIn: d(2026, 7, $0, 8, 0), clockOut: d(2026, 7, $0, 20, 0), flexWorkedNet: nil)
+            }
+            + [WorkRecord(clockIn: d(2026, 7, 30, 8, 0), clockOut: d(2026, 7, 30, 17, 0), flexWorkedNet: nil)]
+        state.recompute(now: d(2026, 7, 30, 20, 30))
+        XCTAssertEqual(state.menuDisplay.urgency, .normal)
     }
 
     func testUnlockResyncStopsOnceARecordArrives() {
