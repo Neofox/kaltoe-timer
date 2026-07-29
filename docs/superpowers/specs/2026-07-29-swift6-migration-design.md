@@ -186,6 +186,10 @@ against itself and prove nothing.
    tests are date-shifted under the container's default UTC. Omitting it
    produces failures that look like migration damage and are not.
 
+   Baseline before this change: **110 tests, 0 failures**. Linux runs 110 where
+   macOS runs 136 because the `FlexTimer` target and its tests are macOS-only,
+   so the two numbers are both correct and must both be met.
+
    Expect at least one Linux-only `nonisolated(unsafe)` here — the Linux
    `CookieVault` branch's `sessionFileOverride` — plus whatever else the Linux
    compiler reports.
