@@ -60,13 +60,17 @@ struct MenuBarView: View {
         .frame(width: 280)
     }
 
+    /// Vertical gap between the information rows. One number so it stays
+    /// consistent across the three stacks and is trivial to nudge.
+    private let rowSpacing: CGFloat = 9
+
     private var separator: some View {
         Divider().padding(.vertical, 4)
     }
 
     /// Takes the record rather than reading `state.today` again — see `body`.
     @ViewBuilder private func information(_ today: WorkRecord?) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: rowSpacing) {
             if case .onBreak = state.menuDisplay.state {
                 row("Back at", WorkCalculator.lunchWindow(on: Date(), rules: state.rules).endAt
                     .formatted(date: .omitted, time: .shortened))
@@ -99,7 +103,7 @@ struct MenuBarView: View {
     }
 
     private var manualEntry: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: rowSpacing) {
             Text("Or set it manually").font(.caption).foregroundStyle(.secondary)
             HStack {
                 DatePicker("Started at", selection: $manualTime, displayedComponents: .hourAndMinute)
@@ -117,7 +121,7 @@ struct MenuBarView: View {
     }
 
     private var weekSummary: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: rowSpacing) {
             let weekOT = WorkCalculator.weeklyOvertime(
                 records: state.weekIncludingManual(now: Date()),
                 timeOff: state.timeOff, now: Date(), rules: state.rules)
