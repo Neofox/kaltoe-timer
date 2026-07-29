@@ -94,7 +94,9 @@ defaults write com.perso.flextimer familyDayDeductionHours -float 1 # weekly-req
 
 # Keep the menu bar icon and time readable on the menu bar of an inactive
 # display, by rendering them at full contrast instead of as a dimmable template
-# image (default: false). Also toggleable from the menu popover.
+# image (default: false). Read once at launch into AppState, so a shell write
+# needs an app restart to take effect; the menu popover toggle is the live path
+# and will overwrite this value the next time it's flipped.
 defaults write com.perso.flextimer highContrastOnInactiveDisplays -bool true
 ```
 

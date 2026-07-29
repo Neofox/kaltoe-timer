@@ -41,7 +41,8 @@ struct MenuBarLabel: View {
 
 /// Renders icon+text to a non-template NSImage, with an optional capsule behind
 /// it. A nil background draws the glyphs alone at the menu bar's own metrics, so
-/// toggling high contrast does not shift the label's width or position.
+/// that toggling high contrast should not shift the label's width or position —
+/// pending visual confirmation on hardware.
 private struct MenuBarLabelImage: View {
     let icon: String
     let text: String
@@ -51,6 +52,7 @@ private struct MenuBarLabelImage: View {
 
     var body: some View {
         Image(nsImage: renderedImage())
+            .accessibilityLabel(text)
     }
 
     @MainActor private func renderedImage() -> NSImage {
@@ -68,7 +70,14 @@ private struct MenuBarLabelImage: View {
             }
         }
         let renderer = ImageRenderer(content: content)
-        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
+        // Render at the highest scale factor across all screens, not
+        // NSScreen.main (the screen with the active window — precisely the
+        // display this feature is not about). MenuBarExtra draws one image on
+        // every menu bar, so rasterizing at the active display's scale would
+        // upscale a 1x bitmap onto a 2x bar on mixed-DPI setups, blurring the
+        // countdown on the very screen we're trying to keep legible.
+        // Downsampling a high-res rep onto a 1x bar is fine; the reverse isn't.
+        renderer.scale = NSScreen.screens.map(\.backingScaleFactor).max() ?? 2
         let image = renderer.nsImage ?? NSImage()
         image.isTemplate = false
         return image
