@@ -13,17 +13,30 @@ struct MenuBarView: View {
         // render the action twice or not at all. One read also collapses three
         // UserDefaults hits per second down to one on the 1-second tick.
         let today = state.today
-        // With no record for today, the primary action moves up next to the status
-        // message — waiting for a clock-in is exactly when you want it, and the
-        // manual-entry field is only a fallback for when Flex is unreachable.
         let hasRecord = today != nil
+        // The primary action moves up next to the status message whenever the
+        // message alone leaves you with nothing to act on. Two such states:
+        //
+        // - No record yet — waiting for a clock-in is exactly when you want the
+        //   action to hand.
+        // - No session — `information` then shows only `Session expired`, and the
+        //   action is `Sign in to Flex…`, the one thing that fixes it. This is the
+        //   non-obvious half: `refresh()` never clears `week` on session loss, so
+        //   cookies expiring mid-day leave `hasRecord` true with no session, and
+        //   gating on the record alone buried the sign-in row below the week
+        //   summary with two words of explanation pointing nowhere.
+        let actionMovesUp = !hasRecord || !state.hasSession
 
         VStack(alignment: .leading, spacing: 0) {
             information(today)
 
-            if !hasRecord {
+            if actionMovesUp {
                 separator
                 primaryAction
+            }
+            // Still gated on the record alone: a stale record means manual entry is
+            // not the fallback you want — the day is already accounted for.
+            if !hasRecord {
                 separator
                 manualEntry
             }
@@ -33,9 +46,9 @@ struct MenuBarView: View {
 
             separator
             // The separator is conditional with the action: the preference row must
-            // never sit flush against a command row, and the !hasRecord path must
+            // never sit flush against a command row, and the moved-up path must
             // not get a doubled divider.
-            if hasRecord {
+            if !actionMovesUp {
                 primaryAction
                 separator
             }

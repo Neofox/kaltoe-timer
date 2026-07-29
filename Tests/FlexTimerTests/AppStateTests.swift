@@ -148,6 +148,21 @@ final class AppStateTests: XCTestCase {
         XCTAssertFalse(SettingsStore.highContrastOnInactiveDisplays)
     }
 
+    /// The cap→critical path through `recompute`. `computeDisplay` now takes the
+    /// weekly total as a parameter, so the KaltoeCore tests can no longer catch a
+    /// caller that computes it wrongly — this is the only test that does.
+    func testWeeklyCapDrivesCriticalUrgencyThroughRecompute() {
+        SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
+        let state = AppState()
+        state.hasSession = true
+        // Four 12h-elapsed days from Monday 2026-07-27 = 11h net each = +3h each = 12h, exactly the cap.
+        state.week = (27...30).map {
+            WorkRecord(clockIn: d(2026, 7, $0, 8, 0), clockOut: d(2026, 7, $0, 20, 0), flexWorkedNet: nil)
+        }
+        state.recompute(now: d(2026, 7, 30, 20, 30))
+        XCTAssertEqual(state.menuDisplay.urgency, .critical)
+    }
+
     func testUnlockResyncStopsOnceARecordArrives() {
         XCTAssertFalse(AppState.shouldRetryUnlockResync(attempt: 0, maxAttempts: 3,
                                                         hasSession: true, hasTodayRecord: true))

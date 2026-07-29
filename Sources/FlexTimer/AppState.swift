@@ -40,6 +40,8 @@ final class AppState: ObservableObject {
     /// lives for the process lifetime, so there is no deinit for removal to
     /// run in.
     private var unlockObserver: NSObjectProtocol?
+    /// The in-flight unlock re-sync, held so the next unlock can cancel it.
+    private var unlockResync: Task<Void, Never>?
 
     var today: WorkRecord? {
         todayRecord(now: Date())
@@ -76,7 +78,7 @@ final class AppState: ObservableObject {
             forName: NSNotification.Name("com.apple.screenIsUnlocked"),
             object: nil, queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in await self?.resyncAfterUnlock() }
+            Task { @MainActor in self?.scheduleUnlockResync() }
         }
         hookRunner = HookRunner()
         limitNotifier = LimitNotifier.live()
@@ -91,11 +93,14 @@ final class AppState: ObservableObject {
     }
 
     /// Whether an unlock re-sync should try again. `attempt` is 0-based and
-    /// names the attempt that just finished. Stops as soon as a record arrives,
-    /// stops immediately when signed out — retrying a dead session only hammers
-    /// it — and stops at the ceiling.
-    static func shouldRetryUnlockResync(attempt: Int, maxAttempts: Int,
-                                        hasSession: Bool, hasTodayRecord: Bool) -> Bool {
+    /// names the attempt that just finished. `hasTodayRecord` means *any* record
+    /// for today, including a synthetic one from a manual start — `AppState.today`
+    /// makes no distinction — so a manual entry ends the retries exactly as a Flex
+    /// record does. Stops as soon as a record is present, stops immediately when
+    /// signed out — retrying a dead session only hammers it — and stops at the
+    /// ceiling. Pure in its four parameters, so it needs no actor.
+    nonisolated static func shouldRetryUnlockResync(attempt: Int, maxAttempts: Int,
+                                                    hasSession: Bool, hasTodayRecord: Bool) -> Bool {
         guard hasSession, !hasTodayRecord else { return false }
         return attempt + 1 < maxAttempts
     }
@@ -139,8 +144,21 @@ final class AppState: ObservableObject {
         recompute(now: Date())
     }
 
-    /// Re-sync after the screen unlocks, retrying briefly when Flex still has
-    /// no record: the user typically clocks in moments before unlocking, and
+    /// Start an unlock re-sync, cancelling any still-running one first.
+    ///
+    /// Cancel-and-replace, because nothing else guards re-entry: waking a locked
+    /// Mac fires `didWakeNotification` *and* `com.apple.screenIsUnlocked` moments
+    /// apart, and a network fetch outlives that gap, so two `fetchWeek` calls
+    /// would sit in flight writing the same `week`/`timeOff`/`hasSession`/`lastSync`.
+    /// MainActor keeps that memory-safe but not ordered — an older response
+    /// landing second would win — and repeated lock/unlock cycles stacked loops.
+    func scheduleUnlockResync() {
+        unlockResync?.cancel()
+        unlockResync = Task { [weak self] in await self?.resyncAfterUnlock() }
+    }
+
+    /// Re-sync after the screen unlocks, retrying briefly while today has no
+    /// record at all: the user typically clocks in moments before unlocking, and
     /// the API lags that by seconds.
     func resyncAfterUnlock(maxAttempts: Int = 3, delay: TimeInterval = 20) async {
         for attempt in 0..<maxAttempts {
@@ -148,7 +166,10 @@ final class AppState: ObservableObject {
             guard Self.shouldRetryUnlockResync(attempt: attempt, maxAttempts: maxAttempts,
                                                hasSession: hasSession,
                                                hasTodayRecord: today != nil) else { return }
-            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            // Not `try?`: that swallows CancellationError, and a cancelled loop
+            // would then run its remaining attempts back-to-back with no delay —
+            // worse than the overlap the cancellation exists to prevent.
+            do { try await Task.sleep(for: .seconds(delay)) } catch { return }
         }
     }
 

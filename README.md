@@ -122,7 +122,7 @@ Scripts receive environment variables:
 Semantics:
 
 - Each hook fires **at most once per event per day**, even across app restarts. If the app launches after you already clocked in (e.g. Mac booted late), the hook still fires — late, but once.
-- 퇴근 is detected via Flex sync, so the clock-out hook can lag up to ~10 minutes. Syncs happen on app launch, every 10 minutes, and on wake from sleep.
+- 퇴근 is detected via Flex sync, so the clock-out hook can lag up to ~10 minutes. Syncs happen on app launch, every 10 minutes, on wake from sleep, and on screen unlock.
 - A 퇴근 that's only detected after midnight (e.g. you clocked out just before midnight and the next sync lands after, or the Mac was asleep until the next day) will not fire the clock-out hook — the day it belonged to has already rolled over.
 - Hooks are fire-and-forget: the app never waits on your script or reads its output. Backgrounded children (`caffeinate &`) keep running after the script exits.
 

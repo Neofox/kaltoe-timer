@@ -197,15 +197,13 @@ final class PhaseDisplayTests: XCTestCase {
     /// worked whether or not you are currently on the clock.
     func testWeeklyCapIsCriticalEvenWhenClockedOut() {
         let rules = WorkRules()
-        // Four completed 12h-elapsed days = 11h net each = +3h overtime each = 12h for the week.
-        let week = (27...30).map { day in
-            WorkRecord(clockIn: d(2026, 7, day, 8, 0),
-                       clockOut: d(2026, 7, day, 20, 0), flexWorkedNet: nil)
-        }
-        // The 12h total is stated rather than derived — the gross-sum arithmetic
-        // is pinned by WorkCalculatorTests; the subject here is what
+        // One completed 12h-elapsed day, clocked out. The 12h weekly total is stated
+        // rather than derived — it is four such days' worth (11h net = +3h each), and
+        // that arithmetic is pinned by WorkCalculatorTests; the subject here is what
         // computeDisplay does when handed a total sitting on the cap.
-        let display = DisplayState.computeDisplay(hasSession: true, today: week.last!,
+        let today = WorkRecord(clockIn: d(2026, 7, 30, 8, 0),
+                               clockOut: d(2026, 7, 30, 20, 0), flexWorkedNet: nil)
+        let display = DisplayState.computeDisplay(hasSession: true, today: today,
                                                   weeklyOvertime: 12 * 3600,
                                                   now: d(2026, 7, 30, 20, 30),
                                                   rules: rules, calendar: seoul)

@@ -23,11 +23,20 @@ struct MenuRow<Trailing: View>: View {
     }
 
     var body: some View {
-        // A Button, not an .onTapGesture. A gesture would make the row mouse-only:
-        // no button trait for VoiceOver to announce, no focusability, no
-        // Space/Return. In the has-record state these rows are the *only* controls
-        // in the popover, so a gesture would leave Quit unreachable by keyboard.
-        // `.plain` suppresses every bit of default chrome, so the hover-driven
+        // A Button, not a Text with .onTapGesture, for assistive technology: a
+        // Button exposes a button role and an activation action, where a tap
+        // gesture exposes neither. VoiceOver navigates the accessibility
+        // hierarchy rather than the key-window focus chain, and AXPress does not
+        // need key status, so both work here.
+        //
+        // Tab traversal is *not* claimed. It is unverified and unlikely: this app
+        // is LSUIElement/.accessory and never becomes active, a
+        // MenuBarExtra(.window) popover is a non-activating panel that does not
+        // take key status, macOS keeps plain buttons out of the Tab ring unless
+        // "Use keyboard navigation to move focus between controls" is switched on
+        // (off by default), and `.plain` draws no focus affordance anyway.
+        //
+        // `.plain` also suppresses every bit of default chrome, so the hover-driven
         // background below still owns the appearance.
         Button(action: action) {
             HStack(spacing: 8) {
