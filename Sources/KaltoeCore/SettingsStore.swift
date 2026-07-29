@@ -3,6 +3,15 @@ import Foundation
 /// Rules and manual overrides, stored in UserDefaults so they are tweakable
 /// without a rebuild (see README for `defaults write` commands).
 public enum SettingsStore {
+    /// Reassignable so tests can point at a throwaway suite.
+    ///
+    /// `nonisolated(unsafe)` is accurate here rather than a shrug, and the reason
+    /// is narrower than "main-actor only": this is read *off* the main actor —
+    /// `FlexClient.fetchWeek` is `nonisolated async` and reaches it through
+    /// `FlexAPIConfig.userIdHash` — so isolating it to the main actor would break
+    /// production. What makes it safe is that **production never writes it**. The
+    /// only writers are test `setUp`s, which run before any concurrent read of
+    /// that generation. Adding a production write would make this unsound.
     nonisolated(unsafe) public static var defaults = UserDefaults.standard
 
     public static var rules: WorkRules {

@@ -32,6 +32,11 @@ public enum CookieVault {
     public static let defaultService = NSClassFromString("XCTestCase") == nil
         ? "com.perso.flextimer.session"
         : "com.perso.flextimer.session.test"
+    /// Test seam — points the keychain query at a sacrificial service.
+    /// `nonisolated(unsafe)` for the same reason as `SettingsStore.defaults`:
+    /// `CookieVault.load()` runs off the main actor inside `FlexClient.fetchWeek`,
+    /// so it cannot be main-actor isolated. Safety rests on production never
+    /// writing it — the only writers are `useScratchVault()` and test `setUp`.
     nonisolated(unsafe) public static var service = defaultService
     private static let account = "flex"
 
@@ -75,6 +80,9 @@ public enum CookieVault {
     }
 
     /// Test seam — points reads/writes at a scratch file.
+    /// Test seam — redirects reads/writes at a scratch file.
+    /// `nonisolated(unsafe)` for the same reason as `service` above: read off the
+    /// main actor, written only by tests, never by production.
     nonisolated(unsafe) public static var sessionFileOverride: URL?
 
     static var sessionFileURL: URL {

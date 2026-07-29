@@ -37,8 +37,8 @@ Task { @MainActor in
         hookRunner.evaluate(today: state.weekData.todayRecord(now: now), now: now)
         let line = state.status(now: now)
         if line != lastEmitted || now.timeIntervalSince(lastEmitAt) >= 60 {
-            if let data = try? encoder.encode(line),
-               let json = String(data: data, encoding: .utf8) {
+            if var data = try? encoder.encode(line) {
+                data.append(0x0A)   // NDJSON terminator; the encoder already gave us UTF-8
                 // Write straight to fd 1 rather than `print`: C stdio would need
                 // an explicit flush (the tray reads this over a fully-buffered
                 // pipe), and flushing is not safe here — the stdin reader thread
@@ -46,7 +46,7 @@ Task { @MainActor in
                 // the daemon, so fflush(nil) would deadlock walking every stream.
                 // `try?` keeps `print`'s silent-failure behaviour once the tray
                 // exits; FileHandle.write(_:) would trap instead.
-                try? FileHandle.standardOutput.write(contentsOf: Data((json + "\n").utf8))
+                try? FileHandle.standardOutput.write(contentsOf: data)
                 lastEmitted = line
                 lastEmitAt = now
             }
