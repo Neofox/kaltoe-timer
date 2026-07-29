@@ -76,4 +76,18 @@ final class SettingsStoreTests: XCTestCase {
         SettingsStore.highContrastOnInactiveDisplays = false
         XCTAssertFalse(SettingsStore.highContrastOnInactiveDisplays)
     }
+
+    func testDefaultOvertimeLimits() {
+        let r = SettingsStore.rules
+        XCTAssertEqual(r.weeklyOvertimeCap, 12 * 3600)
+        XCTAssertEqual(r.overtimeCutoff, 22 * 3600)
+    }
+
+    func testOverriddenOvertimeLimits() {
+        SettingsStore.defaults.set(10.0, forKey: "weeklyOvertimeCapHours")
+        SettingsStore.defaults.set(1260.0, forKey: "overtimeCutoffMinutes")  // 21:00
+        let r = SettingsStore.rules
+        XCTAssertEqual(r.weeklyOvertimeCap, 10 * 3600)
+        XCTAssertEqual(r.overtimeCutoff, 1260 * 60)
+    }
 }

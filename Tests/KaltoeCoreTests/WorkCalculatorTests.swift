@@ -312,4 +312,39 @@ final class WorkCalculatorTests: XCTestCase {
                                                      now: d(2026, 1, 2, 23, 0), rules: rules),
                        -(5 * 3600 + 25 * 60))
     }
+
+    private var seoul: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        return c
+    }
+
+    func testIsPastOvertimeCutoffAtBoundary() {
+        let rules = WorkRules()  // 22:00
+        XCTAssertFalse(WorkCalculator.isPastOvertimeCutoff(
+            now: d(2026, 7, 29, 21, 59), rules: rules, calendar: seoul))
+        XCTAssertTrue(WorkCalculator.isPastOvertimeCutoff(
+            now: d(2026, 7, 29, 22, 0), rules: rules, calendar: seoul))
+        XCTAssertTrue(WorkCalculator.isPastOvertimeCutoff(
+            now: d(2026, 7, 29, 23, 30), rules: rules, calendar: seoul))
+    }
+
+    func testIsPastOvertimeCutoffRespectsCustomCutoff() {
+        var rules = WorkRules()
+        rules.overtimeCutoff = 20 * 3600  // 20:00
+        XCTAssertFalse(WorkCalculator.isPastOvertimeCutoff(
+            now: d(2026, 7, 29, 19, 59), rules: rules, calendar: seoul))
+        XCTAssertTrue(WorkCalculator.isPastOvertimeCutoff(
+            now: d(2026, 7, 29, 20, 0), rules: rules, calendar: seoul))
+    }
+
+    func testHasReachedWeeklyCapAtBoundary() {
+        let rules = WorkRules()  // 12h
+        XCTAssertFalse(WorkCalculator.hasReachedWeeklyCap(
+            weeklyOvertime: 11 * 3600 + 3599, rules: rules))
+        XCTAssertTrue(WorkCalculator.hasReachedWeeklyCap(
+            weeklyOvertime: 12 * 3600, rules: rules))
+        XCTAssertTrue(WorkCalculator.hasReachedWeeklyCap(
+            weeklyOvertime: 20 * 3600, rules: rules))
+    }
 }

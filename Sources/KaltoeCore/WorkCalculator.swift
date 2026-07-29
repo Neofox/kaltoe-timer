@@ -4,6 +4,8 @@ public struct WorkRules: Codable, Equatable {
     public var dailyWork: TimeInterval = 8 * 3600       // net work target per day
     public var breakTime: TimeInterval = 1 * 3600       // fixed lunch break
     public var weeklyOvertime: TimeInterval = 5 * 3600  // required overtime per week
+    public var weeklyOvertimeCap: TimeInterval = 12 * 3600  // max overtime allowed per week
+    public var overtimeCutoff: TimeInterval = 22 * 3600     // no overtime past this, seconds from midnight
     public var lunchStart: TimeInterval = 690 * 60      // official break start, seconds from midnight (11:30)
     public var lunchEnd: TimeInterval = 750 * 60        // break end / work resumes (12:30)
     public var lunchEarlyLeave: TimeInterval = 10 * 60  // allowed early departure to lunch
@@ -93,6 +95,20 @@ public enum WorkCalculator {
             target -= rules.familyDayEarlyLeave
         }
         return max(0, target - timeOff)
+    }
+
+    /// True once `now` is at or past the day's overtime cutoff. This is the
+    /// only wall-clock rule in the model — overtime itself is measured from
+    /// clock-in, so a 07:00 start and a 09:00 start accrue identically.
+    public static func isPastOvertimeCutoff(now: Date, rules: WorkRules,
+                                            calendar: Calendar = .current) -> Bool {
+        now.timeIntervalSince(calendar.startOfDay(for: now)) >= rules.overtimeCutoff
+    }
+
+    /// True once the week's overtime has reached the allowed ceiling.
+    public static func hasReachedWeeklyCap(weeklyOvertime: TimeInterval,
+                                           rules: WorkRules) -> Bool {
+        weeklyOvertime >= rules.weeklyOvertimeCap
     }
 
     /// Required overtime for the week containing `now`: base − dayOffDeduction per
