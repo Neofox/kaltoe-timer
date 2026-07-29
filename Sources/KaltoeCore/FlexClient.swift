@@ -6,7 +6,10 @@ import FoundationNetworking
 public final class FlexClient: Sendable {
     public enum FlexError: Error, Equatable, Sendable {
         case noSession, sessionExpired, badResponse
-        /// The request never completed: offline, DNS failure, timeout.
+        /// The request never completed: offline, DNS failure, timeout — and also
+        /// task cancellation, since the mapping catch takes everything the
+        /// transport can throw. `AppState.scheduleUnlockResync` cancels in-flight
+        /// refreshes by design, so that path is reached in normal use.
         case transport
     }
 

@@ -92,7 +92,8 @@ final class HeadlessStateTests: XCTestCase {
         XCTAssertNil(line.weekOvertime)
     }
 
-    /// The `where` clause matches two cases; testing one would leave half unpinned.
+    /// `.noSession` and `.sessionExpired` share one switch arm, so testing only
+    /// one would leave half the arm's membership unpinned.
     func testNoSessionGatesEveryOptionalFieldToo() async {
         let state = state([.success(page), .failure(FlexClient.FlexError.noSession)])
         await state.refresh()
