@@ -40,7 +40,14 @@ Task { @MainActor in
             if let data = try? encoder.encode(line),
                let json = String(data: data, encoding: .utf8) {
                 print(json)
-                fflush(stdout)
+                // fflush(nil) flushes every open output stream. Glibc imports
+                // `stdout` as a mutable global var, which the Swift 6 language
+                // mode rejects as shared mutable state; Darwin does not, so this
+                // only breaks on Linux. `nil` avoids naming the global at all.
+                // stdout is the daemon's only buffered stream, and the flush is
+                // load-bearing: the tray reads NDJSON over a pipe, which glibc
+                // fully buffers.
+                fflush(nil)
                 lastEmitted = line
                 lastEmitAt = now
             }

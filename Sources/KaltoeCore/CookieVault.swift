@@ -75,7 +75,7 @@ public enum CookieVault {
     }
 
     /// Test seam — points reads/writes at a scratch file.
-    public static var sessionFileOverride: URL?
+    nonisolated(unsafe) public static var sessionFileOverride: URL?
 
     static var sessionFileURL: URL {
         if let sessionFileOverride { return sessionFileOverride }
