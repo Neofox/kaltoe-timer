@@ -5,7 +5,15 @@ import KaltoeCore
 /// semantics: sync failure keeps last data, dead session flips hasSession.
 @MainActor
 final class HeadlessState {
-    private let client = FlexClient()
+    /// Injected so tests can drive refresh()'s outcomes without a network.
+    /// FlexClient builds its own ephemeral URLSession and exposes no seam of its
+    /// own, so this initialiser is the only place a fake can go in.
+    private let fetchWeek: (Date, Date) async throws -> ParseResult
+
+    init(fetchWeek: ((Date, Date) async throws -> ParseResult)? = nil) {
+        let client = FlexClient()
+        self.fetchWeek = fetchWeek ?? { try await client.fetchWeek(from: $0, to: $1) }
+    }
     private(set) var weekData = WeekData()
     private(set) var lastSync: Date?
     private(set) var syncError: String?
@@ -16,7 +24,7 @@ final class HeadlessState {
             let now = Date()
             let weekStart = WorkCalculator.weekStart(of: now)
             let weekEnd = Calendar.current.date(byAdding: .day, value: 6, to: weekStart) ?? now
-            let result = try await client.fetchWeek(from: weekStart, to: max(now, weekEnd))
+            let result = try await fetchWeek(weekStart, max(now, weekEnd))
             weekData = WeekData(records: result.records, dayOffDates: result.dayOffDates,
                                 timeOff: result.timeOff)
             lastSync = now

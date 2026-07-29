@@ -9,6 +9,7 @@ var targets: [Target] = [
     .executableTarget(name: "KaltoeDaemon", dependencies: ["KaltoeCore"], path: "Sources/KaltoeDaemon"),
     .testTarget(name: "KaltoeCoreTests", dependencies: ["KaltoeCore"], path: "Tests/KaltoeCoreTests",
                 resources: [.copy("Fixtures")]),
+    .testTarget(name: "KaltoeDaemonTests", dependencies: ["KaltoeDaemon"], path: "Tests/KaltoeDaemonTests"),
 ]
 #if os(macOS)
 products.append(.executable(name: "FlexTimer", targets: ["FlexTimer"]))
