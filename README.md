@@ -9,25 +9,23 @@ The menu bar displays an icon plus text, with one of the following phases:
 - **To lunch**: `1:20` with a `fork.knife` icon — morning countdown to the lunch-leave moment (11:30 lunch start minus the 10-min early-leave allowance, i.e. counts down to 11:20)
 - **On break**: `BREAK 0:45` with a `cup.and.saucer` icon — during the 11:20–12:30 lunch window
 - **Counting**: `2:34` with a `timer` icon — currently clocked in (outside the lunch window), showing time remaining until your leave time (clock-in + 8h work + 1h break)
-- **Overtime**: `OT -2:59` with a `timer` icon — after leave time, showing the weekly overtime counter. It resets to -5:00 every Monday at 00:00 (the 5h weekly overtime target) and updates live once you're past your daily leave time. The requirement adjusts automatically: each holiday or vacation weekday reported by Flex deducts 1h, and a family-day week (last Friday of the month) deducts another 1h — e.g. a week with one public holiday plus family day requires 3h. On family day itself the daily target is 6h, so the countdown targets leaving 2h early and doing so costs nothing.
-    - Negative means you're still short of this week's 5h overtime target
-    - Positive means you've exceeded the weekly target
-    - Working past your daily leave time moves the counter up; leaving early moves it down
-    - Offline manual entries carry no holiday data, so fully-offline weeks show the unadjusted requirement
+- **Overtime**: `OT +1:00` with a `timer` icon — after leave time, showing **today's** overtime: time worked beyond the 8h daily target. Overtime depends only on hours worked, never on when you work them — 09:00–19:00 and 07:00–17:00 are both 1h. The weekly total lives in the dropdown. On family day (last Friday of the month) the daily target is 6h, so the countdown targets leaving 2h early and doing so costs nothing.
+    - Positive means you worked past today's target; negative means you clocked out short of it
+    - Company limits: no more than 12h of overtime per week, and none past 22:00 — 칼퇴타이머 notifies you once when you cross either
 - **Not clocked in**: `--:--` — signed in but no active clock record
 - **Signed out**: `—` — no Flex session or logged out
 
 **Overwork warning colors**: once you're within 30 minutes of leave time (or working past it), the label switches from a plain icon+text to a colored capsule pill with white icon+text:
 
-- **Orange pill** — ≤ 30 min before leave time
-- **Red pill** — ≤ 10 min before leave time, or any time you're still clocked in past leave time
+- **Orange pill** — ≤ 30 min before leave time, or while accruing overtime within the company limits
+- **Red pill** — ≤ 10 min before leave time, or once you hit a limit: 12h of overtime this week, or still clocked in past 22:00
 
 The label returns to the plain (non-pill) style after clock-out or outside these windows.
 
 Click the menu item to open the dropdown:
 
 - While on break, shows a "Back at" row with the time work resumes (end of the lunch window)
-- Shows today's work record (start time, end time if clocked out, overtime balance for the week)
+- Shows today's work record (start time, end time if clocked out, and the week's overtime against the 12h cap)
 - If no Flex record exists for today, offers a start-time picker (works offline)
 
 ## Installation
@@ -67,7 +65,7 @@ FlexTimer uses an embedded login window to authenticate with flex.team. Your ses
 
 ## Customizing Work Hours
 
-Override default work hours, break duration, and weekly overtime target using `defaults write` (these settings apply to the installed bundle):
+Override default work hours, break duration, and the overtime limits using `defaults write` (these settings apply to the installed bundle):
 
 ```bash
 # Daily work hours (default: 8.0)
@@ -76,8 +74,11 @@ defaults write com.perso.flextimer dailyWorkHours -float 9.0
 # Break duration in minutes (default: 60)
 defaults write com.perso.flextimer breakMinutes -float 45
 
-# Weekly overtime target in hours (default: 5.0)
-defaults write com.perso.flextimer weeklyOvertimeHours -float 6.0
+# Maximum overtime allowed per week, in hours (default: 12.0)
+defaults write com.perso.flextimer weeklyOvertimeCapHours -float 12.0
+
+# No overtime past this time, in minutes from midnight (default: 1320 = 22:00)
+defaults write com.perso.flextimer overtimeCutoffMinutes -float 1320
 
 # Lunch break start, in minutes from midnight (default: 690 = 11:30)
 defaults write com.perso.flextimer lunchStartMinutes -float 690
@@ -88,9 +89,7 @@ defaults write com.perso.flextimer lunchEndMinutes -float 750
 # Allowed early departure to lunch, in minutes (default: 10)
 defaults write com.perso.flextimer lunchEarlyLeaveMinutes -float 10
 
-defaults write com.perso.flextimer dayOffDeductionHours -float 1 # weekly-required reduction per holiday/vacation day
 defaults write com.perso.flextimer familyDayEarlyLeaveHours -float 2 # family-day early leave; 0 disables family day
-defaults write com.perso.flextimer familyDayDeductionHours -float 1 # weekly-required reduction on family-day weeks
 
 # Keep the menu bar icon and time readable on the menu bar of an inactive
 # display, by rendering them at full contrast instead of as a dimmable template
@@ -162,8 +161,8 @@ This fallback allows you to keep tracking even if Flex is temporarily unavailabl
 ## Daily and Weekly Calculations
 
 - **Leave time** = clock-in + `dailyWorkHours` + `breakMinutes` / 60 hours
-- **Daily overtime** = (clock-out time) − (leave time), or current elapsed − (leave time) if still clocked in
-- **Weekly overtime** = sum of daily overtime for all worked days in the current week (Monday 00:00 reset)
+- **Daily overtime** = (clock-out time) − (leave time), or current elapsed − (leave time) if still clocked in; negative if you clocked out short of the target
+- **Weekly overtime** = sum of daily overtime for all worked days in the current week, **each day floored at 0** (Monday 00:00 reset) — a short day contributes nothing and never offsets a long one
 - Unworked days (weekends, holidays, or days not yet started) contribute 0 to the weekly total
 
 ## Data
