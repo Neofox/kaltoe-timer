@@ -48,7 +48,9 @@ Same phases as the Mac app: countdown to lunch (fork icon), break (cup),
 countdown to leave time (timer), and today's overtime (`OT +1:00`) after leave
 time. The week's total is in the tray menu. The icon turns
 orange within 30 minutes of leave time and while accruing overtime, and red
-within 10 minutes of leave time or once you hit a company limit.
+within 10 minutes of leave time or once you hit a company limit. The
+limit notifications are macOS-only; on Linux you get the colour change
+without the desktop notification.
 
 ## Hooks
 

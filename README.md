@@ -18,7 +18,7 @@ The menu bar displays an icon plus text, with one of the following phases:
 **Overwork warning colors**: once you're within 30 minutes of leave time (or working past it), the label switches from a plain icon+text to a colored capsule pill with white icon+text:
 
 - **Orange pill** — ≤ 30 min before leave time, or while accruing overtime within the company limits
-- **Red pill** — ≤ 10 min before leave time, or once you hit a limit: 12h of overtime this week, or still clocked in past 22:00
+- **Red pill** — ≤ 10 min before leave time, or, once you're into overtime, when you hit a limit: 12h of overtime this week, or still clocked in past 22:00
 
 The label returns to the plain (non-pill) style after clock-out or outside these windows.
 
@@ -195,7 +195,7 @@ swift run
 ./scripts/bundle.sh
 ```
 
-All 118 tests pass on macOS (105 on Linux, where the AppKit shell isn't built), covering work-record merging, overtime calculations, and display formatting.
+All 131 tests pass on macOS, covering work-record merging, overtime calculations, and display formatting.
 
 ## Linux build
 

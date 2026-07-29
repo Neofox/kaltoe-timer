@@ -19,12 +19,18 @@ final class LimitNotifier {
     private static let capKey = "limitNotifiedCapWeek"
     private static let cutoffKey = "limitNotifiedCutoffDay"
 
-    private let post: (String) -> Void
+    /// Notification identifiers. Fixed (not per-post UUIDs) because each limit
+    /// fires at most once per period: coalescing is desirable, and the click
+    /// delegate matches on identifier to decide what a click means.
+    private static let capIdentifier = "overtime-cap"
+    private static let cutoffIdentifier = "overtime-cutoff"
+
+    private let post: (_ identifier: String, _ body: String) -> Void
     private let defaults: UserDefaults
     private let calendar: Calendar
 
     init(defaults: UserDefaults, calendar: Calendar = .current,
-         post: @escaping (String) -> Void) {
+         post: @escaping (_ identifier: String, _ body: String) -> Void) {
         self.defaults = defaults
         self.calendar = calendar
         self.post = post
@@ -34,19 +40,21 @@ final class LimitNotifier {
         if WorkCalculator.hasReachedWeeklyCap(weeklyOvertime: weeklyOvertime, rules: rules) {
             let week = WorkCalculator.weekStart(of: now, calendar: calendar)
             fireOnce(key: Self.capKey, stamp: stamp(week),
+                     identifier: Self.capIdentifier,
                      body: "Weekly overtime cap reached — stop for this week.")
         }
         if clockedIn, WorkCalculator.isPastOvertimeCutoff(now: now, rules: rules,
                                                           calendar: calendar) {
             fireOnce(key: Self.cutoffKey, stamp: stamp(now),
+                     identifier: Self.cutoffIdentifier,
                      body: "Past the overtime cutoff — clock out and go home.")
         }
     }
 
-    private func fireOnce(key: String, stamp: String, body: String) {
+    private func fireOnce(key: String, stamp: String, identifier: String, body: String) {
         guard defaults.string(forKey: key) != stamp else { return }
         defaults.set(stamp, forKey: key)
-        post(body)
+        post(identifier, body)
     }
 
     private func stamp(_ date: Date) -> String {
@@ -59,15 +67,15 @@ final class LimitNotifier {
     @MainActor
     static func live() -> LimitNotifier {
         guard Bundle.main.bundleURL.pathExtension == "app" else {
-            return LimitNotifier(defaults: .standard, post: { _ in })
+            return LimitNotifier(defaults: .standard, post: { _, _ in })
         }
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert]) { _, _ in }
-        return LimitNotifier(defaults: .standard) { body in
+        return LimitNotifier(defaults: .standard) { identifier, body in
             let content = UNMutableNotificationContent()
             content.title = "칼퇴타이머"
             content.body = body
-            center.add(UNNotificationRequest(identifier: "overtime-limit-\(UUID().uuidString)",
+            center.add(UNNotificationRequest(identifier: identifier,
                                              content: content, trigger: nil))
         }
     }

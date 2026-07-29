@@ -171,6 +171,22 @@ final class PhaseDisplayTests: XCTestCase {
         XCTAssertEqual(display.state, .overtime(today: 4.5 * 3600))
     }
 
+    /// Clocked out at 19:00 and left running: at 22:30 the cutoff has passed but
+    /// nobody is working, so the pill must stay plain. Without the `clockedIn`
+    /// guard on the cutoff branch the menu bar would turn red every night.
+    func testPastCutoffWhileClockedOutIsNormal() {
+        let rules = WorkRules()
+        // 09:00–19:00 = 10h elapsed − 1h break = 9h net = +1h overtime, well under the cap.
+        let today = WorkRecord(clockIn: d(2026, 7, 29, 9, 0),
+                               clockOut: d(2026, 7, 29, 19, 0), flexWorkedNet: nil)
+        let display = DisplayState.computeDisplay(hasSession: true, today: today,
+                                                  week: [today],
+                                                  now: d(2026, 7, 29, 22, 30),
+                                                  rules: rules, calendar: seoul)
+        XCTAssertEqual(display.urgency, .normal)
+        XCTAssertEqual(display.state, .overtime(today: 1 * 3600))
+    }
+
     /// The weekly cap is critical regardless of clock state — 12h worked is 12h
     /// worked whether or not you are currently on the clock.
     func testWeeklyCapIsCriticalEvenWhenClockedOut() {

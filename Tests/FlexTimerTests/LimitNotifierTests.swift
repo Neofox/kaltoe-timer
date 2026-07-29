@@ -17,21 +17,27 @@ private let seoul: Calendar = {
 }()
 
 final class LimitNotifierTests: XCTestCase {
-    private var posted: [String] = []
+    private var posted: [String] = []          // bodies
+    private var postedIdentifiers: [String] = []
     private var defaults: UserDefaults!
     private var notifier: LimitNotifier!
     private let rules = WorkRules()   // 12h cap, 22:00 cutoff
 
     override func setUp() {
         posted = []
+        postedIdentifiers = []
         defaults = UserDefaults(suiteName: "limit-tests-\(UUID().uuidString)")!
-        notifier = LimitNotifier(defaults: defaults, calendar: seoul) { [self] in posted.append($0) }
+        notifier = LimitNotifier(defaults: defaults, calendar: seoul) { [self] identifier, body in
+            postedIdentifiers.append(identifier)
+            posted.append(body)
+        }
     }
 
     func testCapFiresOnceThenStaysSilent() {
         let now = d(2026, 7, 29, 18, 0)
         notifier.evaluate(weeklyOvertime: 12 * 3600, clockedIn: true, now: now, rules: rules)
         XCTAssertEqual(posted.count, 1)
+        XCTAssertEqual(postedIdentifiers, ["overtime-cap"])
         // recompute runs every second — the next ticks must be silent
         notifier.evaluate(weeklyOvertime: 12 * 3600, clockedIn: true,
                           now: d(2026, 7, 29, 18, 1), rules: rules)
@@ -71,6 +77,7 @@ final class LimitNotifierTests: XCTestCase {
         notifier.evaluate(weeklyOvertime: 0, clockedIn: true,
                           now: d(2026, 7, 29, 22, 0), rules: rules)
         XCTAssertEqual(posted.count, 1)
+        XCTAssertEqual(postedIdentifiers, ["overtime-cutoff"])
         notifier.evaluate(weeklyOvertime: 0, clockedIn: true,
                           now: d(2026, 7, 29, 22, 30), rules: rules)
         XCTAssertEqual(posted.count, 1)
@@ -96,7 +103,9 @@ final class LimitNotifierTests: XCTestCase {
         notifier.evaluate(weeklyOvertime: 12 * 3600, clockedIn: true,
                           now: d(2026, 7, 29, 22, 30), rules: rules)
         XCTAssertEqual(posted.count, 2)   // cap + cutoff both crossed
-        let relaunched = LimitNotifier(defaults: defaults, calendar: seoul) { [self] in posted.append($0) }
+        let relaunched = LimitNotifier(defaults: defaults, calendar: seoul) { [self] _, body in
+            posted.append(body)
+        }
         relaunched.evaluate(weeklyOvertime: 12 * 3600, clockedIn: true,
                             now: d(2026, 7, 29, 22, 31), rules: rules)
         XCTAssertEqual(posted.count, 2)
