@@ -181,9 +181,10 @@ final class FlexClientTests: XCTestCase {
         do {
             _ = try await FlexClient().fetchWeek(from: Date(), to: Date())
             XCTFail("expected throw")
-        } catch let e as FlexClient.FlexError {
-            XCTAssertEqual(e, .noSession)
-        } catch { XCTFail("unexpected error \(error)") }
+        } catch {
+            // Typed throws: `error` is a FlexError, so no defensive arm is needed.
+            XCTAssertEqual(error, .noSession)
+        }
     }
 
     func testFetchWithCookiesButNoUserIdHashThrowsNoSession() async {
@@ -194,8 +195,8 @@ final class FlexClientTests: XCTestCase {
         do {
             _ = try await FlexClient().fetchWeek(from: Date(), to: Date())
             XCTFail("expected throw")
-        } catch let e as FlexClient.FlexError {
-            XCTAssertEqual(e, .noSession, "empty userIdHash must read as no session (nothing to query)")
-        } catch { XCTFail("unexpected error \(error)") }
+        } catch {
+            XCTAssertEqual(error, .noSession, "empty userIdHash must read as no session (nothing to query)")
+        }
     }
 }

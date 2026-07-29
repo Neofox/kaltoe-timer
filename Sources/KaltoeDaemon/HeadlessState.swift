@@ -8,14 +8,14 @@ final class HeadlessState {
     /// Injected so tests can drive refresh()'s outcomes without a network.
     /// FlexClient builds its own ephemeral URLSession and exposes no seam of its
     /// own, so this initialiser is the only place a fake can go in.
-    private let fetchWeek: (Date, Date) async throws -> ParseResult
+    private let fetchWeek: (Date, Date) async throws(FlexClient.FlexError) -> ParseResult
 
-    init(fetchWeek: ((Date, Date) async throws -> ParseResult)? = nil) {
+    init(fetchWeek: ((Date, Date) async throws(FlexClient.FlexError) -> ParseResult)? = nil) {
         if let fetchWeek {
             self.fetchWeek = fetchWeek
         } else {
             let client = FlexClient()
-            self.fetchWeek = { try await client.fetchWeek(from: $0, to: $1) }
+            self.fetchWeek = client.fetchWeek(from:to:)
         }
     }
     private(set) var weekData = WeekData()
@@ -34,10 +34,13 @@ final class HeadlessState {
             lastSync = now
             syncError = nil
             hasSession = true
-        } catch let e as FlexClient.FlexError where e == .noSession || e == .sessionExpired {
-            hasSession = false
         } catch {
-            syncError = "Flex sync failed — showing last known data"
+            switch error {
+            case .noSession, .sessionExpired:
+                hasSession = false
+            case .badResponse, .transport:
+                syncError = "Flex sync failed — showing last known data"
+            }
         }
     }
 

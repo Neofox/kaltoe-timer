@@ -152,12 +152,14 @@ final class AppState: ObservableObject {
             lastSync = now
             syncError = nil
             hasSession = true
-        } catch let e as FlexClient.FlexError where e == .noSession || e == .sessionExpired {
-            guard generation == refreshGeneration else { return }
-            hasSession = false
         } catch {
             guard generation == refreshGeneration else { return }
-            syncError = "Flex sync failed — showing last known data"
+            switch error {
+            case .noSession, .sessionExpired:
+                hasSession = false
+            case .badResponse, .transport:
+                syncError = "Flex sync failed — showing last known data"
+            }
         }
         recompute(now: Date())
     }

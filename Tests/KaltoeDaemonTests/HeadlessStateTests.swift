@@ -14,12 +14,12 @@ private func d(_ y: Int, _ mo: Int, _ da: Int, _ h: Int, _ mi: Int) -> Date {
 /// A reference box rather than a captured `var` so the escaping closure has no
 /// mutable capture.
 private final class Script {
-    private let outcomes: [Result<ParseResult, Error>]
+    private let outcomes: [Result<ParseResult, FlexClient.FlexError>]
     private var index = 0
 
-    init(_ outcomes: [Result<ParseResult, Error>]) { self.outcomes = outcomes }
+    init(_ outcomes: [Result<ParseResult, FlexClient.FlexError>]) { self.outcomes = outcomes }
 
-    func next() throws -> ParseResult {
+    func next() throws(FlexClient.FlexError) -> ParseResult {
         let outcome = outcomes[min(index, outcomes.count - 1)]
         index += 1
         switch outcome {
@@ -57,9 +57,9 @@ final class HeadlessStateTests: XCTestCase {
                     dayOffDates: [], timeOff: [:])
     }
 
-    private func state(_ outcomes: [Result<ParseResult, Error>]) -> HeadlessState {
+    private func state(_ outcomes: [Result<ParseResult, FlexClient.FlexError>]) -> HeadlessState {
         let script = Script(outcomes)
-        return HeadlessState { _, _ in try script.next() }
+        return HeadlessState { (_, _) throws(FlexClient.FlexError) in try script.next() }
     }
 
     func testSuccessfulRefreshPopulatesTheStatusLine() async {
@@ -109,7 +109,7 @@ final class HeadlessStateTests: XCTestCase {
 
     /// "Sync failure keeps last data" — the type's doc comment, previously unverified.
     func testNonSessionErrorKeepsLastKnownData() async {
-        let state = state([.success(page), .failure(URLError(.timedOut))])
+        let state = state([.success(page), .failure(FlexClient.FlexError.transport)])
         await state.refresh()
         let firstSync = state.lastSync
         XCTAssertNotNil(firstSync, "precondition: the first refresh must have succeeded")

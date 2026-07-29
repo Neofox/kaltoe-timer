@@ -4,7 +4,11 @@ import FoundationNetworking
 #endif
 
 public final class FlexClient: Sendable {
-    public enum FlexError: Error, Equatable, Sendable { case noSession, sessionExpired, badResponse }
+    public enum FlexError: Error, Equatable, Sendable {
+        case noSession, sessionExpired, badResponse
+        /// The request never completed: offline, DNS failure, timeout.
+        case transport
+    }
 
     private let session: URLSession
 
@@ -19,7 +23,7 @@ public final class FlexClient: Sendable {
         session = URLSession(configuration: config)
     }
 
-    public func fetchWeek(from: Date, to: Date) async throws -> ParseResult {
+    public func fetchWeek(from: Date, to: Date) async throws(FlexError) -> ParseResult {
         guard let cookies = CookieVault.load(), !cookies.isEmpty else { throw FlexError.noSession }
         // No discovered user id yet (first run / pre-login) — nothing to query.
         guard !FlexAPIConfig.userIdHash.isEmpty else { throw FlexError.noSession }
@@ -31,12 +35,22 @@ public final class FlexClient: Sendable {
         let schedulesData = try await fetch(schedulesRequest)
         let clockData = try await fetch(clockRequest)
 
-        return try FlexRecordParser.parse(schedules: schedulesData, clock: clockData)
+        do {
+            return try FlexRecordParser.parse(schedules: schedulesData, clock: clockData)
+        } catch {
+            // A body we cannot decode is a bad response, not a transport failure.
+            throw .badResponse
+        }
     }
 
     /// Performs one request, applying the shared status/HTML-login-page checks.
-    private func fetch(_ request: URLRequest) async throws -> Data {
-        let (data, response) = try await session.data(for: request)
+    private func fetch(_ request: URLRequest) async throws(FlexError) -> Data {
+        let data: Data, response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw .transport
+        }
         guard let http = response as? HTTPURLResponse else { throw FlexError.badResponse }
         switch http.statusCode {
         case 200:
