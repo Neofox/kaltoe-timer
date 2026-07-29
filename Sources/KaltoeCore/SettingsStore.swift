@@ -3,7 +3,7 @@ import Foundation
 /// Rules and manual overrides, stored in UserDefaults so they are tweakable
 /// without a rebuild (see README for `defaults write` commands).
 public enum SettingsStore {
-    public static var defaults = UserDefaults.standard
+    nonisolated(unsafe) public static var defaults = UserDefaults.standard
 
     public static var rules: WorkRules {
         var r = WorkRules()

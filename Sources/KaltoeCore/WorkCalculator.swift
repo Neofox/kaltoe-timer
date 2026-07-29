@@ -1,6 +1,6 @@
 import Foundation
 
-public struct WorkRules: Codable, Equatable {
+public struct WorkRules: Codable, Equatable, Sendable {
     public var dailyWork: TimeInterval = 8 * 3600       // net work target per day
     public var breakTime: TimeInterval = 1 * 3600       // fixed lunch break
     public var weeklyOvertimeCap: TimeInterval = 12 * 3600  // max overtime allowed per week
@@ -14,7 +14,7 @@ public struct WorkRules: Codable, Equatable {
 
 }
 
-public struct WorkRecord: Equatable {
+public struct WorkRecord: Equatable, Sendable {
     public var clockIn: Date
     public var clockOut: Date?                 // nil = still on the clock
     public var flexWorkedNet: TimeInterval?    // net worked time as reported by Flex, if available

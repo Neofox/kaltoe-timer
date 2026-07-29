@@ -3,7 +3,7 @@ import Foundation
 /// One NDJSON status line emitted by the kaltoe-core daemon and consumed by
 /// the Linux tray (linux/kaltoe-tray.py). Field set is part of that contract;
 /// nil optionals are omitted from the JSON.
-public struct StatusLine: Codable, Equatable {
+public struct StatusLine: Codable, Equatable, Sendable {
     public var text: String
     public var icon: String
     public var urgency: String

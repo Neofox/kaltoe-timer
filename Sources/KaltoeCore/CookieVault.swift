@@ -6,7 +6,7 @@ import FoundationNetworking
 import Security
 #endif
 
-public struct StoredCookie: Codable, Equatable {
+public struct StoredCookie: Codable, Equatable, Sendable {
     public var name: String
     public var value: String
     public var domain: String
@@ -32,7 +32,7 @@ public enum CookieVault {
     public static let defaultService = NSClassFromString("XCTestCase") == nil
         ? "com.perso.flextimer.session"
         : "com.perso.flextimer.session.test"
-    public static var service = defaultService
+    nonisolated(unsafe) public static var service = defaultService
     private static let account = "flex"
 
     private static var baseQuery: [String: Any] {

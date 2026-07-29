@@ -3,8 +3,8 @@ import Foundation
 import FoundationNetworking
 #endif
 
-public final class FlexClient {
-    public enum FlexError: Error, Equatable { case noSession, sessionExpired, badResponse }
+public final class FlexClient: Sendable {
+    public enum FlexError: Error, Equatable, Sendable { case noSession, sessionExpired, badResponse }
 
     private let session: URLSession
 

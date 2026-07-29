@@ -6,7 +6,7 @@ import Foundation
 /// display that does not hold the active window. `.solid` and `.pill` are
 /// pre-rendered non-template images, which it leaves alone — that is the whole
 /// point of the high-contrast setting.
-public enum MenuLabelStyle: Equatable {
+public enum MenuLabelStyle: Equatable, Sendable {
     /// Template icon + text. Default appearance.
     case plain
     /// Non-template icon + text in a solid, appearance-matched colour.

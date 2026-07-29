@@ -2,7 +2,7 @@ import Foundation
 
 /// Parsed week: work records, holiday/vacation weekdays, and per-day
 /// approved partial time off (seconds). Weekends excluded from both.
-public struct ParseResult: Equatable {
+public struct ParseResult: Equatable, Sendable {
     public var records: [WorkRecord]
     public var dayOffDates: Set<Date>
     public var timeOff: [Date: TimeInterval] = [:]

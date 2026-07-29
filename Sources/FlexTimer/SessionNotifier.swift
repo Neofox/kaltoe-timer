@@ -47,7 +47,8 @@ final class SessionNotifier {
 
 /// Retained delegate for notification clicks (UNUserNotificationCenter holds
 /// its delegate weakly).
-final class NotificationClickDelegate: NSObject, UNUserNotificationCenterDelegate {
+@MainActor
+final class NotificationClickDelegate: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
     static let shared = NotificationClickDelegate()
     var onClick: (() -> Void)?
 

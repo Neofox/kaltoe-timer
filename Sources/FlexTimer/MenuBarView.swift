@@ -134,19 +134,7 @@ struct MenuBarView: View {
         .padding(.horizontal, 12)
     }
 
-    /// `.isToggle` is macOS 14+ and the deployment target is 13. On 13 the row still
-    /// announces as a named button carrying an on/off value, which is the part that
-    /// matters; only the trait refinement is unavailable. Split so neither path
-    /// needs an AnyView.
-    @ViewBuilder private var highContrastRow: some View {
-        if #available(macOS 14.0, *) {
-            highContrastRowBase.accessibilityAddTraits(.isToggle)
-        } else {
-            highContrastRowBase
-        }
-    }
-
-    private var highContrastRowBase: some View {
+    private var highContrastRow: some View {
         MenuRow(icon: "circle.lefthalf.filled", title: "Stay readable when unfocused") {
             state.highContrastOnInactiveDisplays.toggle()
         } trailing: {
@@ -165,6 +153,7 @@ struct MenuBarView: View {
         // Pointer tooltip. Not an accessibility label, and not a substitute for one.
         .help("Renders the icon and time at full contrast so they stay legible on the menu bar of a display that doesn't have focus.")
         .accessibilityValue(state.highContrastOnInactiveDisplays ? "on" : "off")
+        .accessibilityAddTraits(.isToggle)
     }
 
     private func row(_ label: String, _ value: String) -> some View {

@@ -1,10 +1,10 @@
 import Foundation
 
-public enum Urgency: String, Equatable {
+public enum Urgency: String, Equatable, Sendable {
     case normal, warning, critical
 }
 
-public struct MenuDisplay: Equatable {
+public struct MenuDisplay: Equatable, Sendable {
     public var state: DisplayState
     public var urgency: Urgency
 
@@ -14,7 +14,7 @@ public struct MenuDisplay: Equatable {
     }
 }
 
-public enum DisplayState: Equatable {
+public enum DisplayState: Equatable, Sendable {
     case noSession
     case notClockedIn
     case toLunch(timeLeft: TimeInterval)   // counting down to the lunch-leave moment

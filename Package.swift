@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.0
 import PackageDescription
 
 var products: [Product] = [
@@ -20,7 +20,7 @@ targets += [
 
 let package = Package(
     name: "FlexTimer",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS("26.0")],
     products: products,
     targets: targets
 )
