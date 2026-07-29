@@ -64,4 +64,16 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(r.familyDayEarlyLeave, 0)
         XCTAssertEqual(r.familyDayDeduction, 2 * 3600)
     }
+
+    func testHighContrastDefaultsToOff() {
+        XCTAssertFalse(SettingsStore.highContrastOnInactiveDisplays)
+    }
+
+    func testHighContrastRoundTrips() {
+        SettingsStore.highContrastOnInactiveDisplays = true
+        XCTAssertTrue(SettingsStore.highContrastOnInactiveDisplays)
+        XCTAssertTrue(SettingsStore.defaults.bool(forKey: "highContrastOnInactiveDisplays"))
+        SettingsStore.highContrastOnInactiveDisplays = false
+        XCTAssertFalse(SettingsStore.highContrastOnInactiveDisplays)
+    }
 }

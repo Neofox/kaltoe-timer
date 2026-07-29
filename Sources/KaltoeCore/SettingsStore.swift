@@ -19,6 +19,14 @@ public enum SettingsStore {
         return r
     }
 
+    /// Render the menu bar label as a non-template image so macOS cannot grey
+    /// it out on the menu bar of an inactive display. Absent key reads false,
+    /// so this is off by default with no registration needed.
+    public static var highContrastOnInactiveDisplays: Bool {
+        get { defaults.bool(forKey: "highContrastOnInactiveDisplays") }
+        set { defaults.set(newValue, forKey: "highContrastOnInactiveDisplays") }
+    }
+
     private static func key(for day: Date) -> String {
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd"
