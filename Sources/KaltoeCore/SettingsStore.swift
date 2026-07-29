@@ -9,15 +9,12 @@ public enum SettingsStore {
         var r = WorkRules()
         if let h = defaults.object(forKey: "dailyWorkHours") as? Double { r.dailyWork = h * 3600 }
         if let m = defaults.object(forKey: "breakMinutes") as? Double { r.breakTime = m * 60 }
-        if let h = defaults.object(forKey: "weeklyOvertimeHours") as? Double { r.weeklyOvertime = h * 3600 }
         if let m = defaults.object(forKey: "lunchStartMinutes") as? Double { r.lunchStart = m * 60 }
         if let m = defaults.object(forKey: "lunchEndMinutes") as? Double { r.lunchEnd = m * 60 }
         if let m = defaults.object(forKey: "lunchEarlyLeaveMinutes") as? Double { r.lunchEarlyLeave = m * 60 }
         if let h = defaults.object(forKey: "weeklyOvertimeCapHours") as? Double { r.weeklyOvertimeCap = h * 3600 }
         if let m = defaults.object(forKey: "overtimeCutoffMinutes") as? Double { r.overtimeCutoff = m * 60 }
-        if let h = defaults.object(forKey: "dayOffDeductionHours") as? Double { r.dayOffDeduction = h * 3600 }
         if let h = defaults.object(forKey: "familyDayEarlyLeaveHours") as? Double { r.familyDayEarlyLeave = h * 3600 }
-        if let h = defaults.object(forKey: "familyDayDeductionHours") as? Double { r.familyDayDeduction = h * 3600 }
         return r
     }
 

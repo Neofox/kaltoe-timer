@@ -3,7 +3,7 @@ import XCTest
 
 final class StatusLineTests: XCTestCase {
     func testMapsDisplayFields() {
-        let line = StatusLine(display: MenuDisplay(state: .overtime(weekly: -59 * 60),
+        let line = StatusLine(display: MenuDisplay(state: .overtime(today: -59 * 60),
                                                    urgency: .critical),
                               hasSession: true, lastSync: nil, syncError: nil)
         XCTAssertEqual(line.text, "OT -0:59")

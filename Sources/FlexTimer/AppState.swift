@@ -79,7 +79,6 @@ final class AppState: ObservableObject {
         hookRunner?.evaluate(today: record, now: now)
         let display = DisplayState.computeDisplay(hasSession: hasSession, today: record,
                                                   week: weekIncludingManual(now: now),
-                                                  dayOffs: dayOffDates,
                                                   timeOff: timeOff,
                                                   now: now, rules: rules)
         menuDisplay = display

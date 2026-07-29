@@ -20,14 +20,13 @@ public enum DisplayState: Equatable {
     case toLunch(timeLeft: TimeInterval)   // counting down to the lunch-leave moment
     case onBreak(timeLeft: TimeInterval)   // counting down to work resuming
     case counting(timeLeft: TimeInterval)  // counting down to leave time
-    case overtime(weekly: TimeInterval)
+    case overtime(today: TimeInterval)   // overtime worked today; negative if short
 
     private static let warningThreshold: TimeInterval = 30 * 60
     private static let criticalThreshold: TimeInterval = 10 * 60
 
     /// Smart single value with day phases and an overwork urgency level.
     public static func computeDisplay(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
-                               dayOffs: Set<Date> = [],
                                timeOff: [Date: TimeInterval] = [:],
                                now: Date, rules: WorkRules,
                                calendar: Calendar = .current) -> MenuDisplay {
@@ -52,11 +51,24 @@ public enum DisplayState: Equatable {
                 : left <= warningThreshold ? .warning : .normal
             return MenuDisplay(state: .counting(timeLeft: left), urgency: urgency)
         }
-        let weekly = WorkCalculator.weeklyOvertime(records: week, dayOffs: dayOffs,
-                                                   timeOff: timeOff, now: now, rules: rules)
-        // Past leave time with the day still open = overworking right now.
-        return MenuDisplay(state: .overtime(weekly: weekly),
-                           urgency: today.clockOut == nil ? .critical : .normal)
+        // Weekly total is computed for the cap check only — the menu bar shows today.
+        let weekly = WorkCalculator.weeklyOvertime(records: week, timeOff: timeOff,
+                                                   now: now, rules: rules)
+        let todayOvertime = WorkCalculator.dailyOvertime(record: today, now: now,
+                                                         rules: rules, timeOff: timeOff)
+        let clockedIn = today.clockOut == nil
+        let urgency: Urgency
+        if WorkCalculator.hasReachedWeeklyCap(weeklyOvertime: weekly, rules: rules) {
+            urgency = .critical                     // cap applies on or off the clock
+        } else if clockedIn, WorkCalculator.isPastOvertimeCutoff(now: now, rules: rules,
+                                                                 calendar: calendar) {
+            urgency = .critical                     // working past the cutoff
+        } else if clockedIn {
+            urgency = .warning                      // in overtime, within both limits
+        } else {
+            urgency = .normal                       // day settled
+        }
+        return MenuDisplay(state: .overtime(today: todayOvertime), urgency: urgency)
     }
 
     /// v1 compatibility wrapper — state only.
@@ -73,7 +85,7 @@ public enum DisplayState: Equatable {
         case .toLunch(let left): return Formatting.hm(left)
         case .onBreak(let left): return "BREAK " + Formatting.hm(left)
         case .counting(let left): return Formatting.hm(left)
-        case .overtime(let weekly): return "OT " + Formatting.signedHM(weekly)
+        case .overtime(let today): return "OT " + Formatting.signedHM(today)
         }
     }
 

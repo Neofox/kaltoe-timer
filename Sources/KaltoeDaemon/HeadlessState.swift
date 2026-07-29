@@ -36,7 +36,6 @@ final class HeadlessState {
         let display = DisplayState.computeDisplay(hasSession: hasSession,
                                                   today: today,
                                                   week: week,
-                                                  dayOffs: weekData.dayOffDates,
                                                   timeOff: weekData.timeOff,
                                                   now: now, rules: rules)
         var leaveAt: Date?
@@ -45,7 +44,7 @@ final class HeadlessState {
             leaveAt = WorkCalculator.leaveTime(clockIn: today.clockIn, rules: rules, timeOff: off)
         }
         let weekOvertime: TimeInterval? = hasSession
-            ? WorkCalculator.weeklyOvertime(records: week, dayOffs: weekData.dayOffDates,
+            ? WorkCalculator.weeklyOvertime(records: week,
                                             timeOff: weekData.timeOff, now: now, rules: rules)
             : nil
         return StatusLine(display: display, hasSession: hasSession,

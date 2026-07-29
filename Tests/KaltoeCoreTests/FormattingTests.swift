@@ -27,6 +27,11 @@ final class FormattingTests: XCTestCase {
 
 final class DisplayStateTests: XCTestCase {
     let rules = WorkRules()
+    var seoul: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        return cal
+    }
 
     func testNoSession() {
         XCTAssertEqual(DisplayState.compute(hasSession: false, today: nil, week: [],
@@ -48,21 +53,33 @@ final class DisplayStateTests: XCTestCase {
         XCTAssertEqual(s.menuBarText, "2:34")
     }
 
-    func testOvertimeAfterLeaveTime() {
-        // Spec canonical Monday evening: shows OT -2:59
-        let today = WorkRecord(clockIn: d(2026, 7, 6, 9, 1), clockOut: nil, flexWorkedNet: nil)
-        let s = DisplayState.compute(hasSession: true, today: today, week: [today],
-                                     now: d(2026, 7, 6, 20, 2), rules: rules)
-        XCTAssertEqual(s, .overtime(weekly: -(2 * 3600 + 59 * 60)))
-        XCTAssertEqual(s.menuBarText, "OT -2:59")
+    /// Still on the clock an hour past leave time: the menu bar shows today's
+    /// overtime, not the week's, and overtime alone is only a warning.
+    func testOvertimePastLeaveTimeShowsTodayAndWarns() {
+        let rules = WorkRules()
+        let today = WorkRecord(clockIn: d(2026, 7, 29, 9, 0), clockOut: nil, flexWorkedNet: nil)
+        let display = DisplayState.computeDisplay(hasSession: true, today: today,
+                                                  week: [today],
+                                                  now: d(2026, 7, 29, 19, 0),
+                                                  rules: rules, calendar: seoul)
+        XCTAssertEqual(display.state, .overtime(today: 3600))
+        XCTAssertEqual(display.state.menuBarText, "OT +1:00")
+        XCTAssertEqual(display.urgency, .warning)
     }
 
-    func testOvertimeAfterClockingOutEarly() {
-        // Already clocked out → show weekly OT even if before leave time
-        let today = WorkRecord(clockIn: d(2026, 7, 6, 9, 0), clockOut: d(2026, 7, 6, 16, 0), flexWorkedNet: nil)
-        let s = DisplayState.compute(hasSession: true, today: today, week: [today],
-                                     now: d(2026, 7, 6, 16, 5), rules: rules)
-        XCTAssertEqual(s, .overtime(weekly: -7 * 3600))
+    /// Clocked out short of target: today's figure is negative and the day is
+    /// settled, so nothing is urgent.
+    func testOvertimeClockedOutEarlyShowsNegativeAndIsNormal() {
+        let rules = WorkRules()
+        let today = WorkRecord(clockIn: d(2026, 7, 29, 9, 0),
+                               clockOut: d(2026, 7, 29, 17, 0), flexWorkedNet: nil)
+        let display = DisplayState.computeDisplay(hasSession: true, today: today,
+                                                  week: [today],
+                                                  now: d(2026, 7, 29, 17, 30),
+                                                  rules: rules, calendar: seoul)
+        XCTAssertEqual(display.state, .overtime(today: -3600))
+        XCTAssertEqual(display.state.menuBarText, "OT -1:00")
+        XCTAssertEqual(display.urgency, .normal)
     }
 }
 
@@ -141,16 +158,33 @@ final class PhaseDisplayTests: XCTestCase {
         XCTAssertEqual(display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 17, 50)).urgency, .critical) // 10 min
     }
 
-    func testPastLeaveStillClockedInIsCritical() {
-        let s = display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 18, 5))
-        XCTAssertEqual(s.urgency, .critical)
-        if case .overtime = s.state {} else { XCTFail("expected overtime state") }
+    /// Past 22:00 while still clocked in: critical, and today's figure keeps
+    /// accruing rather than freezing at the cutoff.
+    func testPastCutoffWhileClockedInIsCritical() {
+        let rules = WorkRules()
+        let today = WorkRecord(clockIn: d(2026, 7, 29, 9, 0), clockOut: nil, flexWorkedNet: nil)
+        let display = DisplayState.computeDisplay(hasSession: true, today: today,
+                                                  week: [today],
+                                                  now: d(2026, 7, 29, 22, 30),
+                                                  rules: rules, calendar: seoul)
+        XCTAssertEqual(display.urgency, .critical)
+        XCTAssertEqual(display.state, .overtime(today: 4.5 * 3600))
     }
 
-    func testClockedOutOvertimeIsNormal() {
-        let s = display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 18, 10), clockOut: d(2026, 7, 9, 18, 5))
-        XCTAssertEqual(s.urgency, .normal)
-        if case .overtime = s.state {} else { XCTFail("expected overtime state") }
+    /// The weekly cap is critical regardless of clock state — 12h worked is 12h
+    /// worked whether or not you are currently on the clock.
+    func testWeeklyCapIsCriticalEvenWhenClockedOut() {
+        let rules = WorkRules()
+        // Four completed 12h-elapsed days = 11h net each = +3h overtime each = 12h for the week.
+        let week = (27...30).map { day in
+            WorkRecord(clockIn: d(2026, 7, day, 8, 0),
+                       clockOut: d(2026, 7, day, 20, 0), flexWorkedNet: nil)
+        }
+        let display = DisplayState.computeDisplay(hasSession: true, today: week.last!,
+                                                  week: week,
+                                                  now: d(2026, 7, 30, 20, 30),
+                                                  rules: rules, calendar: seoul)
+        XCTAssertEqual(display.urgency, .critical)
     }
 
     func testNoSessionAndNotClockedInAreNormalWithTimerIcon() {
@@ -158,7 +192,7 @@ final class PhaseDisplayTests: XCTestCase {
                                                now: d(2026, 7, 9, 9, 0), rules: rules, calendar: seoul)
         XCTAssertEqual(none, MenuDisplay(state: .noSession, urgency: .normal))
         XCTAssertEqual(DisplayState.counting(timeLeft: 60).iconName, "timer")
-        XCTAssertEqual(DisplayState.overtime(weekly: 0).iconName, "timer")
+        XCTAssertEqual(DisplayState.overtime(today: 0).iconName, "timer")
         XCTAssertEqual(DisplayState.noSession.iconName, "timer")
         XCTAssertEqual(DisplayState.notClockedIn.iconName, "timer")
     }
