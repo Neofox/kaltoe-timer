@@ -26,7 +26,14 @@ public enum DisplayState: Equatable {
     private static let criticalThreshold: TimeInterval = 10 * 60
 
     /// Smart single value with day phases and an overwork urgency level.
-    public static func computeDisplay(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
+    ///
+    /// `weeklyOvertime` is supplied by the caller rather than derived here.
+    /// Both callers already compute it for their own purposes, and `recompute`
+    /// runs every second — deriving it again inside this function was pure
+    /// waste. Taking it as a parameter also removes the need for `week`, which
+    /// fed nothing else.
+    public static func computeDisplay(hasSession: Bool, today: WorkRecord?,
+                               weeklyOvertime: TimeInterval,
                                timeOff: [Date: TimeInterval] = [:],
                                now: Date, rules: WorkRules,
                                calendar: Calendar = .current) -> MenuDisplay {
@@ -51,14 +58,11 @@ public enum DisplayState: Equatable {
                 : left <= warningThreshold ? .warning : .normal
             return MenuDisplay(state: .counting(timeLeft: left), urgency: urgency)
         }
-        // Weekly total is computed for the cap check only — the menu bar shows today.
-        let weekly = WorkCalculator.weeklyOvertime(records: week, timeOff: timeOff,
-                                                   now: now, rules: rules)
         let todayOvertime = WorkCalculator.dailyOvertime(record: today, now: now,
                                                          rules: rules, timeOff: timeOff)
         let clockedIn = today.clockOut == nil
         let urgency: Urgency
-        if WorkCalculator.hasReachedWeeklyCap(weeklyOvertime: weekly, rules: rules) {
+        if WorkCalculator.hasReachedWeeklyCap(weeklyOvertime: weeklyOvertime, rules: rules) {
             urgency = .critical                     // cap applies on or off the clock
         } else if clockedIn, WorkCalculator.isPastOvertimeCutoff(now: now, rules: rules,
                                                                  calendar: calendar) {
@@ -69,13 +73,6 @@ public enum DisplayState: Equatable {
             urgency = .normal                       // day settled
         }
         return MenuDisplay(state: .overtime(today: todayOvertime), urgency: urgency)
-    }
-
-    /// v1 compatibility wrapper — state only.
-    public static func compute(hasSession: Bool, today: WorkRecord?, week: [WorkRecord],
-                        now: Date, rules: WorkRules) -> DisplayState {
-        computeDisplay(hasSession: hasSession, today: today, week: week,
-                       now: now, rules: rules).state
     }
 
     public var menuBarText: String {

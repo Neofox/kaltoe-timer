@@ -34,21 +34,26 @@ final class DisplayStateTests: XCTestCase {
     }
 
     func testNoSession() {
-        XCTAssertEqual(DisplayState.compute(hasSession: false, today: nil, week: [],
-                                            now: d(2026, 7, 6, 9, 0), rules: rules), .noSession)
+        XCTAssertEqual(DisplayState.computeDisplay(hasSession: false, today: nil,
+                                                   weeklyOvertime: 0,
+                                                   now: d(2026, 7, 6, 9, 0), rules: rules).state,
+                       .noSession)
         XCTAssertEqual(DisplayState.noSession.menuBarText, "—")
     }
 
     func testNotClockedIn() {
-        XCTAssertEqual(DisplayState.compute(hasSession: true, today: nil, week: [],
-                                            now: d(2026, 7, 6, 8, 0), rules: rules), .notClockedIn)
+        XCTAssertEqual(DisplayState.computeDisplay(hasSession: true, today: nil,
+                                                   weeklyOvertime: 0,
+                                                   now: d(2026, 7, 6, 8, 0), rules: rules).state,
+                       .notClockedIn)
         XCTAssertEqual(DisplayState.notClockedIn.menuBarText, "--:--")
     }
 
     func testCountingDuringDay() {
         let today = WorkRecord(clockIn: d(2026, 7, 6, 8, 59), clockOut: nil, flexWorkedNet: nil)
-        let s = DisplayState.compute(hasSession: true, today: today, week: [today],
-                                     now: d(2026, 7, 6, 15, 25), rules: rules)
+        let s = DisplayState.computeDisplay(hasSession: true, today: today,
+                                            weeklyOvertime: 0,
+                                            now: d(2026, 7, 6, 15, 25), rules: rules).state
         XCTAssertEqual(s, .counting(timeLeft: 2 * 3600 + 34 * 60))
         XCTAssertEqual(s.menuBarText, "2:34")
     }
@@ -59,7 +64,7 @@ final class DisplayStateTests: XCTestCase {
         let rules = WorkRules()
         let today = WorkRecord(clockIn: d(2026, 7, 29, 9, 0), clockOut: nil, flexWorkedNet: nil)
         let display = DisplayState.computeDisplay(hasSession: true, today: today,
-                                                  week: [today],
+                                                  weeklyOvertime: 3600,
                                                   now: d(2026, 7, 29, 19, 0),
                                                   rules: rules, calendar: seoul)
         XCTAssertEqual(display.state, .overtime(today: 3600))
@@ -74,7 +79,7 @@ final class DisplayStateTests: XCTestCase {
         let today = WorkRecord(clockIn: d(2026, 7, 29, 9, 0),
                                clockOut: d(2026, 7, 29, 17, 0), flexWorkedNet: nil)
         let display = DisplayState.computeDisplay(hasSession: true, today: today,
-                                                  week: [today],
+                                                  weeklyOvertime: 0,
                                                   now: d(2026, 7, 29, 17, 30),
                                                   rules: rules, calendar: seoul)
         XCTAssertEqual(display.state, .overtime(today: -3600))
@@ -92,9 +97,10 @@ final class PhaseDisplayTests: XCTestCase {
     }
 
     func display(_ clockIn: Date, _ now: Date, clockOut: Date? = nil,
-                 r: WorkRules? = nil) -> MenuDisplay {
+                 r: WorkRules? = nil, weeklyOvertime: TimeInterval = 0) -> MenuDisplay {
         let today = WorkRecord(clockIn: clockIn, clockOut: clockOut, flexWorkedNet: nil)
-        return DisplayState.computeDisplay(hasSession: true, today: today, week: [today],
+        return DisplayState.computeDisplay(hasSession: true, today: today,
+                                           weeklyOvertime: weeklyOvertime,
                                            now: now, rules: r ?? rules, calendar: seoul)
     }
 
@@ -164,7 +170,7 @@ final class PhaseDisplayTests: XCTestCase {
         let rules = WorkRules()
         let today = WorkRecord(clockIn: d(2026, 7, 29, 9, 0), clockOut: nil, flexWorkedNet: nil)
         let display = DisplayState.computeDisplay(hasSession: true, today: today,
-                                                  week: [today],
+                                                  weeklyOvertime: 4.5 * 3600,
                                                   now: d(2026, 7, 29, 22, 30),
                                                   rules: rules, calendar: seoul)
         XCTAssertEqual(display.urgency, .critical)
@@ -180,7 +186,7 @@ final class PhaseDisplayTests: XCTestCase {
         let today = WorkRecord(clockIn: d(2026, 7, 29, 9, 0),
                                clockOut: d(2026, 7, 29, 19, 0), flexWorkedNet: nil)
         let display = DisplayState.computeDisplay(hasSession: true, today: today,
-                                                  week: [today],
+                                                  weeklyOvertime: 3600,
                                                   now: d(2026, 7, 29, 22, 30),
                                                   rules: rules, calendar: seoul)
         XCTAssertEqual(display.urgency, .normal)
@@ -196,15 +202,19 @@ final class PhaseDisplayTests: XCTestCase {
             WorkRecord(clockIn: d(2026, 7, day, 8, 0),
                        clockOut: d(2026, 7, day, 20, 0), flexWorkedNet: nil)
         }
+        // The 12h total is stated rather than derived — the gross-sum arithmetic
+        // is pinned by WorkCalculatorTests; the subject here is what
+        // computeDisplay does when handed a total sitting on the cap.
         let display = DisplayState.computeDisplay(hasSession: true, today: week.last!,
-                                                  week: week,
+                                                  weeklyOvertime: 12 * 3600,
                                                   now: d(2026, 7, 30, 20, 30),
                                                   rules: rules, calendar: seoul)
         XCTAssertEqual(display.urgency, .critical)
     }
 
     func testNoSessionAndNotClockedInAreNormalWithTimerIcon() {
-        let none = DisplayState.computeDisplay(hasSession: false, today: nil, week: [],
+        let none = DisplayState.computeDisplay(hasSession: false, today: nil,
+                                               weeklyOvertime: 0,
                                                now: d(2026, 7, 9, 9, 0), rules: rules, calendar: seoul)
         XCTAssertEqual(none, MenuDisplay(state: .noSession, urgency: .normal))
         XCTAssertEqual(DisplayState.counting(timeLeft: 60).iconName, "timer")

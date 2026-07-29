@@ -33,9 +33,14 @@ final class HeadlessState {
         let today = weekData.todayRecord(now: now)
         let week = weekData.weekIncludingManual(now: now)
         let rules = SettingsStore.rules
+        // One computation feeds both the display's cap check and the status
+        // line's own field; this used to be derived twice.
+        let weekly = WorkCalculator.weeklyOvertime(records: week,
+                                                   timeOff: weekData.timeOff,
+                                                   now: now, rules: rules)
         let display = DisplayState.computeDisplay(hasSession: hasSession,
                                                   today: today,
-                                                  week: week,
+                                                  weeklyOvertime: weekly,
                                                   timeOff: weekData.timeOff,
                                                   now: now, rules: rules)
         var leaveAt: Date?
@@ -43,13 +48,9 @@ final class HeadlessState {
             let off = WorkCalculator.timeOff(on: today.clockIn, in: weekData.timeOff)
             leaveAt = WorkCalculator.leaveTime(clockIn: today.clockIn, rules: rules, timeOff: off)
         }
-        let weekOvertime: TimeInterval? = hasSession
-            ? WorkCalculator.weeklyOvertime(records: week,
-                                            timeOff: weekData.timeOff, now: now, rules: rules)
-            : nil
         return StatusLine(display: display, hasSession: hasSession,
                           lastSync: lastSync, syncError: syncError,
                           started: hasSession ? today?.clockIn : nil,
-                          leaveAt: leaveAt, weekOvertime: weekOvertime)
+                          leaveAt: leaveAt, weekOvertime: hasSession ? weekly : nil)
     }
 }

@@ -80,17 +80,20 @@ final class AppState: ObservableObject {
     func recompute(now: Date) {
         let record = todayRecord(now: now)
         hookRunner?.evaluate(today: record, now: now)
+        // Derived once and shared. This runs every second, and the display and
+        // the notifier need the same figure — computing it twice was thousands
+        // of redundant passes an hour.
+        let weekly = WorkCalculator.weeklyOvertime(records: weekIncludingManual(now: now),
+                                                   timeOff: timeOff, now: now, rules: rules)
         let display = DisplayState.computeDisplay(hasSession: hasSession, today: record,
-                                                  week: weekIncludingManual(now: now),
+                                                  weeklyOvertime: weekly,
                                                   timeOff: timeOff,
                                                   now: now, rules: rules)
         menuDisplay = display
         menuText = display.state.menuBarText
-        limitNotifier?.evaluate(
-            weeklyOvertime: WorkCalculator.weeklyOvertime(records: weekIncludingManual(now: now),
-                                                          timeOff: timeOff, now: now, rules: rules),
-            clockedIn: record?.clockOut == nil && record != nil,
-            now: now, rules: rules)
+        limitNotifier?.evaluate(weeklyOvertime: weekly,
+                                clockedIn: record?.clockOut == nil && record != nil,
+                                now: now, rules: rules)
     }
 
     func refresh() async {
