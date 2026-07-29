@@ -140,9 +140,10 @@ compiles — so it cannot appear in a macOS error set. It is mutable global stat
 and will need the same `nonisolated(unsafe)` treatment, and there may be more
 Linux-only errors that only the Linux compiler can reveal.
 
-`./scripts/build-linux.sh` (Docker, `swift:6.1-noble`) is therefore a **required**
-verification step, not optional. At the time of writing the Docker daemon is not
-running, so implementation cannot be completed until it is started.
+Linux verification is therefore **required**, not optional, and it takes two
+commands — the product build and the test run — both listed under Verification
+below. Docker is up (29.6.2) and a pre-change baseline has been captured, so
+anything new that appears is attributable to this change.
 
 ## Error handling
 
