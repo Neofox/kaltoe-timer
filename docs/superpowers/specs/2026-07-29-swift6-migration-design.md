@@ -165,10 +165,30 @@ against itself and prove nothing.
 2. `swift test` — **136 tests, 0 failures**, unchanged from the current
    baseline. Any change in that number means behaviour moved and the migration
    overreached.
-3. `./scripts/build-linux.sh` — must succeed. Expect at least one Linux-only
-   `nonisolated(unsafe)` to be required; fix whatever the Linux compiler
-   reports.
-4. `./scripts/bundle.sh` — must succeed, and the built `Info.plist` must carry
+3. `./scripts/build-linux.sh` — must succeed. Baseline before this change:
+   succeeds, with one pre-existing warning (`CookieVault.swift:110`, unused
+   result of `createFile`) plus linker noise from `libFoundationEssentials`.
+   Neither is ours; anything new is.
+4. **The Linux test suite, which `build-linux.sh` does not run.** The script
+   builds only the `kaltoe-core` product, so it would not compile the test
+   targets — and the test targets are exactly where the
+   `Sendable`-across-module-boundary errors surfaced on macOS. The Linux
+   `CookieVault` branch and its `#if !os(macOS)` tests can only be checked this
+   way:
+
+   ```bash
+   docker run --rm --platform linux/amd64 -v "$PWD":/src -w /src -e HOME=/tmp \
+     -e TZ=Asia/Seoul swift:6.1-noble swift test --scratch-path .build-linux
+   ```
+
+   `-e TZ=Asia/Seoul` is required, not optional: the repo documents that 13
+   tests are date-shifted under the container's default UTC. Omitting it
+   produces failures that look like migration damage and are not.
+
+   Expect at least one Linux-only `nonisolated(unsafe)` here — the Linux
+   `CookieVault` branch's `sessionFileOverride` — plus whatever else the Linux
+   compiler reports.
+5. `./scripts/bundle.sh` — must succeed, and the built `Info.plist` must carry
    `LSMinimumSystemVersion` 26.0.
 
 The app is not launched as part of verification: it is in daily use, and
