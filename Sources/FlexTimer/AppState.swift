@@ -36,6 +36,10 @@ final class AppState: ObservableObject {
     private var tickTimer: Timer?
     private var refreshTimer: Timer?
     private var wakeObserver: NSObjectProtocol?
+    /// Stored to mirror `wakeObserver` and, like it, never removed: AppState
+    /// lives for the process lifetime, so there is no deinit for removal to
+    /// run in.
+    private var unlockObserver: NSObjectProtocol?
 
     var today: WorkRecord? {
         todayRecord(now: Date())
@@ -65,6 +69,15 @@ final class AppState: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in await self?.refresh() }
         }
+        // didWakeNotification only fires when the Mac wakes from sleep. A Mac
+        // that was merely locked never posts it, which is the case that had the
+        // user clicking refresh every morning.
+        unlockObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.screenIsUnlocked"),
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in await self?.resyncAfterUnlock() }
+        }
         hookRunner = HookRunner()
         limitNotifier = LimitNotifier.live()
         sessionNotifier = SessionNotifier.live { [weak self] in
@@ -75,6 +88,16 @@ final class AppState: ObservableObject {
         // intentionally notifies; a no-cookie launch starts false and never does.
         sessionNotifier?.sessionBecame(hasSession)
         Task { await refresh() }
+    }
+
+    /// Whether an unlock re-sync should try again. `attempt` is 0-based and
+    /// names the attempt that just finished. Stops as soon as a record arrives,
+    /// stops immediately when signed out — retrying a dead session only hammers
+    /// it — and stops at the ceiling.
+    static func shouldRetryUnlockResync(attempt: Int, maxAttempts: Int,
+                                        hasSession: Bool, hasTodayRecord: Bool) -> Bool {
+        guard hasSession, !hasTodayRecord else { return false }
+        return attempt + 1 < maxAttempts
     }
 
     func recompute(now: Date) {
@@ -114,6 +137,19 @@ final class AppState: ObservableObject {
             syncError = "Flex sync failed — showing last known data"
         }
         recompute(now: Date())
+    }
+
+    /// Re-sync after the screen unlocks, retrying briefly when Flex still has
+    /// no record: the user typically clocks in moments before unlocking, and
+    /// the API lags that by seconds.
+    func resyncAfterUnlock(maxAttempts: Int = 3, delay: TimeInterval = 20) async {
+        for attempt in 0..<maxAttempts {
+            await refresh()
+            guard Self.shouldRetryUnlockResync(attempt: attempt, maxAttempts: maxAttempts,
+                                               hasSession: hasSession,
+                                               hasTodayRecord: today != nil) else { return }
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+        }
     }
 
     func signIn() {

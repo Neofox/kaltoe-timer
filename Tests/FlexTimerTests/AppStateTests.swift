@@ -147,4 +147,28 @@ final class AppStateTests: XCTestCase {
         state.highContrastOnInactiveDisplays = false
         XCTAssertFalse(SettingsStore.highContrastOnInactiveDisplays)
     }
+
+    func testUnlockResyncStopsOnceARecordArrives() {
+        XCTAssertFalse(AppState.shouldRetryUnlockResync(attempt: 0, maxAttempts: 3,
+                                                        hasSession: true, hasTodayRecord: true))
+    }
+
+    /// Retrying a dead session just hammers it — the sign-in notification is
+    /// the recovery path, not another fetch.
+    func testUnlockResyncStopsImmediatelyWhenSignedOut() {
+        XCTAssertFalse(AppState.shouldRetryUnlockResync(attempt: 0, maxAttempts: 3,
+                                                        hasSession: false, hasTodayRecord: false))
+    }
+
+    func testUnlockResyncStopsAtTheCeiling() {
+        XCTAssertFalse(AppState.shouldRetryUnlockResync(attempt: 2, maxAttempts: 3,
+                                                        hasSession: true, hasTodayRecord: false))
+    }
+
+    func testUnlockResyncContinuesWhileWaitingForARecord() {
+        XCTAssertTrue(AppState.shouldRetryUnlockResync(attempt: 0, maxAttempts: 3,
+                                                       hasSession: true, hasTodayRecord: false))
+        XCTAssertTrue(AppState.shouldRetryUnlockResync(attempt: 1, maxAttempts: 3,
+                                                       hasSession: true, hasTodayRecord: false))
+    }
 }
