@@ -23,19 +23,27 @@ struct MenuRow<Trailing: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon).frame(width: 16)
-            Text(title)
-            Spacer(minLength: 8)
-            trailing
+        // A Button, not an .onTapGesture. A gesture would make the row mouse-only:
+        // no button trait for VoiceOver to announce, no focusability, no
+        // Space/Return. In the has-record state these rows are the *only* controls
+        // in the popover, so a gesture would leave Quit unreachable by keyboard.
+        // `.plain` suppresses every bit of default chrome, so the hover-driven
+        // background below still owns the appearance.
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon).frame(width: 16)
+                Text(title)
+                Spacer(minLength: 8)
+                trailing
+            }
+            .foregroundStyle(hovering ? Color.white : Color.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+            .background(hovering ? Color.accentColor : Color.clear)
         }
-        .foregroundStyle(hovering ? Color.white : Color.primary)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 5)
-        .contentShape(Rectangle())
-        .background(hovering ? Color.accentColor : Color.clear)
+        .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .onTapGesture(perform: action)
     }
 }
 

@@ -5,14 +5,21 @@ struct MenuBarView: View {
     @EnvironmentObject var state: AppState
     @State private var manualTime = Date()
 
-    /// With no record for today, the primary action moves up next to the status
-    /// message — waiting for a clock-in is exactly when you want it, and the
-    /// manual-entry field is only a fallback for when Flex is unreachable.
-    private var hasRecord: Bool { state.today != nil }
-
     var body: some View {
+        // Read `state.today` exactly once per pass. It is computed — each access
+        // mints a fresh Date() and re-reads UserDefaults — so reading it per call
+        // site would decide the two mutually exclusive primary-action sites from
+        // two different `now` values, which can disagree across a day boundary and
+        // render the action twice or not at all. One read also collapses three
+        // UserDefaults hits per second down to one on the 1-second tick.
+        let today = state.today
+        // With no record for today, the primary action moves up next to the status
+        // message — waiting for a clock-in is exactly when you want it, and the
+        // manual-entry field is only a fallback for when Flex is unreachable.
+        let hasRecord = today != nil
+
         VStack(alignment: .leading, spacing: 0) {
-            information
+            information(today)
 
             if !hasRecord {
                 separator
@@ -25,7 +32,13 @@ struct MenuBarView: View {
             weekSummary
 
             separator
-            if hasRecord { primaryAction }
+            // The separator is conditional with the action: the preference row must
+            // never sit flush against a command row, and the !hasRecord path must
+            // not get a doubled divider.
+            if hasRecord {
+                primaryAction
+                separator
+            }
             highContrastRow
             separator
             MenuRow(icon: "power", title: "Quit") { NSApp.terminate(nil) }
@@ -38,13 +51,14 @@ struct MenuBarView: View {
         Divider().padding(.vertical, 4)
     }
 
-    @ViewBuilder private var information: some View {
+    /// Takes the record rather than reading `state.today` again — see `body`.
+    @ViewBuilder private func information(_ today: WorkRecord?) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             if case .onBreak = state.menuDisplay.state {
                 row("Back at", WorkCalculator.lunchWindow(on: Date(), rules: state.rules).endAt
                     .formatted(date: .omitted, time: .shortened))
             }
-            if let today = state.today, state.hasSession {
+            if let today, state.hasSession {
                 let off = WorkCalculator.timeOff(on: today.clockIn, in: state.timeOff)
                 row("Started", today.clockIn.formatted(date: .omitted, time: .shortened))
                 row("Leave at", WorkCalculator.leaveTime(clockIn: today.clockIn, rules: state.rules,
@@ -107,7 +121,19 @@ struct MenuBarView: View {
         .padding(.horizontal, 12)
     }
 
-    private var highContrastRow: some View {
+    /// `.isToggle` is macOS 14+ and the deployment target is 13. On 13 the row still
+    /// announces as a named button carrying an on/off value, which is the part that
+    /// matters; only the trait refinement is unavailable. Split so neither path
+    /// needs an AnyView.
+    @ViewBuilder private var highContrastRow: some View {
+        if #available(macOS 14.0, *) {
+            highContrastRowBase.accessibilityAddTraits(.isToggle)
+        } else {
+            highContrastRowBase
+        }
+    }
+
+    private var highContrastRowBase: some View {
         MenuRow(icon: "circle.lefthalf.filled", title: "Stay readable when unfocused") {
             state.highContrastOnInactiveDisplays.toggle()
         } trailing: {
@@ -118,8 +144,14 @@ struct MenuBarView: View {
                 // The row owns the tap. Without this, clicking the switch itself
                 // fires both the switch and the row action, which cancel out.
                 .allowsHitTesting(false)
+                // Already inert to hit testing; hide it from VoiceOver too. The
+                // state belongs on the row, which has the name — otherwise VoiceOver
+                // reads a nameless switch sitting beside untitled text.
+                .accessibilityHidden(true)
         }
+        // Pointer tooltip. Not an accessibility label, and not a substitute for one.
         .help("Renders the icon and time at full contrast so they stay legible on the menu bar of a display that doesn't have focus.")
+        .accessibilityValue(state.highContrastOnInactiveDisplays ? "on" : "off")
     }
 
     private func row(_ label: String, _ value: String) -> some View {
