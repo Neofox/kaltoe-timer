@@ -46,6 +46,19 @@ final class LimitNotifierTests: XCTestCase {
         XCTAssertEqual(posted, [])
     }
 
+    /// Pins the cap's stamp to the *week*, not the day: this is the only cap
+    /// test that distinguishes weekly re-arm from daily. Wed 07-29 and Thu 07-30
+    /// are different days but the same Monday-start week, so a weekly stamp stays
+    /// silent while a day stamp would spam once a day for the rest of the week.
+    func testCapDoesNotReFireLaterInTheSameWeek() {
+        notifier.evaluate(weeklyOvertime: 12 * 3600, clockedIn: true,
+                          now: d(2026, 7, 29, 18, 0), rules: rules)   // Wed
+        XCTAssertEqual(posted.count, 1)
+        notifier.evaluate(weeklyOvertime: 12 * 3600, clockedIn: true,
+                          now: d(2026, 7, 30, 18, 0), rules: rules)   // Thu, same week
+        XCTAssertEqual(posted.count, 1)
+    }
+
     func testCapReArmsInANewWeek() {
         notifier.evaluate(weeklyOvertime: 12 * 3600, clockedIn: true,
                           now: d(2026, 7, 29, 18, 0), rules: rules)   // Wed
