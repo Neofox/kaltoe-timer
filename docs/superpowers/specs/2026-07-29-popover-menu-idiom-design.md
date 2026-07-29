@@ -170,6 +170,46 @@ The loop mechanics around it are trivial and integration-shaped; this predicate
 is where the actual policy lives, and it is unit-testable without a network or
 a clock.
 
+### `Sources/KaltoeCore/DisplayState.swift` — compute the weekly figure once
+
+`recompute` runs every second. It currently derives `weekIncludingManual(now:)`
+twice and the weekly overtime sum twice — once inside `computeDisplay` (on the
+overtime branch) and once for `LimitNotifier`. That is thousands of redundant
+passes an hour.
+
+Reading `computeDisplay` shows the fix is a simplification rather than a special
+case: its `week` parameter feeds nothing except that one `weeklyOvertime` call.
+Passing the total in removes the parameter entirely:
+
+```swift
+public static func computeDisplay(hasSession: Bool, today: WorkRecord?,
+                                  weeklyOvertime: TimeInterval,
+                                  timeOff: [Date: TimeInterval] = [:],
+                                  now: Date, rules: WorkRules,
+                                  calendar: Calendar = .current) -> MenuDisplay
+```
+
+`computeDisplay` becomes a pure mapper — given today's record and the week's
+total, what do we show and how urgently — and both callers already had the total
+to hand:
+
+- `AppState.recompute` derives `weekIncludingManual` and `weeklyOvertime` once
+  each, then passes the total to both `computeDisplay` and
+  `LimitNotifier.evaluate`.
+- `HeadlessState.status` already computed `weeklyOvertime` for
+  `StatusLine.weekOvertime` and separately let `computeDisplay` recompute it. It
+  now passes one value to both, so the Linux daemon sheds the same duplication.
+
+The net cost is lower everywhere rather than merely relocated: both callers were
+already computing the total unconditionally, so hoisting it above the branch
+adds nothing on the countdown path and removes a full recomputation on the
+overtime path.
+
+**`DisplayState.compute` is deleted.** That v1 compatibility wrapper has no
+production callers — only three assertions in `FormattingTests` — and it takes
+the `week` parameter being removed. Keeping it would mean reintroducing the
+duplication inside it purely to serve tests.
+
 ## Data flow
 
 ```
@@ -209,6 +249,13 @@ its matrix in `Tests/FlexTimerTests/AppStateTests.swift`: stops when a record
 arrives, stops when signed out even on the first attempt, stops at the
 ceiling, continues when there is a session and still no record below the
 ceiling.
+
+**`computeDisplay`'s signature change** — no new tests. Every existing call
+site in `FormattingTests` swaps `week:` for `weeklyOvertime:`, and the three
+cases that used the deleted `compute` wrapper move to `computeDisplay`. No
+expected value changes: the same total reaches the same branch by a different
+route, and any drift would surface as a failure in the urgency tests that
+already pin the cap boundary.
 
 **`MenuRow` and `MenuBarView`** — no tests. They are pure presentation with no
 extractable logic, and the properties that matter (does the highlight look
