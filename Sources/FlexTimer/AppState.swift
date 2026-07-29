@@ -31,6 +31,8 @@ final class AppState: ObservableObject {
     var hookRunner: HookRunner?
     /// Attached in start() only, so unit tests never touch UNUserNotificationCenter.
     var sessionNotifier: SessionNotifier?
+    /// Attached in start() only, so unit tests calling recompute never notify.
+    var limitNotifier: LimitNotifier?
     private var tickTimer: Timer?
     private var refreshTimer: Timer?
     private var wakeObserver: NSObjectProtocol?
@@ -64,6 +66,7 @@ final class AppState: ObservableObject {
             Task { @MainActor in await self?.refresh() }
         }
         hookRunner = HookRunner()
+        limitNotifier = LimitNotifier.live()
         sessionNotifier = SessionNotifier.live { [weak self] in
             Task { @MainActor in self?.signIn() }
         }
@@ -83,6 +86,11 @@ final class AppState: ObservableObject {
                                                   now: now, rules: rules)
         menuDisplay = display
         menuText = display.state.menuBarText
+        limitNotifier?.evaluate(
+            weeklyOvertime: WorkCalculator.weeklyOvertime(records: weekIncludingManual(now: now),
+                                                          timeOff: timeOff, now: now, rules: rules),
+            clockedIn: record?.clockOut == nil && record != nil,
+            now: now, rules: rules)
     }
 
     func refresh() async {
