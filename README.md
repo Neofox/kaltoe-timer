@@ -30,6 +30,8 @@ Click the menu item to open the dropdown:
 
 ## Installation
 
+Requires macOS 26 or later.
+
 Build and install the app:
 
 ```bash
@@ -195,7 +197,7 @@ swift run
 ./scripts/bundle.sh
 ```
 
-All 131 tests pass on macOS, covering work-record merging, overtime calculations, and display formatting.
+The test suite passes on macOS, covering work-record merging, overtime calculations, and display formatting.
 
 ## Linux build
 

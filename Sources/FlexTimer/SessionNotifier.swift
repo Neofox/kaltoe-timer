@@ -47,6 +47,19 @@ final class SessionNotifier {
 
 /// Retained delegate for notification clicks (UNUserNotificationCenter holds
 /// its delegate weakly).
+///
+/// Both annotations below are required, and each fails differently on its own:
+/// - without `@MainActor`, `static let shared` is unsafe global mutable state
+///   (it has a mutable `onClick`) and the Swift 6 language mode rejects it;
+/// - without `@preconcurrency`, the conformance is rejected outright —
+///   "conformance of 'NotificationClickDelegate' to protocol
+///   'UNUserNotificationCenterDelegate' crosses into main actor-isolated code".
+///
+/// `@preconcurrency` moves the isolation check from compile time to *runtime*:
+/// if a UNUserNotificationCenter callback ever arrived off the main queue, this
+/// would trap rather than race. UserNotifications delivers delegate callbacks on
+/// the main queue, which is why the arrangement is safe in practice — and why
+/// that assumption is written down here instead of left to be rediscovered.
 @MainActor
 final class NotificationClickDelegate: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
     static let shared = NotificationClickDelegate()

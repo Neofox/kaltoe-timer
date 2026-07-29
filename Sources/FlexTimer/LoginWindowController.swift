@@ -62,7 +62,11 @@ final class LoginWindowController: NSObject, WKNavigationDelegate, NSWindowDeleg
     }
 
     /// Extracts userIdHash from a V2_CUSTOMER_INFO cookie value (percent-encoded JSON).
-    static func userIdHash(fromCustomerInfoCookieValue value: String) -> String? {
+    /// `nonisolated` because the enclosing class infers @MainActor from its
+    /// WKNavigationDelegate/NSWindowDelegate conformances (both @MainActor in the
+    /// macOS 26 SDK), which would otherwise isolate this pure function too and
+    /// make nonisolated callers (the tests) an actor-isolation violation.
+    nonisolated static func userIdHash(fromCustomerInfoCookieValue value: String) -> String? {
         guard let decoded = value.removingPercentEncoding,
               let data = decoded.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
