@@ -87,24 +87,36 @@ resolves both; annotating the two call sites would not.
 `Sources/FlexTimer/SessionNotifier.swift`. `NotificationClickDelegate.shared` is
 a `static let` of a non-`Sendable` class with a mutable `var onClick`.
 
-The fix is `@preconcurrency` on the conformance:
+The fix needs **both** `@MainActor` on the class and `@preconcurrency` on the
+conformance:
 
 ```swift
+@MainActor
 final class NotificationClickDelegate: NSObject, @preconcurrency UNUserNotificationCenterDelegate {
 ```
 
-Marking the class `@MainActor` **alone does not work** — verified: it then fails
-with `conformance of 'NotificationClickDelegate' to protocol
-'UNUserNotificationCenterDelegate' crosses into main actor-isolated code`.
-`@preconcurrency` on the conformance is the idiomatic answer for a delegate
-protocol that is not yet isolation-annotated.
+Each alone is insufficient, and this was established by trying them in
+sequence. Without `@MainActor` the `static let shared` is unsafe global state.
+Adding `@MainActor` alone then fails with `conformance of
+'NotificationClickDelegate' to protocol 'UNUserNotificationCenterDelegate'
+crosses into main actor-isolated code` — hence `@preconcurrency` on the
+conformance, the idiomatic answer for a delegate protocol that is not yet
+isolation-annotated.
 
 ### Concurrency: `Sendable` on public value types
 
 Ten types, all in `KaltoeCore`:
 
 `Urgency`, `MenuDisplay`, `DisplayState`, `StoredCookie`, `ParseResult`,
-`StatusLine`, `WorkRules`, `WorkRecord`, `WeekData`, `MenuLabelStyle`.
+`StatusLine`, `WorkRules`, `WorkRecord`, `MenuLabelStyle`, and
+`FlexClient.FlexError`.
+
+Two corrections to an earlier draft of this list, caught by re-reading the
+experiment's diff rather than trusting memory: `FlexClient.FlexError` **does**
+need it (it is a public error enum thrown across an `async` boundary), and
+`WeekData` **does not** — it was in the draft list but the verified clean build
+never annotated it. Do not add it; an unnecessary public conformance is a
+promise you then have to keep.
 
 All are value types whose members are already `Sendable`, so each conformance is
 free. They need it explicitly because **public types do not get implicit
