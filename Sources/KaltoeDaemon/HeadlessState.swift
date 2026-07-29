@@ -11,8 +11,12 @@ final class HeadlessState {
     private let fetchWeek: (Date, Date) async throws -> ParseResult
 
     init(fetchWeek: ((Date, Date) async throws -> ParseResult)? = nil) {
-        let client = FlexClient()
-        self.fetchWeek = fetchWeek ?? { try await client.fetchWeek(from: $0, to: $1) }
+        if let fetchWeek {
+            self.fetchWeek = fetchWeek
+        } else {
+            let client = FlexClient()
+            self.fetchWeek = { try await client.fetchWeek(from: $0, to: $1) }
+        }
     }
     private(set) var weekData = WeekData()
     private(set) var lastSync: Date?

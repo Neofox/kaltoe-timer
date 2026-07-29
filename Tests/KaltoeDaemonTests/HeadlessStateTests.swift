@@ -35,6 +35,17 @@ final class HeadlessStateTests: XCTestCase {
         // status(now:) reads SettingsStore.rules, and todayRecord falls back to
         // SettingsStore.manualStart — isolate both from the developer's domain.
         SettingsStore.defaults = UserDefaults(suiteName: "daemon-tests-\(UUID().uuidString)")!
+        // HeadlessState.init seeds hasSession from CookieVault.load(), so without
+        // this every construction would read the developer's real session — the
+        // login keychain on macOS, ~/.config/kaltoe-timer/session.json on Linux.
+        // Mirrors useScratchVault() in Tests/KaltoeCoreTests/TestSupport.swift,
+        // which this target cannot call across the target boundary.
+        #if os(macOS)
+        CookieVault.service = "com.perso.flextimer.test-\(UUID().uuidString)"
+        #else
+        CookieVault.sessionFileOverride = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kaltoe-vault-test-\(UUID().uuidString)/session.json")
+        #endif
     }
 
     /// One open record clocking in 09:00 Wed 2026-07-29. Paired with a `now` later
@@ -101,6 +112,7 @@ final class HeadlessStateTests: XCTestCase {
         let state = state([.success(page), .failure(URLError(.timedOut))])
         await state.refresh()
         let firstSync = state.lastSync
+        XCTAssertNotNil(firstSync, "precondition: the first refresh must have succeeded")
         await state.refresh()
 
         XCTAssertEqual(state.syncError, "Flex sync failed — showing last known data")
