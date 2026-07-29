@@ -215,6 +215,12 @@ git commit -m "feat: weekly overtime cap and nightly cutoff rules"
 
 ### Task 2: Delete the mandate
 
+> **Executed together with Task 3 as one unit, with a single commit at the end
+> of Task 3.** Task 2 alone leaves the suite red — the compiler forces the
+> mandate removal to be atomic, and only Task 3's display change makes the
+> overtime assertions pass again.
+
+
 The largest task, and necessarily atomic: removing `WorkRules.weeklyOvertime`
 breaks `requiredOvertime`, which breaks `weeklyOvertime`, which breaks its three
 call sites. The compiler will not let these be separated.
@@ -401,28 +407,27 @@ net-against-quota model. Those are addressed in Task 3, when the menu bar
 switches to today's figure; if they fail at this step, leave them failing and
 note it — Task 3 fixes them.
 
-- [ ] **Step 11: Run the full suite**
+- [ ] **Step 11: Build, and expect a partly red suite**
 
 Run: `swift build && swift test`
 Expected: the package compiles. `WorkCalculatorTests` and `SettingsStoreTests`
-pass. Some `AppStateTests`/`FormattingTests` assertions on `.overtime` text may
-still fail — that is expected and is Task 3's job. Record exactly which ones
-fail in your report.
+pass. Some `AppStateTests`/`FormattingTests` assertions on `.overtime` text will
+still fail — they assert the old net-against-quota menu text. Record exactly
+which ones fail, then continue straight into Task 3, which greens them.
 
-- [ ] **Step 12: Commit**
-
-```bash
-git add Sources/KaltoeCore/WorkCalculator.swift Sources/KaltoeCore/DisplayState.swift \
-        Sources/KaltoeCore/SettingsStore.swift Sources/FlexTimer/AppState.swift \
-        Sources/FlexTimer/MenuBarView.swift Sources/KaltoeDaemon/HeadlessState.swift \
-        Tests/KaltoeCoreTests/WorkCalculatorTests.swift Tests/KaltoeCoreTests/SettingsStoreTests.swift \
-        Tests/FlexTimerTests/AppStateTests.swift
-git commit -m "feat!: remove the weekly overtime mandate, sum overtime gross"
-```
+**Do not commit here.** Tasks 2 and 3 are executed as a single unit with one
+commit at the end of Task 3, so that every commit on the branch has a green
+suite and the history stays bisectable.
 
 ---
 
 ### Task 3: Today's overtime, and urgency from the limits
+
+> **Executed together with Task 3 as one unit, with a single commit at the end
+> of Task 3.** Task 2 alone leaves the suite red — the compiler forces the
+> mandate removal to be atomic, and only Task 3's display change makes the
+> overtime assertions pass again.
+
 
 **Files:**
 
@@ -573,10 +578,16 @@ Expected: PASS, output pristine.
 
 - [ ] **Step 8: Commit**
 
+This single commit covers Tasks 2 and 3 together. The suite must be fully green
+before you run it.
+
 ```bash
-git add Sources/KaltoeCore/DisplayState.swift Tests/KaltoeCoreTests/FormattingTests.swift \
-        Tests/FlexTimerTests/AppStateTests.swift
-git commit -m "feat: menu bar shows today's overtime, urgency tracks the limits"
+git add Sources/KaltoeCore/WorkCalculator.swift Sources/KaltoeCore/DisplayState.swift \
+        Sources/KaltoeCore/SettingsStore.swift Sources/FlexTimer/AppState.swift \
+        Sources/FlexTimer/MenuBarView.swift Sources/KaltoeDaemon/HeadlessState.swift \
+        Tests/KaltoeCoreTests/WorkCalculatorTests.swift Tests/KaltoeCoreTests/SettingsStoreTests.swift \
+        Tests/KaltoeCoreTests/FormattingTests.swift Tests/FlexTimerTests/AppStateTests.swift
+git commit -m "feat!: invert overtime from weekly mandate to weekly cap"
 ```
 
 ---
