@@ -17,7 +17,7 @@ struct FlexTimerApp: App {
             MenuBarView().environmentObject(state)
         } label: {
             MenuBarLabel(display: state.menuDisplay, text: state.menuText,
-                         highContrast: SettingsStore.highContrastOnInactiveDisplays)
+                         highContrast: state.highContrastOnInactiveDisplays)
         }
         .menuBarExtraStyle(.window)
     }

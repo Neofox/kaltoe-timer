@@ -149,4 +149,16 @@ final class AppStateTests: XCTestCase {
         state.recompute(now: d(2026, 1, 2, 13, 0))
         XCTAssertEqual(state.menuText, "OT -3:55")
     }
+
+    func testHighContrastToggleWritesThroughToSettings() {
+        SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
+        let state = AppState()
+        XCTAssertFalse(state.highContrastOnInactiveDisplays)
+
+        state.highContrastOnInactiveDisplays = true
+        XCTAssertTrue(SettingsStore.highContrastOnInactiveDisplays)
+
+        state.highContrastOnInactiveDisplays = false
+        XCTAssertFalse(SettingsStore.highContrastOnInactiveDisplays)
+    }
 }

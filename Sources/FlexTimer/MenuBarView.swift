@@ -58,6 +58,9 @@ struct MenuBarView: View {
             } else {
                 Button("Sign in to Flex…") { state.signIn() }
             }
+            Toggle("High contrast on other displays",
+                   isOn: $state.highContrastOnInactiveDisplays)
+                .toggleStyle(.checkbox)
             Button("Quit") { NSApp.terminate(nil) }
         }
         .padding(12)
