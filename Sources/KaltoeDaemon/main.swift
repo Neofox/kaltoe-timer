@@ -39,15 +39,14 @@ Task { @MainActor in
         if line != lastEmitted || now.timeIntervalSince(lastEmitAt) >= 60 {
             if let data = try? encoder.encode(line),
                let json = String(data: data, encoding: .utf8) {
-                print(json)
-                // fflush(nil) flushes every open output stream. Glibc imports
-                // `stdout` as a mutable global var, which the Swift 6 language
-                // mode rejects as shared mutable state; Darwin does not, so this
-                // only breaks on Linux. `nil` avoids naming the global at all.
-                // stdout is the daemon's only buffered stream, and the flush is
-                // load-bearing: the tray reads NDJSON over a pipe, which glibc
-                // fully buffers.
-                fflush(nil)
+                // Write straight to fd 1 rather than `print`: C stdio would need
+                // an explicit flush (the tray reads this over a fully-buffered
+                // pipe), and flushing is not safe here — the stdin reader thread
+                // above holds stdin's stream lock inside getline for the life of
+                // the daemon, so fflush(nil) would deadlock walking every stream.
+                // `try?` keeps `print`'s silent-failure behaviour once the tray
+                // exits; FileHandle.write(_:) would trap instead.
+                try? FileHandle.standardOutput.write(contentsOf: Data((json + "\n").utf8))
                 lastEmitted = line
                 lastEmitAt = now
             }
