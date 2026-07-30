@@ -164,9 +164,13 @@ public struct WeekSummary: Equatable, Sendable {
     /// it, which is the failure the signed-overtime layout was rejected to avoid.
     /// `overtime` therefore comes from `dailyOvertime` above.
     ///
-    /// The consequence, accepted: the orange segment is drawn from `worked` against
-    /// `target`, so after a late start it can lead the pill by up to the untaken
-    /// break. The numbers stay consistent; only the sliver is early.
+    /// The consequence, accepted, and it belongs to the **accent fill**, not the
+    /// orange one: the fill is drawn from `worked` against `target`, and after a
+    /// start past the lunch window `worked` carries no break deduction, so the fill
+    /// can reach the notch up to a full break early while the pill is still counting
+    /// down. The orange segment is not affected — its width is `overtime`, i.e.
+    /// `dailyOvertime`, the same figure the pill uses, so it agrees with the pill and
+    /// if anything lags it. The numbers stay consistent; only the fill is early.
     private static func netWorked(_ record: WorkRecord, target: TimeInterval, now: Date,
                                   rules: WorkRules, timeOff: TimeInterval,
                                   calendar: Calendar) -> TimeInterval {

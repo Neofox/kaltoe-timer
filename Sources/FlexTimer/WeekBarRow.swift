@@ -3,10 +3,10 @@ import KaltoeCore
 
 /// One day of the week strip: label, bar, hours worked.
 ///
-/// The bar is blue up to the day's target and orange past it, with a notch at the
-/// target, so each row carries its own overtime rather than only contributing to
-/// the total below. Hours worked sits on the right; signed overtime would state
-/// the orange segment's fact twice and cost track width.
+/// The bar is accent-coloured up to the day's target and orange past it, with a
+/// notch at the target, so each row carries its own overtime rather than only
+/// contributing to the total below. Hours worked sits on the right; signed overtime
+/// would state the orange segment's fact twice and cost track width.
 struct WeekBarRow: View {
     let day: DaySummary
 
@@ -80,7 +80,11 @@ struct WeekBarRow: View {
         guard let worked = day.worked else {
             return day.isDayOff ? "\(day.label), day off" : "\(day.label), no record"
         }
-        var text = "\(day.label), worked \(Formatting.hm(worked))"
+        // The target is stated in every case, not only when short of it. Sighted
+        // users get it free from the notch's position — it is the reference point
+        // that makes the bar mean anything — and without it VoiceOver hears a bare
+        // number with nothing to judge it against.
+        var text = "\(day.label), worked \(Formatting.hm(worked)) of \(Formatting.hm(day.target))"
         if day.overtime > 0 { text += ", \(Formatting.hm(day.overtime)) over target" }
         if day.isOngoing { text += ", still on the clock" }
         return text
