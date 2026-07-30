@@ -68,19 +68,22 @@ final class LabelAppearanceTests: XCTestCase {
 
     func testWorkingDayTakesItsFillFromTheSpectrum() {
         let c = LabelPalette.resolve(progress: 0, phase: .working)
-        XCTAssertEqual(c.fill, LabelPalette.stops[0])
+        XCTAssertEqual(c.fill, .pair(LabelPalette.stops[0]))
         XCTAssertNil(c.glyphTint)
         XCTAssertFalse(c.dashed)
     }
 
+    /// The alerting colours defer to the system rather than carrying tuned values, so
+    /// the label's orange past target is the same orange the popover's week strip
+    /// already draws.
     func testOvertimeAndLimitAreFlatAndTintTheGlyph() {
         let ot = LabelPalette.resolve(progress: 1, phase: .overtime)
-        XCTAssertEqual(ot.fill, LabelPalette.overtimeColour)
-        XCTAssertEqual(ot.glyphTint, LabelPalette.overtimeColour)
+        XCTAssertEqual(ot.fill, .systemOrange)
+        XCTAssertEqual(ot.glyphTint, .systemOrange)
 
         let limit = LabelPalette.resolve(progress: 1, phase: .atLimit)
-        XCTAssertEqual(limit.fill, LabelPalette.limitColour)
-        XCTAssertEqual(limit.glyphTint, LabelPalette.limitColour)
+        XCTAssertEqual(limit.fill, .systemRed)
+        XCTAssertEqual(limit.glyphTint, .systemRed)
     }
 
     /// Progress is ignored past target — the colour is discrete there, so a
@@ -88,18 +91,20 @@ final class LabelAppearanceTests: XCTestCase {
     func testOvertimeColourIgnoresProgress() {
         XCTAssertEqual(LabelPalette.resolve(progress: 0.2, phase: .overtime).fill,
                        LabelPalette.resolve(progress: 1, phase: .overtime).fill)
+        XCTAssertEqual(LabelPalette.resolve(progress: 0.2, phase: .overtime).fill,
+                       .systemOrange)
     }
 
     func testIdleIsDashedAndNeutral() {
         let c = LabelPalette.resolve(progress: 0, phase: .idle)
         XCTAssertTrue(c.dashed)
-        XCTAssertEqual(c.fill, LabelPalette.neutral)
+        XCTAssertEqual(c.fill, .pair(LabelPalette.neutral))
     }
 
     func testSettledIsNeutralAndNotDashed() {
         let c = LabelPalette.resolve(progress: 0.7, phase: .settled)
         XCTAssertFalse(c.dashed)
-        XCTAssertEqual(c.fill, LabelPalette.neutral)
+        XCTAssertEqual(c.fill, .pair(LabelPalette.neutral))
         XCTAssertNil(c.glyphTint)
     }
 

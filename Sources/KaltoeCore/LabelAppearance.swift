@@ -47,6 +47,24 @@ public struct ColourPair: Equatable, Sendable {
     }
 }
 
+/// A fill the view resolves. The `.system` cases exist so the label's alerting
+/// colours are the *same* colours the popover already draws rather than tuned
+/// near-neighbours — `KaltoeCore` cannot name SwiftUI colours, so it names the
+/// intent and `MenuBarLabel` resolves it.
+///
+/// `.systemOrange` is literally the week strip's over-target colour
+/// (`WeekBarRow.swift:70`), and both are what the shipping pill already uses
+/// (`MenuBarLabel.swift:26`). `.systemRed` has nothing to match in the strip, which
+/// has no limit colour at all — so the red is the label's own, taken from the system
+/// only so that the two alerting colours stay consistent with each other. Copying
+/// Apple's hex values here instead would reintroduce exactly the near-match that
+/// this removes, and would drift silently whenever they retune them.
+public enum LabelFill: Equatable, Sendable {
+    case pair(ColourPair)
+    case systemOrange
+    case systemRed
+}
+
 /// What the label's colour depends on. Narrower than `DisplayState` because colour
 /// does not care *which* phase of the working day you are in, only that you are in
 /// one — the spectrum handles the rest from progress.
@@ -80,10 +98,11 @@ public enum LabelPhase: Equatable, Sendable {
 public enum LabelPalette {
     public struct Colours: Equatable, Sendable {
         /// The arc stroke, or the capsule's filled portion.
-        public var fill: ColourPair
+        public var fill: LabelFill
         /// `nil` means the glyph follows the menu bar's own foreground colour.
-        public var glyphTint: ColourPair?
-        /// The unfilled remainder.
+        public var glyphTint: LabelFill?
+        /// The unfilled remainder. A `ColourPair` and not a `LabelFill`: it is a faint
+        /// wash with no system counterpart to defer to.
         public var track: ColourPair
         /// Draw the track dashed — used where there is no progress to show.
         public var dashed: Bool
@@ -100,13 +119,9 @@ public enum LabelPalette {
         ColourPair(light: RGBA(0xb0741a), dark: RGBA(0xe8a02a)),
     ]
 
-    /// The label's own, tuned to read as the same orange-past-target vocabulary the
-    /// popover's week strip already speaks — not the same values as it: `WeekBarRow`
-    /// fills its over-target segment with the system `Color.orange`, and has no limit
-    /// colour at all. Making the strip consume these constants is a separate change
-    /// that has not happened.
-    static let overtimeColour = ColourPair(light: RGBA(0xc96a12), dark: RGBA(0xe8862a))
-    static let limitColour = ColourPair(light: RGBA(0xb52a22), dark: RGBA(0xe0433a))
+    /// The alerting colours are not constants here at all — they are `LabelFill`'s
+    /// `.systemOrange`/`.systemRed`, so past target the label draws the popover's own
+    /// orange rather than a tuned near-neighbour of it.
     static let neutral = ColourPair(light: RGBA(0x6c6c74), dark: RGBA(0xa0a0a8))
     static let emptyTrack = ColourPair(light: RGBA(0x000000, alpha: 0.16),
                                        dark: RGBA(0xffffff, alpha: 0.22))
@@ -114,25 +129,25 @@ public enum LabelPalette {
     public static func resolve(progress: Double, phase: LabelPhase) -> Colours {
         switch phase {
         case .idle:
-            return Colours(fill: neutral, glyphTint: nil, track: emptyTrack, dashed: true)
+            return Colours(fill: .pair(neutral), glyphTint: nil, track: emptyTrack, dashed: true)
         case .working:
             // No glyph tint through the working day: all the colour lives in the
             // fill and the glyph stays the bar's own colour, which is what keeps
             // the label quiet on either appearance. The spec left this
             // underspecified — the mockup tinted the late-afternoon figure — and
             // this is the restrained reading of it.
-            return Colours(fill: spectrum(progress), glyphTint: nil,
+            return Colours(fill: .pair(spectrum(progress)), glyphTint: nil,
                            track: emptyTrack, dashed: false)
         case .overtime:
             // Progress is ignored past target: the colour is discrete there, so a
             // ring that stopped short cannot come out a blended orange.
-            return Colours(fill: overtimeColour, glyphTint: overtimeColour,
+            return Colours(fill: .systemOrange, glyphTint: .systemOrange,
                            track: emptyTrack, dashed: false)
         case .atLimit:
-            return Colours(fill: limitColour, glyphTint: limitColour,
+            return Colours(fill: .systemRed, glyphTint: .systemRed,
                            track: emptyTrack, dashed: false)
         case .settled:
-            return Colours(fill: neutral, glyphTint: nil, track: emptyTrack, dashed: false)
+            return Colours(fill: .pair(neutral), glyphTint: nil, track: emptyTrack, dashed: false)
         }
     }
 
