@@ -57,6 +57,19 @@ final class HeadlessStateTests: XCTestCase {
                     dayOffDates: [], timeOff: [:])
     }
 
+    /// The canonical week, for the fields the tray's new rows read. Thursday is a
+    /// day off; Friday 2026-07-31 is open and is the last Friday of July.
+    private var fullWeek: ParseResult {
+        ParseResult(
+            records: [
+                WorkRecord(clockIn: d(2026, 7, 27, 9, 0), clockOut: d(2026, 7, 27, 18, 35),
+                           flexWorkedNet: nil),
+                WorkRecord(clockIn: d(2026, 7, 31, 9, 12), clockOut: nil, flexWorkedNet: nil),
+            ],
+            dayOffDates: [Calendar.current.startOfDay(for: d(2026, 7, 30, 0, 0))],
+            timeOff: [:])
+    }
+
     private func state(_ outcomes: [Result<ParseResult, FlexClient.FlexError>]) -> HeadlessState {
         let script = Script(outcomes)
         return HeadlessState { (_, _) throws(FlexClient.FlexError) in try script.next() }
@@ -120,5 +133,51 @@ final class HeadlessStateTests: XCTestCase {
         XCTAssertEqual(state.lastSync, firstSync, "a failed sync must not move lastSync")
         XCTAssertEqual(state.weekData.records.count, 1)
         XCTAssertTrue(state.hasSession, "a transport error is not a session error")
+    }
+
+    func testStatusLineCarriesThePerDayRows() async throws {
+        let state = state([.success(fullWeek)])
+        await state.refresh()
+
+        let line = state.status(now: d(2026, 7, 31, 14, 41))
+        let days = try XCTUnwrap(line.days)
+        XCTAssertEqual(days.count, 5)
+        XCTAssertEqual(days.map(\.label), ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        XCTAssertEqual(days[0].worked, 8 * 3600 + 35 * 60)
+        XCTAssertEqual(days[0].overtime, 35 * 60)
+        XCTAssertNil(days[2].worked)                       // no Wednesday record
+        XCTAssertTrue(days[3].isDayOff)                    // Thursday
+        XCTAssertTrue(days[4].isOngoing)                   // Friday, still clocked in
+        XCTAssertEqual(days[4].target, 6 * 3600)           // family day
+        XCTAssertEqual(line.targetNote, "Target 6:00 · family day")
+        XCTAssertEqual(line.weekOvertimeCap, 12 * 3600)
+    }
+
+    /// Seconds would make the daemon emit every second instead of every minute
+    /// (main.swift emits on change), so every interval is minute-truncated.
+    func testPerDayIntervalsAreTruncatedToWholeMinutes() async {
+        let state = state([.success(fullWeek)])
+        await state.refresh()
+
+        // 09:12 to 14:41:37 is 5:29:37 elapsed, less the full hour of lunch.
+        let line = state.status(now: d(2026, 7, 31, 14, 41).addingTimeInterval(37))
+        XCTAssertEqual(line.days?[4].worked, 4 * 3600 + 29 * 60)
+        XCTAssertEqual(line.days?.allSatisfy { ($0.worked ?? 0) % 60 == 0 }, true)
+    }
+
+    /// Mirrors the existing gate on started/leaveAt/weekOvertime: refreshing
+    /// successfully first is what makes nil discriminating.
+    func testSessionExpiredGatesTheNewFieldsToo() async {
+        let state = state([.success(fullWeek), .failure(FlexClient.FlexError.sessionExpired)])
+        await state.refresh()
+        await state.refresh()
+
+        XCTAssertFalse(state.hasSession)
+        XCTAssertEqual(state.weekData.records.count, 2, "week data must survive, or nil proves nothing")
+
+        let line = state.status(now: d(2026, 7, 31, 14, 41))
+        XCTAssertNil(line.days)
+        XCTAssertNil(line.targetNote)
+        XCTAssertNil(line.weekOvertimeCap)
     }
 }

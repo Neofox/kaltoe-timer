@@ -46,16 +46,13 @@ final class HeadlessState {
 
     func status(now: Date) -> StatusLine {
         let today = weekData.todayRecord(now: now)
-        let week = weekData.weekIncludingManual(now: now)
         let rules = SettingsStore.rules
-        // One computation feeds both the display's cap check and the status
-        // line's own field; this used to be derived twice.
-        let weekly = WorkCalculator.weeklyOvertime(records: week,
-                                                   timeOff: weekData.timeOff,
-                                                   now: now, rules: rules)
+        // One computation feeds the display's cap check, the status line's own
+        // total, and the tray's per-day rows.
+        let summary = WeekSummary.compute(from: weekData, now: now, rules: rules)
         let display = DisplayState.computeDisplay(hasSession: hasSession,
                                                   today: today,
-                                                  weeklyOvertime: weekly,
+                                                  weeklyOvertime: summary.overtime,
                                                   timeOff: weekData.timeOff,
                                                   now: now, rules: rules)
         var leaveAt: Date?
@@ -66,6 +63,8 @@ final class HeadlessState {
         return StatusLine(display: display, hasSession: hasSession,
                           lastSync: lastSync, syncError: syncError,
                           started: hasSession ? today?.clockIn : nil,
-                          leaveAt: leaveAt, weekOvertime: hasSession ? weekly : nil)
+                          leaveAt: leaveAt,
+                          weekOvertime: hasSession ? summary.overtime : nil,
+                          summary: hasSession ? summary : nil)
     }
 }
