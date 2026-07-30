@@ -25,8 +25,16 @@ The label returns to the plain (non-pill) style after clock-out or outside these
 Click the menu item to open the dropdown:
 
 - While on break, shows a "Back at" row with the time work resumes (end of the lunch window)
-- Shows today's work record (start time, end time if clocked out, and the week's overtime against the 12h cap)
+- Shows today's work record (start time, leave time, time left), then the week strip and the week's overtime against the 12h cap
+- On a shortened day, adds a caption under `Leave at` naming what shortened it (see below)
+- When today is a day off, reads "Day off" instead of "Not clocked in yet"
 - If no Flex record exists for today, offers a start-time picker (works offline)
+
+**Week strip**: one row per weekday, Monday to Friday, always five rows. Each row is a track — accent-coloured up to that day's work target, orange past it, with a 1pt notch marking the target and the hours worked printed on the right. So each row carries its own overtime rather than only feeding the total beneath it. The day you're currently clocked in on renders at reduced opacity, with a dashed outline continuing to its target. A day off reads `off` and a weekday with no record shows `·`; both render dimmed. All five bars share a fixed 10-hour scale so they're comparable, so a day beyond that saturates at a full bar — the exact figure is still printed beside it. The strip stays hidden until some day in the week has hours, and once shown it survives session expiry rather than blanking.
+
+**Monday–Friday only — weekend work is deliberately not in the strip**. A Saturday or Sunday record still counts toward `Week OT` but gets no row, so nine hours worked on a Saturday adds `+1:00` to the total with nothing on screen explaining it. That predates the strip (weekend days get the same 8h target as weekdays, which nobody chose); the strip only makes it noticeable. Recorded as follow-up 23, written up under "Weekends, and what this deliberately leaves alone" in `docs/superpowers/specs/2026-07-30-popover-week-graph-design.md`.
+
+**Shortened days**: approved time off and family day (the last Friday of the month) both cut the day's target, which moves `Leave at` earlier with nothing on screen to say why. When either applies, a caption appears under `Leave at` — `Target 4:00 · family day, time off`. The lunch break also disappears once the target falls to half a day or less (policy: a 4h half-day has no lunch), so `Leave at` can move five hours earlier where the target dropped only four — the caption accounts for those four hours and never names the vanished break.
 
 ## Installation
 

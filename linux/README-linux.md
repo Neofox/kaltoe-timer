@@ -52,6 +52,39 @@ within 10 minutes of leave time or once you hit a company limit. The
 limit notifications are macOS-only; on Linux you get the colour change
 without the desktop notification.
 
+The menu carries the same information as the Mac dropdown — today's record,
+then one row per weekday, then the week's overtime against the cap:
+
+    Started 09:12
+    Leave at 13:12
+      Target 4:00 · family day, time off
+    Time left 0:31:00
+    ---------------------
+    Mon   8:35   +0:35
+    Tue   9:10   +1:10
+    Wed   7:40
+    Thu   off
+    Fri   4:29   · on the clock
+    ---------------------
+    Week OT +1:45 / 12:00
+
+Figures, not bars: tray rows are `Gtk.MenuItem` labels serialised over
+DBusMenu, which carries text and icons but no custom widgets, so the Mac
+popover's drawn bar isn't available here. That's why these rows spell overtime
+out (`+0:35`) where the Mac shows it as an orange segment — a day that stayed
+short of its target shows its hours alone. `· on the clock` marks the day
+still being worked, which can be an earlier weekday whose record was never
+closed rather than today. A day off reads `off`; there is no separate "Day
+off" line as on the Mac. As on the Mac the rows are Monday–Friday, weekend
+work gets no row, and the whole block stays hidden until some day in the week
+has hours — plus it hides while signed out, the way `Week OT` already did,
+where the Mac popover keeps the last known rows on screen.
+
+The indented `Target …` caption appears only when approved time off or family
+day (the last Friday of the month) shortened today, and names which. One
+deliberate difference from macOS: before you clock in on such a day the tray
+shows that caption on its own, where the Mac popover shows nothing.
+
 ## Hooks
 
 Run your own scripts when 칼퇴타이머 detects clock-in (출근) or clock-out
