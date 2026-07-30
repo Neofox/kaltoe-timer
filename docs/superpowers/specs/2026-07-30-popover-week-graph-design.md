@@ -55,7 +55,13 @@ Time left          00:31:00
 ```
 
 It costs nothing on an ordinary day, and it attaches the explanation to the row
-that actually surprised the user. An always-present `Target` row and a per-cause
+that actually surprised the user.
+
+The string is pinned as `Target <hm> · <reasons>`, reasons being `family day`
+and/or `time off`, comma-joined in that order and carrying no amount. Two
+mockups used a shorter `4h day · …`; the pinned form wins because the same string
+is shipped to the Linux tray verbatim (below), and it is the form that was
+reviewed there. An always-present `Target` row and a per-cause
 deduction row were both mocked up and rejected — the former adds a row to every
 ordinary day, the latter can grow to two rows and never states the target the
 deductions add up to.
@@ -183,7 +189,7 @@ Wed   7:40
 Thu   off
 Fri   4:29   · today
 ---------------------
-Week OT +1:45
+Week OT +1:45 / 12:00
 ```
 
 Rows here **do** carry signed overtime, because without a bar there is nothing
@@ -206,9 +212,24 @@ from a test on that machine.
 `weekOvertime` already is:
 
 ```swift
-public var days: [DayLine]?      // label, worked, target, overtime, isDayOff, isOngoing
+public var days: [DayLine]?
 public var targetNote: String?
+public var weekOvertimeCap: Int?
+
+public struct DayLine: Codable, Equatable, Sendable {
+    public var label: String
+    public var worked: Int?      // seconds, whole minutes; nil = no record
+    public var target: Int       // seconds
+    public var overtime: Int     // seconds
+    public var isDayOff: Bool
+    public var isOngoing: Bool
+}
 ```
+
+`weekOvertimeCap` is not strictly needed by this change, but the tray currently
+renders `Week OT +1:45` where the popover renders `1:45 / 12:00`, and shipping
+the cap is one field on a struct already being extended. It closes the
+`StatusLine` half of follow-up item 2.
 
 `DayLine`'s intervals are **integer seconds truncated to the whole minute**, for
 the same reason `weekOvertime` is (`StatusLine.swift:31`): the daemon emits on
