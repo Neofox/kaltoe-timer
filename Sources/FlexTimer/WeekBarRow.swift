@@ -30,12 +30,26 @@ struct WeekBarRow: View {
                 .monospacedDigit()
                 .frame(width: 36, alignment: .trailing)
         }
-        .opacity(day.worked == nil ? 0.55 : 1)
+        .opacity(emphasis)
         // One element with one sentence, or VoiceOver reads a label, an unnamed
         // shape and a bare number as three stops. The orange segment is the only
         // place overtime appears on screen, so it has to be spoken here.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenLabel)
+    }
+
+    /// Emphasis for the whole row, brightest where it is live.
+    ///
+    /// The day you are on is the row you opened the popover to read, so it draws at
+    /// full strength and finished days recede behind it. The dashed outline is what
+    /// says "in progress" — a faded fill was the wrong signal for that, and having
+    /// it on today alone made the live row the dimmest thing in the strip.
+    ///
+    /// Applied to the row rather than to each shape so a finished day's fill, its
+    /// overtime segment and its figure all recede together.
+    private var emphasis: Double {
+        guard day.worked != nil else { return 0.55 }   // no record, or a day off
+        return day.isOngoing ? 1 : 0.75
     }
 
     private var track: some View {
@@ -50,7 +64,7 @@ struct WeekBarRow: View {
                                       style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
                         .frame(width: x(day.target), height: trackHeight)
                 }
-                Capsule().fill(Color.accentColor.opacity(day.isOngoing ? 0.55 : 1))
+                Capsule().fill(Color.accentColor)
                     .frame(width: x(min(worked, day.target)), height: trackHeight)
                 if day.overtime > 0 {
                     Capsule().fill(Color.orange)
