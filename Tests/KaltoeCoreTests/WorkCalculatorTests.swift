@@ -328,4 +328,73 @@ final class WorkCalculatorTests: XCTestCase {
                                                  now: d(2026, 7, 31, 16, 0), rules: short),
                        30 * 60)
     }
+
+    // MARK: dayProgress
+
+    // Canonical day: clock in 08:59 → leave 17:59, a 9h span (8h target + 1h break).
+    // 13:29 is 4h30 in, exactly half.
+    func testDayProgressIsHalfwayAtMidSpan() {
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 6, 8, 59),
+                                                 now: d(2026, 7, 6, 13, 29), rules: rules),
+                       0.5, accuracy: 0.0001)
+    }
+
+    /// The denominator is the whole clock-in→leave span, not the 8h target. Dividing
+    /// by the target alone would read 1.0 here, an hour before you may leave.
+    func testDayProgressAtTargetButNotLeaveTimeIsNotComplete() {
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 6, 8, 59),
+                                                 now: d(2026, 7, 6, 16, 59), rules: rules),
+                       8.0 / 9.0, accuracy: 0.0001)
+    }
+
+    func testDayProgressIsZeroAtClockIn() {
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 6, 8, 59),
+                                                 now: d(2026, 7, 6, 8, 59), rules: rules), 0)
+    }
+
+    func testDayProgressClampsBeforeClockInAndPastLeaveTime() {
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 6, 8, 59),
+                                                 now: d(2026, 7, 6, 7, 0), rules: rules), 0)
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 6, 8, 59),
+                                                 now: d(2026, 7, 6, 23, 0), rules: rules), 1)
+    }
+
+    /// Family day (last Friday of the month) cuts the target to 6h; the break
+    /// survives because 6h is still over half a day, so the span is 7h. 12:30 is
+    /// 3h30 in.
+    func testDayProgressUsesTheFamilyDayShortenedSpan() {
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 31, 9, 0),
+                                                 now: d(2026, 7, 31, 12, 30), rules: rules),
+                       0.5, accuracy: 0.0001)
+    }
+
+    /// 4h of time off drops the target to 4h, which is *not* over half a day, so
+    /// `breakDuration` yields no lunch and the span is 4h — not 5h. Deriving the
+    /// span from `leaveTime` is what inherits that rule.
+    func testDayProgressLosesTheBreakOnAHalfDay() {
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 6, 9, 0),
+                                                 now: d(2026, 7, 6, 11, 0), rules: rules,
+                                                 timeOff: 4 * 3600),
+                       0.5, accuracy: 0.0001)
+    }
+
+    /// Hostile settings reach here through `SettingsStore.rules`. A zero span
+    /// would divide to ±inf and a non-finite target to NaN; both must yield 0,
+    /// because the renderer may never see one.
+    func testDayProgressIsZeroWhenTheSpanCollapses() {
+        var zero = rules
+        zero.dailyWork = 0
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 6, 9, 0),
+                                                 now: d(2026, 7, 6, 14, 0), rules: zero), 0)
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 6, 9, 0),
+                                                 now: d(2026, 7, 6, 14, 0), rules: rules,
+                                                 timeOff: 8 * 3600), 0)
+    }
+
+    func testDayProgressIsZeroForANonFiniteTarget() {
+        var wild = rules
+        wild.dailyWork = .infinity
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 6, 9, 0),
+                                                 now: d(2026, 7, 6, 14, 0), rules: wild), 0)
+    }
 }

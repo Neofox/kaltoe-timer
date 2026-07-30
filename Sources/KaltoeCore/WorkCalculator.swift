@@ -36,6 +36,35 @@ public enum WorkCalculator {
         leaveTime(clockIn: clockIn, rules: rules, timeOff: timeOff).timeIntervalSince(now)
     }
 
+    /// How far the day has run from clock-in to leave time, as `0...1`.
+    ///
+    /// The denominator is the **whole** clock-in→leave-time span — `target + break` —
+    /// taken from `leaveTime` rather than re-added here. Dividing by the target alone
+    /// would reach 1.0 a full hour early, and deriving the span from `leaveTime`
+    /// inherits `breakDuration`'s half-day rule instead of duplicating it, so a 4h
+    /// time-off day scales to its real 4h span and not a phantom 5h one.
+    ///
+    /// Measures distance to leave time, not work completed, so it keeps advancing
+    /// through lunch instead of stalling for an hour. That is what keeps the menu
+    /// bar's fill monotonic while the countdown beside it switches from
+    /// counting-to-lunch to counting-to-leave.
+    ///
+    /// Total by construction, like `StatusLine.secondsFlooredToMinute`: `dailyWork`
+    /// comes from a raw `Double` in `UserDefaults` that the README documents a
+    /// `defaults write` for. A collapsed span (`dailyWorkHours 0`, or time off at or
+    /// above the target — `dailyTarget` floors at zero and `breakDuration` then
+    /// yields no lunch either) and a non-finite one both return 0 rather than
+    /// handing `±inf` or `NaN` to the renderer.
+    public static func dayProgress(clockIn: Date, now: Date, rules: WorkRules,
+                                   timeOff: TimeInterval = 0) -> Double {
+        let span = leaveTime(clockIn: clockIn, rules: rules, timeOff: timeOff)
+            .timeIntervalSince(clockIn)
+        guard span.isFinite, span > 0 else { return 0 }
+        let elapsed = now.timeIntervalSince(clockIn)
+        guard elapsed.isFinite else { return 0 }
+        return min(1, max(0, elapsed / span))
+    }
+
     /// The day's break: full lunch normally; none when approved time off cuts
     /// the target to a half day or less (per policy: a 4h half-day has no lunch).
     public static func breakDuration(target: TimeInterval, rules: WorkRules) -> TimeInterval {
