@@ -54,7 +54,13 @@ struct WeekBarRow: View {
                     .frame(width: x(min(worked, day.target)), height: trackHeight)
                 if day.overtime > 0 {
                     Capsule().fill(Color.orange)
-                        .frame(width: x(day.overtime), height: trackHeight)
+                        // Clamped against the remaining track, not just the scale:
+                        // x() bounds the offset and the width separately, so their
+                        // sum could run past 178pt and draw over the hours figure.
+                        // A day beyond the 10h scale therefore saturates at a full
+                        // bar; the exact figure is printed beside it regardless.
+                        .frame(width: min(x(day.overtime), trackWidth - x(day.target)),
+                               height: trackHeight)
                         .offset(x: x(day.target))
                 }
             }
