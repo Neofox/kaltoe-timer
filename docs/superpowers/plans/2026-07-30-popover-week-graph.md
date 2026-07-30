@@ -184,6 +184,13 @@ lunch window, capped at the day's break."
 - Consumes: `WorkCalculator.timeOff(on:in:calendar:)`, `WorkCalculator.dailyTarget`, `WorkCalculator.isFamilyDay`, `Formatting.hm` (all existing).
 - Produces: `TargetNote.compose(on:rules:timeOff:calendar:) -> String?`, used by Task 3 and consumed as `WeekSummary.targetNote`.
 
+**Deviation from the spec, deliberate:** the spec names this
+`targetReduction(on:rules:timeOff:)` returning the target *plus a list of
+reasons*, with the string composed from it afterwards. Nothing needs the reasons
+separately — the only consumer is the caption — so the intermediate tuple is
+dropped and the string is composed in one step. If a caller ever needs the
+reasons structurally, split it then.
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `Tests/KaltoeCoreTests/WeekSummaryTests.swift`. `d(...)` and `rules` are already top-level in this target (`WorkCalculatorTests.swift`), so do not redeclare them.
@@ -891,20 +898,20 @@ Append to `Tests/KaltoeDaemonTests/HeadlessStateTests.swift`. The existing `page
             timeOff: [:])
     }
 
-    func testStatusLineCarriesThePerDayRows() async {
+    func testStatusLineCarriesThePerDayRows() async throws {
         let state = state([.success(fullWeek)])
         await state.refresh()
 
         let line = state.status(now: d(2026, 7, 31, 14, 41))
-        let days = try? XCTUnwrap(line.days)
-        XCTAssertEqual(days?.count, 5)
-        XCTAssertEqual(days?.map(\.label), ["Mon", "Tue", "Wed", "Thu", "Fri"])
-        XCTAssertEqual(days?[0].worked, 8 * 3600 + 35 * 60)
-        XCTAssertEqual(days?[0].overtime, 35 * 60)
-        XCTAssertNil(days?[2].worked)                      // no Wednesday record
-        XCTAssertEqual(days?[3].isDayOff, true)            // Thursday
-        XCTAssertEqual(days?[4].isOngoing, true)           // Friday, still clocked in
-        XCTAssertEqual(days?[4].target, 6 * 3600)          // family day
+        let days = try XCTUnwrap(line.days)
+        XCTAssertEqual(days.count, 5)
+        XCTAssertEqual(days.map(\.label), ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        XCTAssertEqual(days[0].worked, 8 * 3600 + 35 * 60)
+        XCTAssertEqual(days[0].overtime, 35 * 60)
+        XCTAssertNil(days[2].worked)                       // no Wednesday record
+        XCTAssertTrue(days[3].isDayOff)                    // Thursday
+        XCTAssertTrue(days[4].isOngoing)                   // Friday, still clocked in
+        XCTAssertEqual(days[4].target, 6 * 3600)           // family day
         XCTAssertEqual(line.targetNote, "Target 6:00 · family day")
         XCTAssertEqual(line.weekOvertimeCap, 12 * 3600)
     }
