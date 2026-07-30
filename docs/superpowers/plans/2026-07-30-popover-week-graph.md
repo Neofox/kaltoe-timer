@@ -1101,7 +1101,7 @@ weekOvertimeCap closes the StatusLine half of follow-up 2."
 - Consumes: the JSON produced in Task 6 — `days` (a list of `{label, worked, target, overtime, isDayOff, isOngoing}`), `targetNote`, `weekOvertimeCap`.
 - Produces: nothing consumed by later tasks.
 
-The tray shows figures, not bars: rows are `Gtk.MenuItem` labels serialised over DBusMenu, which carries text, icons and checkmarks but not custom widgets. The cairo/Pango code already in this file renders the *tray icon* PNG, a different path. Because there is no bar, these rows carry the overtime figure — floored at zero, so a short day shows its hours alone and only a day that earned overtime gets a `+0:35`.
+The tray shows figures, not bars: rows are `Gtk.MenuItem` labels serialised over DBusMenu, which carries text and icons, not the drawn widgets the popover uses (a per-row bar could travel as `icon-data`, but at panel icon sizes it conveys less than the figures do). The cairo/Pango code already in this file renders the *tray icon* PNG, a different path. Because there is no bar, these rows carry the overtime figure — floored at zero, so a short day shows its hours alone and only a day that earned overtime gets a `+0:35`.
 
 - [ ] **Step 1: Write the formatter with its check**
 
