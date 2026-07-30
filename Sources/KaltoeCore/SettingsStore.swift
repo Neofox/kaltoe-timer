@@ -27,6 +27,14 @@ public enum SettingsStore {
         return r
     }
 
+    /// Menu bar label geometry. An absent or unrecognised value reads as `.ring`,
+    /// so a typo in the documented `defaults write` degrades to the default rather
+    /// than leaving the label undrawable.
+    public static var labelGeometry: LabelGeometry {
+        get { LabelGeometry(rawValue: defaults.string(forKey: "labelGeometry") ?? "") ?? .ring }
+        set { defaults.set(newValue.rawValue, forKey: "labelGeometry") }
+    }
+
     /// Render the menu bar label as a non-template image so macOS cannot grey
     /// it out on the menu bar of an inactive display. Absent key reads false,
     /// so this is off by default with no registration needed.

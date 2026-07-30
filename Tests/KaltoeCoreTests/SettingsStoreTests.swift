@@ -82,4 +82,23 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(r.weeklyOvertimeCap, 10 * 3600)
         XCTAssertEqual(r.overtimeCutoff, 1260 * 60)
     }
+
+    func testLabelGeometryDefaultsToRing() {
+        XCTAssertEqual(SettingsStore.labelGeometry, .ring)
+    }
+
+    func testLabelGeometryRoundTrips() {
+        SettingsStore.labelGeometry = .track
+        XCTAssertEqual(SettingsStore.labelGeometry, .track)
+        XCTAssertEqual(SettingsStore.defaults.string(forKey: "labelGeometry"), "track")
+        SettingsStore.labelGeometry = .ring
+        XCTAssertEqual(SettingsStore.labelGeometry, .ring)
+    }
+
+    /// A hand-written `defaults write` can put anything here. An unrecognised value
+    /// reads as the default rather than trapping or blanking the label.
+    func testLabelGeometryFallsBackToRingForGarbage() {
+        SettingsStore.defaults.set("spiral", forKey: "labelGeometry")
+        XCTAssertEqual(SettingsStore.labelGeometry, .ring)
+    }
 }
