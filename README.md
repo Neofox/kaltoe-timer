@@ -4,23 +4,29 @@ A minimal macOS menu bar app for tracking work hours against your flex.team work
 
 ## What 칼퇴타이머 Shows
 
-The menu bar displays an icon plus text, with one of the following phases:
+The menu bar displays a progress fill, a glyph and a countdown, with one of the following phases:
 
 - **To lunch**: `1:20` with a `fork.knife` icon — morning countdown to the lunch-leave moment (11:30 lunch start minus the 10-min early-leave allowance, i.e. counts down to 11:20)
-- **On break**: `BREAK 0:45` with a `cup.and.saucer` icon — during the 11:20–12:30 lunch window
+- **On break**: `0:45` with a `cup.and.saucer` icon — during the 11:20–12:30 lunch window
 - **Counting**: `2:34` with a `timer` icon — currently clocked in (outside the lunch window), showing time remaining until your leave time (clock-in + 8h work + 1h break)
-- **Overtime**: `OT +1:00` with a `timer` icon — after leave time, showing **today's** overtime: time worked beyond the 8h daily target. Overtime depends only on hours worked, never on when you work them — 09:00–19:00 and 07:00–17:00 are both 1h. The weekly total lives in the dropdown. On family day (last Friday of the month) the daily target is 6h, so the countdown targets leaving 2h early and doing so costs nothing.
-    - Positive means you worked past today's target; negative means you clocked out short of it
-    - Company limits: no more than 12h of overtime per week, and none past 22:00 — 칼퇴타이머 notifies you once when you cross either
-- **Not clocked in**: `--:--` — signed in but no active clock record
-- **Signed out**: `—` — no Flex session or logged out
+- **Nearly 칼퇴**: `0:24` with a `figure.walk` icon — the last 30 minutes before leave time
+- **자유!**: `자유!` with a `figure.walk.departure` icon — the first minute past your target. It occupies exactly the minute the overtime figure would render as `+0:00`, so it displaces nothing
+- **Overtime**: `+1:00` with a `flame` icon — showing **today's** overtime: time worked beyond the 8h daily target. Overtime depends only on hours worked, never on when you work them — 09:00–19:00 and 07:00–17:00 are both 1h. The weekly total lives in the dropdown. On family day (last Friday of the month) the daily target is 6h, so the countdown targets leaving 2h early and doing so costs nothing.
+  - Positive means you worked past today's target; negative means you clocked out short of it
+  - Company limits: no more than 12h of overtime per week, and none past 22:00 — 칼퇴타이머 notifies you once when you cross either
+- **Day settled**: `+1:00` with a `checkmark` icon — clocked out. The check means _settled_, not _target met_: a short day gets it too, beside a negative figure and a fill that visibly did not finish
+- **Not clocked in**: `--:--` with a `timer` icon and an empty dashed fill — signed in but no active clock record
+- **Signed out**: a `zzz` icon alone, with no number — no Flex session or logged out
 
-**Overwork warning colors**: once you're within 30 minutes of leave time (or working past it), the label switches from a plain icon+text to a colored capsule pill with white icon+text:
+The `BREAK` and `OT` word prefixes are gone from the menu bar label — the glyph carries the phase now. They remain on the **Linux tray**, which has no expressive glyph: on KDE that tray renders the countdown text alone, so `BREAK 0:45` is the only thing distinguishing a break from a countdown there.
 
-- **Orange pill** — ≤ 30 min before leave time, or while accruing overtime within the company limits
-- **Red pill** — ≤ 10 min before leave time, or, once you're into overtime, when you hit a limit: 12h of overtime this week, or still clocked in past 22:00
+**Progress fill**: the label carries a fill showing how far the day has run from clock-in to leave time — a closing **ring** around the glyph, or a **track** capsule filling behind the whole label. Pick either in the dropdown under `Label style`. The fill measures distance to leaving rather than work completed, so it keeps advancing through the lunch break instead of stalling for an hour, and it never runs backwards when the countdown beside it switches from counting-to-lunch to counting-to-leave.
 
-The label returns to the plain (non-pill) style after clock-out or outside these windows.
+**Colour through the day**: the fill interpolates blue → teal → green → amber across the working day, so you can read roughly where you are without focusing on the digits. Past your target it goes flat **orange**, and **red** once you hit a company limit — 12h of overtime this week, or still clocked in past 22:00. The orange is the system orange the week strip already uses in the dropdown — literally the same colour, not a near match — so the label and the strip always agree about whether you are over. The red is the label's alone; the week strip has no limit colour, showing the weekly cap as text (`Week OT 5:00 / 12:00`) instead.
+
+A day with no record shows an empty dashed fill. A day you have clocked out of shows a grey fill stopped at whatever it reached.
+
+The label is drawn as a pre-rendered image in every state, so macOS never greys it out on the menu bar of a display that doesn't have focus. That used to be an opt-in setting; it is now unconditional.
 
 Click the menu item to open the dropdown:
 
@@ -100,13 +106,6 @@ defaults write com.perso.flextimer lunchEndMinutes -float 750
 defaults write com.perso.flextimer lunchEarlyLeaveMinutes -float 10
 
 defaults write com.perso.flextimer familyDayEarlyLeaveHours -float 2 # family-day early leave; 0 disables family day
-
-# Keep the menu bar icon and time readable on the menu bar of an inactive
-# display, by rendering them at full contrast instead of as a dimmable template
-# image (default: false). Read once at launch into AppState, so a shell write
-# needs an app restart to take effect; the menu popover toggle is the live path
-# and will overwrite this value the next time it's flipped.
-defaults write com.perso.flextimer highContrastOnInactiveDisplays -bool true
 ```
 
 **Note**: When running the app unbundled (`swift run`), UserDefaults uses a different domain than `com.perso.flextimer`, so these commands won't affect it. Use them against the installed app only.
