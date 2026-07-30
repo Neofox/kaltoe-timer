@@ -155,20 +155,36 @@ static func dayProgress(clockIn: Date, now: Date, rules: WorkRules,
                         timeOff: TimeInterval) -> Double
 ```
 
-Defined as `1 - timeLeft / target`, clamped to `0...1`, reusing the existing `timeLeft` so
-there is no second piece of arithmetic to keep in step with it.
+Defined as `elapsed / span`, clamped to `0...1`, where `span` is the **whole clock-in to
+leave-time interval** and `elapsed` is `now - clockIn`.
 
-This measures **distance to leave time, not work completed.** `leaveTime` is
-`clockIn + work + break`, so progress keeps advancing through the lunch break instead of
-stalling for an hour. That is the right meaning for a label about whether you can go home,
-and it is what makes the fill monotonic: the number beside it switches from counting-to-lunch
-to counting-to-leave, and the fill does not flinch.
+The denominator is `leaveTime(clockIn:rules:timeOff:) - clockIn`, i.e. `target + break`, not
+`target`. Dividing by `target` alone would reach 1.0 a full hour before you may leave, because
+`leaveTime` is `clockIn + target + breakDuration(target:)`
+(`WorkCalculator.swift:30-33`). Deriving `span` from `leaveTime` rather than re-adding the
+two components also means `breakDuration`'s half-day rule — no lunch once the target falls to
+`dailyWork / 2` or below (`:41-43`) — is inherited rather than duplicated, so a 4h time-off day
+scales to its real 4h span instead of a phantom 5h one.
+
+This measures **distance to leave time, not work completed**, and progress therefore keeps
+advancing through the lunch break instead of stalling for an hour. That is the right meaning
+for a label about whether you can go home, and it is what makes the fill monotonic: the number
+beside it switches from counting-to-lunch to counting-to-leave, and the fill does not flinch.
 
 **Total by construction**, on the precedent of `StatusLine.secondsFlooredToMinute`. `target`
 derives from `rules.dailyWorkHours`, a raw `Double` read from `UserDefaults` that the README
-documents a `defaults write` for — so zero, negative and non-finite targets are all reachable
-from a typo, and a division by them must not produce `NaN` or `±inf` for the renderer to
-consume. Guard the divisor and return `0` for any non-finite result.
+documents a `defaults write` for, so a typo can reach here. Two distinct hazards, both
+guarded by returning `0`:
+
+- `span <= 0` — reachable with `dailyWorkHours 0`, or time off at or above the target, since
+  `dailyTarget` floors at zero (`:118`) and `breakDuration` then yields no lunch either.
+  Division would give `±inf` or `NaN`.
+- `span` or `elapsed` non-finite — `dailyWorkHours -float inf` propagates through
+  `addingTimeInterval` into `span`, and `inf / inf` is `NaN`. Note `dailyTarget` already
+  absorbs a `NaN` target to `0` via `max(0, NaN)`, so `NaN` arrives here as the `span <= 0`
+  case rather than as a `NaN`; the finiteness guard is for the infinities.
+
+A clamped `Double` in `0...1` is the only thing the renderer ever sees.
 
 ### `KaltoeCore/LabelAppearance.swift` — new file
 
