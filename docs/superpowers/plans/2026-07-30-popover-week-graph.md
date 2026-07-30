@@ -618,10 +618,13 @@ Behaviour-neutral on screen; it moves the arithmetic off the view and out of the
 Append to `Tests/FlexTimerTests/AppStateTests.swift`:
 
 ```swift
-    /// The pill and the popover used to derive weekly overtime independently, so
-    /// they could disagree. One published summary makes that impossible — this
-    /// pins the agreement rather than the number.
-    func testRecomputePublishesAWeekSummaryMatchingThePill() {
+    /// Pins the published summary. Divergence from the pill is prevented
+    /// structurally — one derivation feeds both — not by anything asserted here:
+    /// weekly overtime reaches the pill only through `hasReachedWeeklyCap`, and
+    /// 35 minutes is nowhere near the 12h cap, so this fixture has no observable
+    /// pill-side figure at all. `testWeeklyCapDrivesCriticalUrgencyThroughRecompute`
+    /// is the test that exercises the shared value where it *is* observable.
+    func testRecomputePublishesTheWeekSummary() {
         let state = AppState()
         state.hasSession = true
         state.week = [
