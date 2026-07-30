@@ -4,11 +4,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-IMAGE=swift:6.1-noble
+IMAGE=swift:6.3-noble
 docker run --rm --platform linux/amd64 -v "$PWD":/src -w /src -e HOME=/tmp \
   "$IMAGE" swift build -c release --product kaltoe-core --static-swift-stdlib \
   --scratch-path .build-linux
 
+# The image tracks the toolchain developers actually use, deliberately. It sat on
+# 6.1-noble while local Swift moved to 6.3, and the skew hid a real break: five
+# collection literals that 6.3 accepts and 6.1 rejects compiled here and failed
+# there, invisibly, because this script builds only the *product* and never the
+# tests. If you bump local Swift, bump this too.
+#
 # NOTE: if you need to rerun the test suite inside this Docker image, pass
 # -e TZ=Asia/Seoul — ~30 date-sensitive tests shift under the container's default
 # UTC (build and daemon are unaffected). Example:
