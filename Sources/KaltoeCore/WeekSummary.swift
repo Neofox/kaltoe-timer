@@ -78,12 +78,42 @@ public struct WeekSummary: Equatable, Sendable {
     /// translated text on screen.
     private static let labels = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
+    /// - Precondition: `calendar` must be `.current` (or omitted). It governs **row
+    ///   layout only** — `weekStart`, each row's `startOfDay`, and the same-day match
+    ///   that attaches a record to a row. Three things this function delegates to
+    ///   ignore it entirely and always use `Calendar.current`:
+    ///   `WorkCalculator.dailyOvertime` and `weeklyOvertime` take no `calendar`
+    ///   parameter at all, so they re-derive the day's target on `.current`;
+    ///   `WeekData.weekIncludingManual` hardcodes it for both its week filter and its
+    ///   today check; and `dayOffDates` keys are normalised by `FlexRecordParser` on
+    ///   `.current`, so `contains(key)` only matches when `key` was built the same way.
+    ///
+    ///   Pass anything else and a single row takes its `target` from `calendar` while
+    ///   taking its `overtime` from a target computed on `.current` — a row that
+    ///   contradicts itself, which is the exact class of defect this type exists to
+    ///   prevent. The parameter is kept because it is the plan's signature and because
+    ///   the layout half is genuinely injectable; closing the gap would mean threading
+    ///   a calendar through `WorkCalculator`, which this feature is not allowed to
+    ///   modify. Every current caller and test passes `.current`.
     public static func compute(from data: WeekData, now: Date, rules: WorkRules,
                                calendar: Calendar = .current) -> WeekSummary {
         // weekIncludingManual, not `records`, so a manual start appears as a row
         // exactly as it already counts toward the total.
         let records = data.weekIncludingManual(now: now)
         let weekStart = WorkCalculator.weekStart(of: now, calendar: calendar)
+        // Five rows, Mon–Fri, always — weekends are deliberately not modelled.
+        //
+        // The accepted consequence, and the one exception to "the rows sum to the
+        // total": `overtime` below is `weeklyOvertime` over *every* record in the week,
+        // while these rows cover Mon–Fri. A Saturday or Sunday record — a real Flex
+        // one, or a weekend manual start that `weekIncludingManual` appends — counts
+        // toward the total and lands in no row, so the rows can sum to less than the
+        // figure printed directly beneath them. Weekend work is rare enough here that
+        // the spec chose five fixed rows over a strip that changes width; adding a
+        // sixth or seventh row, or filtering weekend records out of the total, would
+        // both be behaviour changes, and the latter would make the popover disagree
+        // with the menu bar pill. Pinned by
+        // `testWeekendRecordCountsInTheTotalButHasNoRow`.
         let days = Self.labels.indices.map { offset -> DaySummary in
             let day = calendar.date(byAdding: .day, value: offset, to: weekStart) ?? weekStart
             let key = calendar.startOfDay(for: day)

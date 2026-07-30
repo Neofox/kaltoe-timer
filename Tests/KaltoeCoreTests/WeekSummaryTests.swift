@@ -79,8 +79,15 @@ final class WeekSummaryTests: XCTestCase {
         SettingsStore.defaults.removePersistentDomain(forName: suite)
     }
 
-    /// Restores `.standard` rather than leaving the global pointing at a suite just
-    /// emptied: other classes in this bundle share the static, and each sets its own.
+    /// Restores `.standard` purely as a neutral hand-back — the state this class was
+    /// handed, returned as it was found — not because it protects anyone. It does not:
+    /// `SettingsStore.defaults` is process-global across every target in this bundle,
+    /// and `Tests/FlexTimerTests/AppStateTests.swift` has no `setUp` and assigns it in
+    /// only about half its methods, so the rest simply inherit whatever ran last. For
+    /// those, restoring `.standard` re-exposes them to the developer's real domain,
+    /// where leaving the global on this emptied throwaway would have isolated them.
+    /// Neither is a guarantee — cross-target class ordering is not defined — so this
+    /// picks the choice that leaves no trace. Isolating `AppStateTests` is its own job.
     override func tearDown() {
         SettingsStore.defaults.removePersistentDomain(forName: suite)
         SettingsStore.defaults = .standard
@@ -111,6 +118,11 @@ final class WeekSummaryTests: XCTestCase {
 
     func testAlwaysFiveWeekdayRowsInOrder() {
         XCTAssertEqual(summary().days.map(\.label), ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        // The labels are a fixed array, so they alone prove nothing about which days
+        // the rows stand for: a Sunday-first weekStart would still read Mon...Fri.
+        // Monday of the canonical week is 2026-07-27.
+        XCTAssertEqual(summary().days[0].date,
+                       Calendar.current.startOfDay(for: d(2026, 7, 27, 0, 0)))
     }
 
     /// Five rows even with no records at all — the strip must not collapse.
@@ -135,6 +147,9 @@ final class WeekSummaryTests: XCTestCase {
                        flexWorkedNet: 7 * 3600)
         ])
         XCTAssertEqual(summary(data).days[0].worked, 7 * 3600)
+        // Also the only case reaching dailyOvertime's flexWorkedNet branch: 7h against
+        // an 8h target is -1h, floored to 0 rather than shown as a negative row.
+        XCTAssertEqual(summary(data).days[0].overtime, 0)
     }
 
     /// 09:12 to 14:41 is 5:29 elapsed, and lunch is fully spent by then, so 4:29.
@@ -207,6 +222,35 @@ final class WeekSummaryTests: XCTestCase {
         XCTAssertEqual(s.days[2].overtime, s.overtime)
         // The bar still measures actual time on the clock, break untaken.
         XCTAssertEqual(s.days[2].worked, 9 * 3600 + 30 * 60)
+    }
+
+    /// Pins the one accepted gap in "the rows sum to the total", so that it cannot
+    /// change without a red test. **The divergence below is intentional.** Weekends are
+    /// deliberately not modelled (five fixed rows, Mon–Fri), but `weeklyOvertime` counts
+    /// every record in the week, so a Saturday record contributes to the total and gets
+    /// no row: the rows sum to 0 while the total reads 1h.
+    ///
+    /// If you are here because this test failed, the assertion is not the bug. Either
+    /// weekend rows were added — in which case rewrite this to expect six or seven rows
+    /// — or weekend records were filtered out of the total, which would make the popover
+    /// disagree with the menu bar pill and is a spec change, not a fix.
+    ///
+    /// Sat 2026-08-01 09:00–19:00 is 10h gross, less the 1h break = 9h net against an
+    /// ordinary 8h target (Saturday is not a family day), so +1:00.
+    func testWeekendRecordCountsInTheTotalButHasNoRow() {
+        let data = WeekData(records: [
+            WorkRecord(clockIn: d(2026, 8, 1, 9, 0), clockOut: d(2026, 8, 1, 19, 0),
+                       flexWorkedNet: nil)
+        ])
+        let s = WeekSummary.compute(from: data, now: d(2026, 8, 1, 19, 30), rules: rules)
+        // Still five weekday rows, and every one of them empty.
+        XCTAssertEqual(s.days.count, 5)
+        XCTAssertTrue(s.days.allSatisfy { $0.worked == nil })
+        XCTAssertEqual(s.days.reduce(0) { $0 + $1.overtime }, 0)
+        // ...while the total carries the Saturday hour. This is the divergence.
+        XCTAssertEqual(s.overtime, 60 * 60)
+        // A weekend `now` matches no row, so nothing claims today is a day off.
+        XCTAssertFalse(s.todayIsDayOff)
     }
 
     /// A manual start is a real record everywhere else, so it must appear as a row.
