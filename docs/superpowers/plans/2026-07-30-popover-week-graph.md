@@ -1125,7 +1125,7 @@ def hm(seconds):
 
 
 def day_label(day):
-    """One week row: 'Mon   8:35   +0:35', or 'Fri   4:29   · today'.
+    """One week row: 'Mon   8:35   +0:35', or 'Fri   4:29   · on the clock'.
 
     Overtime is spelled out here because, unlike the macOS popover, there is no
     bar to carry it — DBusMenu serialises labels only.
@@ -1137,7 +1137,7 @@ def day_label(day):
     if day.get("overtime"):
         parts.append(f"+{hm(day['overtime'])}")
     if day.get("isOngoing"):
-        parts.append("· today")
+        parts.append("· on the clock")
     return "   ".join(parts)
 ```
 
@@ -1156,7 +1156,7 @@ cases = [
     ({"label": "Thu", "worked": None, "overtime": 0, "isDayOff": True, "isOngoing": False},
      "Thu   off"),
     ({"label": "Fri", "worked": 16140, "overtime": 0, "isDayOff": False, "isOngoing": True},
-     "Fri   4:29   · today"),
+     "Fri   4:29   · on the clock"),
     ({"label": "Tue", "worked": None, "overtime": 0, "isDayOff": False, "isOngoing": False},
      "Tue"),
 ]

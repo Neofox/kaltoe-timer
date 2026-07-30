@@ -205,7 +205,7 @@ Mon   8:35   +0:35
 Tue   9:10   +1:10
 Wed   7:40
 Thu   off
-Fri   4:29   · today
+Fri   4:29   · on the clock
 ---------------------
 Week OT +1:45 / 12:00
 ```
