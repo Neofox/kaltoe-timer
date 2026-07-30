@@ -138,3 +138,48 @@ public enum DisplayState: Equatable, Sendable {
         }
     }
 }
+
+public extension MenuDisplay {
+    /// What VoiceOver announces for the Mac menu bar label — the third member of the
+    /// label's vocabulary, beside `labelGlyph` and `labelText`.
+    ///
+    /// It cannot be assembled from those two. The label renders to a single
+    /// `NSImage`, which has no per-element accessibility, so the glyph is invisible
+    /// to VoiceOver and `labelText` alone is ambiguous: the three countdowns are all
+    /// a bare `Formatting.hm`, and overtime is a signed figure with nothing saying
+    /// what it counts. Speech therefore has to restate in words what the glyph says
+    /// in pixels.
+    ///
+    /// On `MenuDisplay` rather than `DisplayState` because at-limit and ordinary
+    /// overtime differ only by urgency.
+    var spokenLabel: String {
+        switch state {
+        case .noSession:
+            // Keyed to the case, not to an empty `labelText` — that would be a
+            // coincidence of vocabulary, and any later state with no text would
+            // inherit the phrase.
+            return "Signed out"
+        case .notClockedIn:
+            return "Not clocked in"
+        case .toLunch(let left):
+            return "\(Formatting.hm(left)) until lunch"
+        case .onBreak(let left):
+            return "\(Formatting.hm(left)) of break left"
+        case .counting(let left):
+            return "\(Formatting.hm(left)) until leave time"
+        case .overtime(let today, let clockedIn):
+            let figure = Formatting.signedHM(today)
+            guard clockedIn else { return "Clocked out, \(figure) against today's target" }
+            // Through `LabelPhase` rather than reading `urgency` here: `.critical`
+            // arrives off the clock too, and that derivation already exists.
+            //
+            // Ahead of the 자유! minute deliberately. The two can coincide — the
+            // weekly cap is `.critical` whatever today's figure is — and hitting the
+            // cap is the more important of the two things to say.
+            if LabelPhase(self) == .atLimit { return "Overtime \(figure), at the limit" }
+            // The minute `labelText` spends on 자유!. Punctuation reads as nothing at
+            // all aloud, so speech gets words for it.
+            return today < 60 ? "Free to go" : "Overtime \(figure)"
+        }
+    }
+}

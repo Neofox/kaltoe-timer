@@ -58,4 +58,61 @@ final class LabelVocabularyTests: XCTestCase {
         XCTAssertEqual(DisplayState.overtime(today: 60, clockedIn: true).labelText, "+0:01")
         XCTAssertEqual(DisplayState.overtime(today: 30, clockedIn: false).labelText, "+0:00")
     }
+
+    // MARK: spokenLabel
+
+    private func spoken(_ state: DisplayState, _ urgency: Urgency = .normal) -> String {
+        MenuDisplay(state: state, urgency: urgency).spokenLabel
+    }
+
+    /// Every case announces something, and something different. The label is one
+    /// rendered image with no per-element accessibility, so this string is the whole
+    /// of what VoiceOver gets.
+    func testSpokenLabelCoversEveryState() {
+        XCTAssertEqual(spoken(.noSession), "Signed out")
+        XCTAssertEqual(spoken(.notClockedIn), "Not clocked in")
+        XCTAssertEqual(spoken(.toLunch(timeLeft: 80 * 60)), "1:20 until lunch")
+        XCTAssertEqual(spoken(.onBreak(timeLeft: 45 * 60)), "0:45 of break left")
+        XCTAssertEqual(spoken(.counting(timeLeft: 154 * 60)), "2:34 until leave time")
+        XCTAssertEqual(spoken(.overtime(today: 3600, clockedIn: true), .warning),
+                       "Overtime +1:00")
+    }
+
+    /// The three countdowns render the same bare `Formatting.hm`, and the glyph that
+    /// separates them on screen is exactly what speech cannot see. With one figure
+    /// shared between them, all three must still come out distinct.
+    func testTheThreeCountdownsDoNotCollideInSpeech() {
+        let left: TimeInterval = 45 * 60
+        let said = [DisplayState.toLunch(timeLeft: left), .onBreak(timeLeft: left),
+                    .counting(timeLeft: left)].map { spoken($0) }
+        XCTAssertEqual(Set(said).count, 3, "announced \(said)")
+    }
+
+    func testSpokenOvertimeSeparatesAtLimitFromOrdinaryOvertime() {
+        XCTAssertEqual(spoken(.overtime(today: 3600, clockedIn: true), .warning),
+                       "Overtime +1:00")
+        XCTAssertEqual(spoken(.overtime(today: 3600, clockedIn: true), .critical),
+                       "Overtime +1:00, at the limit")
+    }
+
+    /// Settled outranks urgency, exactly as `LabelPhase` has it: `hasReachedWeeklyCap`
+    /// yields `.critical` off the clock too, so a finished day must not announce as
+    /// at-limit. The signed figure survives, negative included.
+    func testSpokenSettledDayCarriesItsFigureAndIgnoresUrgency() {
+        XCTAssertEqual(spoken(.overtime(today: 3600, clockedIn: false), .critical),
+                       "Clocked out, +1:00 against today's target")
+        XCTAssertEqual(spoken(.overtime(today: -20 * 60, clockedIn: false)),
+                       "Clocked out, -0:20 against today's target")
+    }
+
+    /// 자유! is punctuation, which reads as nothing aloud. At-limit outranks it: the
+    /// two coincide when the weekly cap is reached in that same minute, and the cap
+    /// is the more important thing to say.
+    func testSpokenJayuMinuteSaysWords() {
+        XCTAssertEqual(spoken(.overtime(today: 0, clockedIn: true), .warning), "Free to go")
+        XCTAssertEqual(spoken(.overtime(today: 59, clockedIn: true), .warning), "Free to go")
+        XCTAssertEqual(spoken(.overtime(today: 60, clockedIn: true), .warning), "Overtime +0:01")
+        XCTAssertEqual(spoken(.overtime(today: 0, clockedIn: true), .critical),
+                       "Overtime +0:00, at the limit")
+    }
 }

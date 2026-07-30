@@ -9,8 +9,8 @@ import KaltoeCore
 /// Non-template is the entire mechanism, and it is now unconditional. macOS greys
 /// out template images on the menu bar of a display that does not hold the active
 /// window, and also ignores colours on plain label views — rasterising sidesteps
-/// both. That is why there is no longer a high-contrast preference: its benefit
-/// applies always.
+/// both. Every state takes that path, so the label holds its colour on every menu
+/// bar at once and there is no rendering choice left for a preference to make.
 struct MenuBarLabel: View {
     let display: MenuDisplay
     let text: String
@@ -24,19 +24,16 @@ struct MenuBarLabel: View {
 
     var body: some View {
         Image(nsImage: rendered())
-            .accessibilityLabel(spoken)
+            // The rendered image has no per-element accessibility, so `text` alone
+            // would leave the phase unspoken now that the glyph carries it.
+            // `spokenLabel` restates it in words, and is tested in KaltoeCore.
+            .accessibilityLabel(display.spokenLabel)
     }
 
     private var phase: LabelPhase { LabelPhase(display) }
 
     private var colours: LabelPalette.Colours {
         LabelPalette.resolve(progress: progress, phase: phase)
-    }
-
-    /// `.noSession` draws the glyph alone with no text, so VoiceOver would
-    /// otherwise reach a nameless image.
-    private var spoken: String {
-        text.isEmpty ? "Signed out" : text
     }
 
     /// How much of the arc or capsule to fill. `progress` everywhere except past
@@ -78,7 +75,6 @@ struct MenuBarLabel: View {
     private var barForeground: Color { colorScheme == .dark ? .white : .black }
 
     private var glyphColour: Color {
-        // Not `map(colour)` — `colour` is overloaded, so the closure is ambiguous.
         guard let tint = colours.glyphTint else { return barForeground }
         return colour(tint)
     }
