@@ -14,6 +14,12 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
+# The autostart entry launches this script by absolute path, so its own
+# directory is not on sys.path — put it there before importing the sibling
+# module. kaltoe_rows is GTK-free, hence safe to import above the `gi` block.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from kaltoe_rows import day_label, hm
+
 # WebKitGTK's DMABUF/GPU renderer crash-loops on some Wayland+driver combos
 # (confirmed on Fedora KDE: repeated internallyFailedLoadTimerFired plus a
 # Wayland protocol error that kills the whole app). The login window is the
@@ -153,9 +159,23 @@ class TrayApp:
         self.leave_item.set_sensitive(False)
         menu.append(self.leave_item)
 
+        self.target_item = Gtk.MenuItem(label="")
+        self.target_item.set_sensitive(False)
+        menu.append(self.target_item)
+
         self.timeleft_item = Gtk.MenuItem(label="")
         self.timeleft_item.set_sensitive(False)
         menu.append(self.timeleft_item)
+
+        self.day_separators = [Gtk.SeparatorMenuItem(), Gtk.SeparatorMenuItem()]
+        menu.append(self.day_separators[0])
+        self.day_items = []
+        for _ in range(5):
+            item = Gtk.MenuItem(label="")
+            item.set_sensitive(False)
+            menu.append(item)
+            self.day_items.append(item)
+        menu.append(self.day_separators[1])
 
         self.ot_item = Gtk.MenuItem(label="")
         self.ot_item.set_sensitive(False)
@@ -191,7 +211,9 @@ class TrayApp:
 
         menu.show_all()
         self.restart_item.hide()
-        for item in (self.started_item, self.leave_item, self.timeleft_item, self.ot_item):
+        for item in (self.started_item, self.leave_item, self.target_item,
+                     self.timeleft_item, self.ot_item,
+                     *self.day_items, *self.day_separators):
             item.hide()
         self.indicator.set_menu(menu)
 
@@ -224,7 +246,9 @@ class TrayApp:
 
     def on_core_dead(self, message):
         self.leave_at_dt = None
-        for item in (self.started_item, self.leave_item, self.timeleft_item, self.ot_item):
+        for item in (self.started_item, self.leave_item, self.target_item,
+                     self.timeleft_item, self.ot_item,
+                     *self.day_items, *self.day_separators):
             item.hide()
         if self.texticon:
             self._set_text_icon("--:--", "normal")
@@ -323,7 +347,31 @@ class TrayApp:
         self.timeleft_item.set_visible(self.leave_at_dt is not None)
         self.ot_item.set_visible(week_ot is not None)
         if week_ot is not None:
-            self.ot_item.set_label(f"Week OT {self._signed_hm(week_ot)}")
+            label = f"Week OT {self._signed_hm(week_ot)}"
+            cap = status.get("weekOvertimeCap")
+            if cap is not None:
+                label += f" / {hm(cap)}"
+            self.ot_item.set_label(label)
+
+        note = status.get("targetNote")
+        self.target_item.set_visible(bool(note))
+        if note:
+            self.target_item.set_label("  " + note)
+
+        days = status.get("days") or []
+        # Mirror the popover, which hides the strip entirely until some day has
+        # hours (`days.contains(where: { $0.worked != nil })` in MenuBarView). The
+        # wire ships all five rows unconditionally, so without this gate a fresh
+        # Monday morning shows five bare labels on Linux and nothing on macOS.
+        if not any(day.get("worked") is not None for day in days):
+            days = []
+        for item, day in zip(self.day_items, days):
+            item.set_label(day_label(day))
+            item.set_visible(True)
+        for item in self.day_items[len(days):]:
+            item.set_visible(False)
+        for separator in self.day_separators:
+            separator.set_visible(bool(days))
         self._tick()
 
         self.sign_in_item.set_visible(not has_session)
