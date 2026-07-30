@@ -13,10 +13,15 @@ def hm(seconds):
 
 
 def day_label(day):
-    """One week row: 'Mon   8:35   +0:35', or 'Fri   4:29   · today'.
+    """One week row: 'Mon   8:35   +0:35', or 'Fri   4:29   · on the clock'.
 
     Overtime is spelled out here because, unlike the macOS popover, there is no
-    bar to carry it — DBusMenu serialises labels only.
+    bar to carry it — DBusMenu carries no custom widgets.
+
+    The marker says "on the clock", not "today": `isOngoing` is
+    `record.clockOut == nil`, so it marks the day still being worked, which is
+    absent after clocking out and can land on an earlier weekday whose record was
+    never closed. macOS can spell that as a colour; a word cannot lie about it.
     """
     worked = day.get("worked")
     if worked is None:
@@ -25,5 +30,5 @@ def day_label(day):
     if day.get("overtime"):
         parts.append(f"+{hm(day['overtime'])}")
     if day.get("isOngoing"):
-        parts.append("· today")
+        parts.append("· on the clock")
     return "   ".join(parts)

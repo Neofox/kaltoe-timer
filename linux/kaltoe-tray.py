@@ -14,9 +14,12 @@ import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
-# The autostart entry launches this script by absolute path, so its own
-# directory is not on sys.path — put it there before importing the sibling
-# module. kaltoe_rows is GTK-free, hence safe to import above the `gi` block.
+# CPython already prepends the script's own directory, so the plain launch path
+# imports the sibling module without help. This defends the launches where it
+# does not: `python3 -P kaltoe-tray.py` or PYTHONSAFEPATH=1 in the environment,
+# either of which drops that entry and turns the import below into a hard
+# ModuleNotFoundError at startup. kaltoe_rows is GTK-free, hence safe to import
+# above the `gi` block.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from kaltoe_rows import day_label, hm
 
