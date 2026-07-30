@@ -303,11 +303,18 @@ backing scale across all screens rather than `NSScreen.main`'s. That comment
 (`MenuBarLabel.swift:73-80`) is load-bearing on mixed-DPI setups and this rewrite must not
 quietly drop it.
 
-**Track's text colour stays the bar's own**, with fill opacity capped on a light appearance,
-rather than flipping to white where the fill slides under the text. Flipping mid-label is the
-fiddly part, and the one mockup cell that looked wrong was light-bar-near-칼퇴 with an opaque
-orange fill. This is the weakest claim in the spec and needs confirming on hardware — the
-same precedent as the high-contrast spec's "pending visual confirmation on hardware".
+**Track's text colour stays the bar's own** rather than flipping to white where the fill
+slides under it. Flipping mid-label is the fiddly part, and the one mockup cell that looked
+wrong was light-bar-near-칼퇴 with an opaque orange fill.
+
+An earlier draft of this paragraph added "with fill opacity capped on a light appearance". No
+such capping was implemented, and the claim is removed rather than retrofitted: the filled
+`Rectangle` draws the palette colour at full alpha, and only the **unfilled** remainder
+(`emptyTrack`) is translucent, at 0.16 light / 0.22 dark. So the light-bar legibility risk is
+**unmitigated by design** — dark text over a full-strength orange fill is exactly the cell the
+mockup flagged. This is the weakest claim in the spec and the hardware pass is what decides
+whether capping is needed at all; capping blind risks a fill too faint to read as progress.
+Same precedent as the high-contrast spec's "pending visual confirmation on hardware".
 
 ### `FlexTimer/LabelGeometryRow.swift` — new file
 
