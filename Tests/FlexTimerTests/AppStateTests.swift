@@ -140,16 +140,19 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.menuText, "+0:05")
     }
 
-    func testHighContrastToggleWritesThroughToSettings() {
+    /// The picker only persists because `AppState` writes through on set — nothing
+    /// else carries the choice to UserDefaults, so a lost `didSet` would silently
+    /// reset the label geometry on every relaunch.
+    func testLabelGeometryPickerWritesThroughToSettings() {
         SettingsStore.defaults = UserDefaults(suiteName: "flextimer-tests-\(UUID().uuidString)")!
         let state = AppState()
-        XCTAssertFalse(state.highContrastOnInactiveDisplays)
+        XCTAssertEqual(state.labelGeometry, .ring)
 
-        state.highContrastOnInactiveDisplays = true
-        XCTAssertTrue(SettingsStore.highContrastOnInactiveDisplays)
+        state.labelGeometry = .track
+        XCTAssertEqual(SettingsStore.labelGeometry, .track)
 
-        state.highContrastOnInactiveDisplays = false
-        XCTAssertFalse(SettingsStore.highContrastOnInactiveDisplays)
+        state.labelGeometry = .ring
+        XCTAssertEqual(SettingsStore.labelGeometry, .ring)
     }
 
     /// The cap→critical path through `recompute`. `computeDisplay` now takes the

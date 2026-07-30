@@ -28,12 +28,6 @@ final class AppState: ObservableObject {
     @Published var hasSession: Bool = CookieVault.load()?.isEmpty == false {
         didSet { sessionNotifier?.sessionBecame(hasSession) }
     }
-    /// Mirrors the stored setting. Written through on set so the popover toggle
-    /// persists, and published so the menu bar label re-renders immediately —
-    /// an external `defaults write` would not be picked up by the running app.
-    @Published var highContrastOnInactiveDisplays = SettingsStore.highContrastOnInactiveDisplays {
-        didSet { SettingsStore.highContrastOnInactiveDisplays = highContrastOnInactiveDisplays }
-    }
 
     var rules: WorkRules { SettingsStore.rules }
     var weekData: WeekData { WeekData(records: week, dayOffDates: dayOffDates, timeOff: timeOff) }

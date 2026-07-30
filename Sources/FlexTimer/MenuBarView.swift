@@ -52,7 +52,7 @@ struct MenuBarView: View {
                 primaryAction
                 separator
             }
-            highContrastRow
+            LabelGeometryRow(geometry: $state.labelGeometry)
             separator
             MenuRow(icon: "power", title: "Quit") { NSApp.terminate(nil) }
         }
@@ -152,28 +152,6 @@ struct MenuBarView: View {
             }
         }
         .padding(.horizontal, 12)
-    }
-
-    private var highContrastRow: some View {
-        MenuRow(icon: "circle.lefthalf.filled", title: "Stay readable when unfocused") {
-            state.highContrastOnInactiveDisplays.toggle()
-        } trailing: {
-            Toggle("", isOn: $state.highContrastOnInactiveDisplays)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                // The row owns the tap. Without this, clicking the switch itself
-                // fires both the switch and the row action, which cancel out.
-                .allowsHitTesting(false)
-                // Already inert to hit testing; hide it from VoiceOver too. The
-                // state belongs on the row, which has the name — otherwise VoiceOver
-                // reads a nameless switch sitting beside untitled text.
-                .accessibilityHidden(true)
-        }
-        // Pointer tooltip. Not an accessibility label, and not a substitute for one.
-        .help("Renders the icon and time at full contrast so they stay legible on the menu bar of a display that doesn't have focus.")
-        .accessibilityValue(state.highContrastOnInactiveDisplays ? "on" : "off")
-        .accessibilityAddTraits(.isToggle)
     }
 
     private func row(_ label: String, _ value: String) -> some View {

@@ -57,18 +57,6 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(r.familyDayEarlyLeave, 0)
     }
 
-    func testHighContrastDefaultsToOff() {
-        XCTAssertFalse(SettingsStore.highContrastOnInactiveDisplays)
-    }
-
-    func testHighContrastRoundTrips() {
-        SettingsStore.highContrastOnInactiveDisplays = true
-        XCTAssertTrue(SettingsStore.highContrastOnInactiveDisplays)
-        XCTAssertTrue(SettingsStore.defaults.bool(forKey: "highContrastOnInactiveDisplays"))
-        SettingsStore.highContrastOnInactiveDisplays = false
-        XCTAssertFalse(SettingsStore.highContrastOnInactiveDisplays)
-    }
-
     func testDefaultOvertimeLimits() {
         let r = SettingsStore.rules
         XCTAssertEqual(r.weeklyOvertimeCap, 12 * 3600)
