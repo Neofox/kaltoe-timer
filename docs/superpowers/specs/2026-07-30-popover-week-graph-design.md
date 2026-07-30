@@ -139,21 +139,26 @@ lives in `KaltoeCore` as `targetNote` rather than being assembled per platform:
 the Linux tray is Python, and duplicating the wording there would let the two
 surfaces drift.
 
-### Row overtime agrees with the published total
+### Row overtime comes from `dailyOvertime`, not from `worked`
 
-`max(0, worked - target)` equals `WorkCalculator.dailyOvertime` in every case
-that occurs, which is what makes the rows sum to the `Week OT` figure beneath
-them:
+An earlier draft of this design claimed `max(0, worked - target)` equals
+`WorkCalculator.dailyOvertime` "in every case that occurs", and derived the row's
+overtime that way. **That was wrong.** Clock in after the lunch window closes and
+`breakTaken` stays 0 for the rest of the day, while `leaveTime` still adds the
+full break. A 13:00 start against an 8h target is due out at 22:00, so at 22:30
+the naive form reads +1:30 where `dailyOvertime` reads +0:30 — and each row would
+contradict the weekly total printed directly beneath it, which is precisely the
+failure that got the signed-overtime row layout rejected.
 
-- Completed day: `dailyOvertime` is `net - target` and may be negative; the row
-  floors it at zero, which is exactly the contribution `weeklyOvertime` counts.
-- Open day before leave time: both are zero.
-- Open day after leave time: the full break has necessarily been taken, so
-  `worked - target` reduces to `now - leaveTime`, which is `dailyOvertime`
-  verbatim.
+So `DaySummary.overtime` is `max(0, dailyOvertime(record:now:rules:timeOff:))` —
+the same function that feeds `weeklyOvertime`, floored the same way. The rows
+agree with their total structurally rather than by coincidence, which is what the
+earlier draft should have insisted on in the first place.
 
-This is worth an explicit assertion, because it is a coincidence of the two
-formulas rather than a shared code path.
+`worked` remains the bar's length and the row's right-hand figure. The accepted
+consequence: the orange segment is drawn from `worked` against `target`, so after
+a late start it can lead the pill by up to the untaken break. The numbers stay
+consistent; only the sliver is early.
 
 ## macOS view
 

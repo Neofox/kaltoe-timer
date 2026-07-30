@@ -304,7 +304,7 @@ wording cannot drift between them."
 - Test: `Tests/KaltoeCoreTests/WeekSummaryTests.swift`
 
 **Interfaces:**
-- Consumes: `WorkCalculator.breakTaken` (Task 1), `TargetNote.compose` (Task 2), `WeekData.weekIncludingManual(now:)`, `WorkCalculator.weekStart(of:calendar:)`, `WorkCalculator.weeklyOvertime`, `WorkCalculator.breakDuration`, `WorkCalculator.dailyTarget`, `WorkCalculator.timeOff`.
+- Consumes: `WorkCalculator.breakTaken` (Task 1), `TargetNote.compose` (Task 2), `WeekData.weekIncludingManual(now:)`, `WorkCalculator.weekStart(of:calendar:)`, `WorkCalculator.weeklyOvertime`, `WorkCalculator.dailyOvertime`, `WorkCalculator.breakDuration`, `WorkCalculator.dailyTarget`, `WorkCalculator.timeOff`.
 - Produces:
   - `DaySummary` with public stored properties `date: Date`, `label: String`, `worked: TimeInterval?`, `target: TimeInterval`, `overtime: TimeInterval`, `isDayOff: Bool`, `isOngoing: Bool`, and a public memberwise `init`.
   - `WeekSummary` with `days: [DaySummary]`, `overtime: TimeInterval`, `cap: TimeInterval`, `targetNote: String?`, `todayIsDayOff: Bool`, and a public memberwise `init`.
@@ -402,7 +402,9 @@ final class WeekSummaryTests: XCTestCase {
     }
 
     /// The property that lets the rows sit under the total without contradicting
-    /// it. Short days floor at zero, exactly as weeklyOvertime counts them.
+    /// it, on an ordinary week. Short days floor at zero, exactly as weeklyOvertime
+    /// counts them. `testPostLunchClockInStillAgreesWithTheTotal` is the case that
+    /// actually stresses it.
     func testPerDayOvertimeSumsToTheWeeklyTotal() {
         let s = summary()
         XCTAssertEqual(s.days.map(\.overtime), [35 * 60, 70 * 60, 0, 0, 0])
@@ -420,6 +422,22 @@ final class WeekSummaryTests: XCTestCase {
     func testTodayIsDayOffTracksTheDayOffSet() {
         XCTAssertFalse(summary().todayIsDayOff)
         XCTAssertTrue(summary(now: d(2026, 7, 30, 10, 0)).todayIsDayOff)
+    }
+
+    /// Regression test for a defect the plan originally shipped: deriving the row's
+    /// overtime from `worked - target` diverges from the published total whenever the
+    /// worker clocked in after lunch, because `breakTaken` is 0 while `leaveTime`
+    /// still adds the whole break. 13:00 start, 8h target, due out 22:00; at 22:30 the
+    /// naive form gives +1:30 and the total gives +0:30. They must agree.
+    func testPostLunchClockInStillAgreesWithTheTotal() {
+        let data = WeekData(records: [
+            WorkRecord(clockIn: d(2026, 7, 29, 13, 0), clockOut: nil, flexWorkedNet: nil)
+        ])
+        let s = WeekSummary.compute(from: data, now: d(2026, 7, 29, 22, 30), rules: rules)
+        XCTAssertEqual(s.days[2].overtime, 30 * 60)
+        XCTAssertEqual(s.days[2].overtime, s.overtime)
+        // The bar still measures actual time on the clock, break untaken.
+        XCTAssertEqual(s.days[2].worked, 9 * 3600 + 30 * 60)
     }
 
     /// A manual start is a real record everywhere else, so it must appear as a row.
@@ -509,7 +527,15 @@ public struct WeekSummary: Equatable, Sendable {
             }
             return DaySummary(date: key, label: Self.labels[offset], worked: worked,
                               target: target,
-                              overtime: max(0, (worked ?? 0) - target),
+                              // The same function that feeds weeklyOvertime, floored
+                              // the same way, so a row cannot contradict the total
+                              // printed beneath it. Deriving it from `worked` instead
+                              // looks equivalent and is not: see netWorked below.
+                              overtime: record.map {
+                                  max(0, WorkCalculator.dailyOvertime(record: $0, now: now,
+                                                                      rules: rules,
+                                                                      timeOff: data.timeOff))
+                              } ?? 0,
                               isDayOff: data.dayOffDates.contains(key),
                               isOngoing: record.map { $0.clockOut == nil } ?? false)
         }
@@ -524,16 +550,23 @@ public struct WeekSummary: Equatable, Sendable {
                 .isDayOff ?? false)
     }
 
-    /// Net hours worked. Completed days mirror `dailyOvertime`'s derivation; open
-    /// days deduct only the break already spent, so the figure rises from clock-in
-    /// rather than starting an hour in the hole.
+    /// Net hours worked — the bar's length and the row's right-hand figure only.
+    /// Completed days mirror `dailyOvertime`'s derivation; open days deduct only the
+    /// break already spent, so the figure rises from clock-in rather than starting an
+    /// hour in the hole.
     ///
-    /// `max(0, worked - target)` then equals `dailyOvertime` in every case that
-    /// occurs — zero for both before leave time, and `now - leaveTime` after it,
-    /// by which point the whole break is necessarily spent. That agreement is what
-    /// lets the rows sit under the weekly total without contradicting it, and it is
-    /// a coincidence of two formulas rather than a shared code path, which is why
-    /// `testPerDayOvertimeSumsToTheWeeklyTotal` asserts it.
+    /// **This is deliberately not the source of the row's overtime.** It is tempting
+    /// to write `max(0, worked - target)` and call it the same thing, and it is not:
+    /// clock in after the lunch window closes and `breakTaken` stays 0 forever while
+    /// `leaveTime` still adds the full break. A 13:00 start with an 8h target is due
+    /// out at 22:00, so at 22:30 `worked - target` reads +1:30 where `dailyOvertime`
+    /// reads +0:30 — and the row would contradict the weekly total directly beneath
+    /// it, which is the failure the signed-overtime layout was rejected to avoid.
+    /// `overtime` therefore comes from `dailyOvertime` above.
+    ///
+    /// The consequence, accepted: the orange segment is drawn from `worked` against
+    /// `target`, so after a late start it can lead the pill by up to the untaken
+    /// break. The numbers stay consistent; only the sliver is early.
     private static func netWorked(_ record: WorkRecord, target: TimeInterval, now: Date,
                                   rules: WorkRules, timeOff: TimeInterval,
                                   calendar: Calendar) -> TimeInterval {
