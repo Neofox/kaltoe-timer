@@ -246,7 +246,9 @@ final class AppStateWeekSummaryTests: XCTestCase {
     /// methods are: `removePersistentDomain` empties a suite but never unlinks its
     /// file, so a per-run UUID leaks one more .plist into ~/Library/Preferences every
     /// run — measured, and the reason 2000-odd `flextimer-tests-*.plist` have piled up
-    /// there. One stable name keeps that at exactly one file forever.
+    /// there. One stable name keeps that at no more than one file forever; measured, it
+    /// is currently none at all, because this test writes no keys and an unwritten
+    /// suite's file is never created.
     private let suite = "flextimer-appstate-weeksummary-tests"
 
     /// Cleared on the way in as well as out, which is what makes a shared name safe:
@@ -266,10 +268,20 @@ final class AppStateWeekSummaryTests: XCTestCase {
         SettingsStore.defaults = .standard
     }
 
-    /// The pill and the popover used to derive weekly overtime independently, so
-    /// they could disagree. One published summary makes that impossible — this
-    /// pins the agreement rather than the number.
-    func testRecomputePublishesAWeekSummaryMatchingThePill() {
+    /// Pins the summary `recompute` publishes: five weekday rows in order, plus the
+    /// week's overtime, Friday's worked figure and today's target note for this
+    /// fixture.
+    ///
+    /// It asserts nothing about agreement with the menu bar pill, and could not:
+    /// weekly overtime reaches the pill only through `hasReachedWeeklyCap`, and 35
+    /// minutes is nowhere near the 12h cap, so at 14:41 the pill is in its countdown
+    /// phase and this fixture exposes no pill-side figure to compare against.
+    /// Divergence between the two is now prevented *structurally* instead — there is
+    /// exactly one weekly-overtime derivation in `recompute`, and one local feeds the
+    /// display, the notifier and this property, so there is no second pass left to
+    /// disagree. `testWeeklyCapDrivesCriticalUrgencyThroughRecompute` above is the
+    /// test that exercises that shared value at the one point it becomes observable.
+    func testRecomputePublishesTheWeekSummary() {
         let state = AppState()
         state.hasSession = true
         state.week = [
@@ -279,7 +291,12 @@ final class AppStateWeekSummaryTests: XCTestCase {
         ]
         state.recompute(now: d(2026, 7, 31, 14, 41))
 
-        XCTAssertEqual(state.weekSummary.days.count, 5)
+        // Aborting, unlike XCTAssertEqual: that reports and carries on, so a regression
+        // that emptied `days` would trap on the `days[4]` subscript below and take the
+        // whole test process down. A crash reports far worse than a failure does.
+        guard state.weekSummary.days.count == 5 else {
+            return XCTFail("expected 5 weekday rows, got \(state.weekSummary.days.count)")
+        }
         XCTAssertEqual(state.weekSummary.days.map(\.label), ["Mon", "Tue", "Wed", "Thu", "Fri"])
         XCTAssertEqual(state.weekSummary.overtime, 35 * 60)  // Monday's +0:35 only
         XCTAssertEqual(state.weekSummary.days[4].worked, 4 * 3600 + 29 * 60)
