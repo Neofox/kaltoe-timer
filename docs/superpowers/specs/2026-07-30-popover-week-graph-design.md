@@ -166,9 +166,12 @@ agree with their total structurally rather than by coincidence, which is what th
 earlier draft should have insisted on in the first place.
 
 `worked` remains the bar's length and the row's right-hand figure. The accepted
-consequence: the orange segment is drawn from `worked` against `target`, so after
-a late start it can lead the pill by up to the untaken break. The numbers stay
-consistent; only the sliver is early.
+consequence, stated correctly on the second attempt: the **accent fill** is driven
+by `worked`, which carries no break deduction after a start later than the lunch
+window, so it can reach the target notch up to a full break before the pill counts
+down to zero. The **orange segment** is driven by `overtime`, i.e. `dailyOvertime`,
+so it tracks the pill exactly and can never appear early. An earlier draft of this
+paragraph blamed the orange segment; that was backwards.
 
 ## macOS view
 
