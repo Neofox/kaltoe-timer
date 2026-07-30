@@ -48,10 +48,22 @@ The week strip uses accent up to target and orange past it. A continuous spectru
 colours the popover has no counterpart for — a green label at 15:00 corresponds to nothing
 in the strip. This was put to the user as an explicit trade against a third option that
 reused the app's existing vocabulary, and the spectrum was chosen for being the more fun of
-the two. The incoherence is accepted, and bounded: **the overtime colours are shared.** Once
-you are over target the label is orange and the strip is orange, and once you hit a limit
-both are red. Only the working day, where the strip has nothing to say about _time of day_,
-carries colours of its own.
+the two. The incoherence is accepted, and bounded: **the over-target orange is shared, and
+literally so.** Past target the label fills with the system orange, which is the same colour
+`WeekBarRow.swift:70` already fills its over-target segment with — not a tuned
+near-neighbour that would read as a second orange. Only the working day, where the strip has
+nothing to say about _time of day_, carries colours of its own.
+
+Two corrections to an earlier draft of this passage, both found during implementation:
+
+- It claimed "once you hit a limit both are red". **The week strip has no red at all** — its
+  only colours are accent, secondary and orange (`WeekBarRow.swift:25`, `:57`, `:63`, `:67`,
+  `:70`, `:81`), and the weekly cap appears there as text (`Week OT 5:00 / 12:00`), not as a
+  colour. The limit red is therefore the label's alone, with nothing to match.
+- It specified tuned hexes for both alerting colours (`#e8862a`, `#e0433a`). Those would have
+  shipped a near-match beside the strip's system orange, which is the exact defect the
+  shared-colour argument exists to prevent. Both are now the system colours, which is also
+  what the pill being replaced already used (`MenuBarLabel.swift:26`).
 
 ## The wire is not touched
 
@@ -234,16 +246,23 @@ Resolution:
 
 - **`.working`** — interpolate `progress` across four stops, equally spaced at 0, ⅓, ⅔ and 1:
   blue `#5aa9f8` → teal `#3fbfb0` → green `#7fc06a` → amber `#e8a02a`.
-- **`.overtime`** — flat orange `#e8862a`. Discrete, not interpolated.
-- **`.atLimit`** — flat red `#e0433a`.
+- **`.overtime`** — the **system** orange. Discrete, not interpolated.
+- **`.atLimit`** — the **system** red.
 - **`.settled`** — neutral grey, filled to whatever `progress` actually reached. Not forced
   full: clocking out short of target leaves a partly-filled grey ring, which is true.
 - **`.idle`** — neutral grey, empty, `dashed`.
 
-Those hexes are the dark-appearance values, taken from the approved mockup. The light
-counterparts are the same hues darkened until they hold contrast against a light bar — two are
-already known (`#4f9e3c` green, `#c96a12` orange) and the remainder are settled on hardware
-alongside the other visual confirmations below, not guessed here.
+Those four spectrum hexes are the dark-appearance values, taken from the approved mockup. The
+light counterparts are the same hues darkened until they hold contrast against a light bar —
+one is already known (`#4f9e3c` green) and the remainder are settled on hardware alongside the
+other visual confirmations below, not guessed here.
+
+The alerting colours take no hexes at all, and that is deliberate: hard-coding Apple's current
+system-orange values would be a copy that silently drifts if Apple retunes them, reintroducing
+the second-orange problem. `KaltoeCore` cannot name a SwiftUI colour (it compiles for Linux),
+so `LabelFill` names the _intent_ — `.systemOrange`, `.systemRed` — and `MenuBarLabel` resolves
+it to the same `Color.orange` / `Color.red` the popover uses. Parity is then true by
+construction rather than by matching numbers.
 
 **`Urgency` stops driving colour.** Today `.warning` fires at ≤30 min before leave; under the
 spectrum that moment is amber _because of where it sits in the day_, not because a threshold

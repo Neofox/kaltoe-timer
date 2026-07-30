@@ -528,19 +528,21 @@ final class LabelAppearanceTests: XCTestCase {
 
     func testWorkingDayTakesItsFillFromTheSpectrum() {
         let c = LabelPalette.resolve(progress: 0, phase: .working)
-        XCTAssertEqual(c.fill, LabelPalette.stops[0])
+        XCTAssertEqual(c.fill, .pair(LabelPalette.stops[0]))
         XCTAssertNil(c.glyphTint)
         XCTAssertFalse(c.dashed)
     }
 
+    /// The alerting colours are the popover's own system colours, so the label and
+    /// the week strip cannot drift into two different oranges.
     func testOvertimeAndLimitAreFlatAndTintTheGlyph() {
         let ot = LabelPalette.resolve(progress: 1, phase: .overtime)
-        XCTAssertEqual(ot.fill, LabelPalette.overtimeColour)
-        XCTAssertEqual(ot.glyphTint, LabelPalette.overtimeColour)
+        XCTAssertEqual(ot.fill, .systemOrange)
+        XCTAssertEqual(ot.glyphTint, .systemOrange)
 
         let limit = LabelPalette.resolve(progress: 1, phase: .atLimit)
-        XCTAssertEqual(limit.fill, LabelPalette.limitColour)
-        XCTAssertEqual(limit.glyphTint, LabelPalette.limitColour)
+        XCTAssertEqual(limit.fill, .systemRed)
+        XCTAssertEqual(limit.glyphTint, .systemRed)
     }
 
     /// Progress is ignored past target — the colour is discrete there, so a
@@ -553,13 +555,13 @@ final class LabelAppearanceTests: XCTestCase {
     func testIdleIsDashedAndNeutral() {
         let c = LabelPalette.resolve(progress: 0, phase: .idle)
         XCTAssertTrue(c.dashed)
-        XCTAssertEqual(c.fill, LabelPalette.neutral)
+        XCTAssertEqual(c.fill, .pair(LabelPalette.neutral))
     }
 
     func testSettledIsNeutralAndNotDashed() {
         let c = LabelPalette.resolve(progress: 0.7, phase: .settled)
         XCTAssertFalse(c.dashed)
-        XCTAssertEqual(c.fill, LabelPalette.neutral)
+        XCTAssertEqual(c.fill, .pair(LabelPalette.neutral))
         XCTAssertNil(c.glyphTint)
     }
 
@@ -635,6 +637,19 @@ public struct ColourPair: Equatable, Sendable {
     }
 }
 
+/// A fill the view resolves.
+///
+/// The `.system` cases exist so the label's alerting colours are the *same*
+/// colours the popover already draws rather than tuned near-neighbours — the week
+/// strip fills its over-target segment with the system orange
+/// (`WeekBarRow.swift:70`). `KaltoeCore` cannot name a SwiftUI colour, so it names
+/// the intent and `MenuBarLabel` resolves it.
+public enum LabelFill: Equatable, Sendable {
+    case pair(ColourPair)
+    case systemOrange
+    case systemRed
+}
+
 /// What the label's colour depends on. Narrower than `DisplayState` because colour
 /// does not care *which* phase of the working day you are in, only that you are in
 /// one — the spectrum handles the rest from progress.
@@ -668,10 +683,11 @@ public enum LabelPhase: Equatable, Sendable {
 public enum LabelPalette {
     public struct Colours: Equatable, Sendable {
         /// The arc stroke, or the capsule's filled portion.
-        public var fill: ColourPair
+        public var fill: LabelFill
         /// `nil` means the glyph follows the menu bar's own foreground colour.
-        public var glyphTint: ColourPair?
-        /// The unfilled remainder.
+        public var glyphTint: LabelFill?
+        /// The unfilled remainder. Stays a `ColourPair` — the faint track has no
+        /// system counterpart to match.
         public var track: ColourPair
         /// Draw the track dashed — used where there is no progress to show.
         public var dashed: Bool
@@ -688,11 +704,6 @@ public enum LabelPalette {
         ColourPair(light: RGBA(0xb0741a), dark: RGBA(0xe8a02a)),
     ]
 
-    /// Shared with the popover's week strip, which is also orange past target and
-    /// red at a limit. The working day's colours are the label's alone; these two
-    /// are the vocabulary the whole app speaks.
-    static let overtimeColour = ColourPair(light: RGBA(0xc96a12), dark: RGBA(0xe8862a))
-    static let limitColour = ColourPair(light: RGBA(0xb52a22), dark: RGBA(0xe0433a))
     static let neutral = ColourPair(light: RGBA(0x6c6c74), dark: RGBA(0xa0a0a8))
     static let emptyTrack = ColourPair(light: RGBA(0x000000, alpha: 0.16),
                                        dark: RGBA(0xffffff, alpha: 0.22))
@@ -700,25 +711,25 @@ public enum LabelPalette {
     public static func resolve(progress: Double, phase: LabelPhase) -> Colours {
         switch phase {
         case .idle:
-            return Colours(fill: neutral, glyphTint: nil, track: emptyTrack, dashed: true)
+            return Colours(fill: .pair(neutral), glyphTint: nil, track: emptyTrack, dashed: true)
         case .working:
             // No glyph tint through the working day: all the colour lives in the
             // fill and the glyph stays the bar's own colour, which is what keeps
             // the label quiet on either appearance. The spec left this
             // underspecified — the mockup tinted the late-afternoon figure — and
             // this is the restrained reading of it.
-            return Colours(fill: spectrum(progress), glyphTint: nil,
+            return Colours(fill: .pair(spectrum(progress)), glyphTint: nil,
                            track: emptyTrack, dashed: false)
         case .overtime:
             // Progress is ignored past target: the colour is discrete there, so a
             // ring that stopped short cannot come out a blended orange.
-            return Colours(fill: overtimeColour, glyphTint: overtimeColour,
+            return Colours(fill: .systemOrange, glyphTint: .systemOrange,
                            track: emptyTrack, dashed: false)
         case .atLimit:
-            return Colours(fill: limitColour, glyphTint: limitColour,
+            return Colours(fill: .systemRed, glyphTint: .systemRed,
                            track: emptyTrack, dashed: false)
         case .settled:
-            return Colours(fill: neutral, glyphTint: nil, track: emptyTrack, dashed: false)
+            return Colours(fill: .pair(neutral), glyphTint: nil, track: emptyTrack, dashed: false)
         }
     }
 
@@ -946,6 +957,19 @@ struct MenuBarLabel: View {
         text.isEmpty ? "Signed out" : text
     }
 
+    /// Resolves a fill. The `.system` cases are the whole reason `LabelFill` exists:
+    /// they return the very colours the popover already draws, so the label's
+    /// over-target orange **is** the week strip's orange rather than a tuned
+    /// near-neighbour. `KaltoeCore` cannot name a SwiftUI colour, so it names the
+    /// intent and this resolves it.
+    private func colour(_ fill: LabelFill) -> Color {
+        switch fill {
+        case .pair(let pair): return colour(pair)
+        case .systemOrange: return .orange
+        case .systemRed: return .red
+        }
+    }
+
     private func colour(_ pair: ColourPair) -> Color {
         let c = colorScheme == .dark ? pair.dark : pair.light
         return Color(.sRGB, red: c.red, green: c.green, blue: c.blue, opacity: c.alpha)
@@ -954,7 +978,9 @@ struct MenuBarLabel: View {
     private var barForeground: Color { colorScheme == .dark ? .white : .black }
 
     private var glyphColour: Color {
-        colours.glyphTint.map(colour) ?? barForeground
+        // Not `map(colour)` — `colour` is overloaded, so the closure is ambiguous.
+        guard let tint = colours.glyphTint else { return barForeground }
+        return colour(tint)
     }
 
     // MARK: geometry
@@ -1206,7 +1232,7 @@ Replace `README.md:18-23` — the `**Overwork warning colors**:` paragraph, its 
 ```markdown
 **Progress fill**: the label carries a fill showing how far the day has run from clock-in to leave time — a closing **ring** around the glyph, or a **track** capsule filling behind the whole label. Pick either in the dropdown under `Label style`. The fill measures distance to leaving rather than work completed, so it keeps advancing through the lunch break instead of stalling for an hour, and it never runs backwards when the countdown beside it switches from counting-to-lunch to counting-to-leave.
 
-**Colour through the day**: the fill interpolates blue → teal → green → amber across the working day, so you can read roughly where you are without focusing on the digits. Past your target it goes flat **orange**, and **red** once you hit a company limit — 12h of overtime this week, or still clocked in past 22:00. Orange and red are the same two colours the week strip uses in the dropdown, so the label and the strip always agree about whether you are over.
+**Colour through the day**: the fill interpolates blue → teal → green → amber across the working day, so you can read roughly where you are without focusing on the digits. Past your target it goes flat **orange**, and **red** once you hit a company limit — 12h of overtime this week, or still clocked in past 22:00. The orange is the system orange the week strip already uses in the dropdown — literally the same colour, not a near match — so the label and the strip always agree about whether you are over. The red is the label's alone; the week strip has no limit colour, showing the weekly cap as text (`Week OT 5:00 / 12:00`) instead.
 
 A day with no record shows an empty dashed fill. A day you have clocked out of shows a grey fill stopped at whatever it reached.
 
@@ -1248,10 +1274,16 @@ the unit tests cannot reach, because `ImageRenderer` output is not assertable.
 
 - [ ] The four working-day stops are distinguishable from each other in passing,
       not just side by side.
-- [ ] The light-appearance values hold contrast. Only `#4f9e3c` (green) and
-      `#c96a12` (orange) were specified; the other four were derived and are the
-      most likely to need adjusting.
-- [ ] Orange and red match the week strip's orange and red in the popover.
+- [ ] The light-appearance spectrum values hold contrast. Only `#4f9e3c` (green) was
+      specified; the other three were derived and are the most likely to need
+      adjusting. The alerting colours need no check here — they are the system
+      colours, not tuned values.
+- [ ] The label's over-target orange is indistinguishable from the week strip's
+      orange with the popover open beneath it. Both resolve to the same
+      `Color.orange`, so any visible difference means the resolution path is wrong.
+- [ ] The limit red reads as an escalation from the orange, not as a second warning
+      colour. It has no counterpart in the strip — the weekly cap shows there as
+      text — so it is the label's alone.
 
 ## Behaviour through a day
 
