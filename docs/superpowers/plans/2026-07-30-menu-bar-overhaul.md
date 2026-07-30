@@ -450,8 +450,9 @@ git commit -m "feat: labelGlyph and labelText — the Mac label's own vocabulary
   - `LabelGeometry: String, CaseIterable, Sendable` with `.ring`, `.track`
   - `RGBA(red:green:blue:alpha:)` and `RGBA(_ hex: UInt32, alpha:)`, fields `red`/`green`/`blue`/`alpha`
   - `ColourPair(light: RGBA, dark: RGBA)`
+  - `LabelFill` with `.pair(ColourPair)`, `.systemOrange`, `.systemRed`
   - `LabelPhase(_ display: MenuDisplay)` with `.idle`/`.working`/`.overtime`/`.atLimit`/`.settled`
-  - `LabelPalette.resolve(progress: Double, phase: LabelPhase) -> LabelPalette.Colours`, whose fields are `fill: ColourPair`, `glyphTint: ColourPair?`, `track: ColourPair`, `dashed: Bool`
+  - `LabelPalette.resolve(progress: Double, phase: LabelPhase) -> LabelPalette.Colours`, whose fields are `fill: LabelFill`, `glyphTint: LabelFill?`, `track: ColourPair`, `dashed: Bool`. Note `fill` and `glyphTint` are `LabelFill`, **not** `ColourPair` — only `track` is a bare pair.
 
 - [ ] **Step 1: Write the failing tests**
 
