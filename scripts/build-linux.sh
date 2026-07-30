@@ -10,7 +10,7 @@ docker run --rm --platform linux/amd64 -v "$PWD":/src -w /src -e HOME=/tmp \
   --scratch-path .build-linux
 
 # NOTE: if you need to rerun the test suite inside this Docker image, pass
-# -e TZ=Asia/Seoul — 13 tests are date-shifted under the container's default
+# -e TZ=Asia/Seoul — ~30 date-sensitive tests shift under the container's default
 # UTC (build and daemon are unaffected). Example:
 #   docker run --rm --platform linux/amd64 -v "$PWD":/src -w /src -e HOME=/tmp \
 #     -e TZ=Asia/Seoul "$IMAGE" swift test --scratch-path .build-linux

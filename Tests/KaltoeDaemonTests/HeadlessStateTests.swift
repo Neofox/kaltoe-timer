@@ -59,10 +59,17 @@ final class HeadlessStateTests: XCTestCase {
 
     /// The canonical week, for the fields the tray's new rows read. Thursday is a
     /// day off; Friday 2026-07-31 is open and is the last Friday of July.
+    ///
+    /// Monday clocks out at 18:35:**37**, not on the minute. Flex timestamps come
+    /// from epoch milliseconds (`FlexRecordParser`), so a seconds component is the
+    /// norm, and without one Monday's `worked` and `overtime` would floor to the same
+    /// values untruncated and prove nothing. Both expectations below are unchanged by
+    /// the 37 s: net is 8:35:37 -> 8:35, overtime 35:37 -> 35:00.
     private var fullWeek: ParseResult {
         ParseResult(
             records: [
-                WorkRecord(clockIn: d(2026, 7, 27, 9, 0), clockOut: d(2026, 7, 27, 18, 35),
+                WorkRecord(clockIn: d(2026, 7, 27, 9, 0),
+                           clockOut: d(2026, 7, 27, 18, 35).addingTimeInterval(37),
                            flexWorkedNet: nil),
                 WorkRecord(clockIn: d(2026, 7, 31, 9, 12), clockOut: nil, flexWorkedNet: nil),
             ],
@@ -155,14 +162,37 @@ final class HeadlessStateTests: XCTestCase {
 
     /// Seconds would make the daemon emit every second instead of every minute
     /// (main.swift emits on change), so every interval is minute-truncated.
-    func testPerDayIntervalsAreTruncatedToWholeMinutes() async {
+    func testPerDayIntervalsAreTruncatedToWholeMinutes() async throws {
         let state = state([.success(fullWeek)])
         await state.refresh()
 
         // 09:12 to 14:41:37 is 5:29:37 elapsed, less the full hour of lunch.
         let line = state.status(now: d(2026, 7, 31, 14, 41).addingTimeInterval(37))
-        XCTAssertEqual(line.days?[4].worked, 4 * 3600 + 29 * 60)
-        XCTAssertEqual(line.days?.allSatisfy { ($0.worked ?? 0) % 60 == 0 }, true)
+        let days = try XCTUnwrap(line.days)
+        // Both discriminating: each drops a real 37 s rather than flooring a value
+        // that was already on the minute. Monday from its clock-out, Friday from `now`.
+        XCTAssertEqual(days[4].worked, 4 * 3600 + 29 * 60)
+        XCTAssertEqual(days[0].worked, 8 * 3600 + 35 * 60)
+        XCTAssertEqual(days[0].overtime, 35 * 60)
+
+        // `target` is record-independent, so all five rows carry one.
+        for (index, day) in days.enumerated() {
+            XCTAssertEqual(day.target % 60, 0, "days[\(index)].target = \(day.target)")
+        }
+        // Only Monday and Friday have records. Looping over all five instead would
+        // let the three empty days pass vacuously — `worked` is nil there, and
+        // `overtime` is a hard 0 with no record to derive it from.
+        for index in [0, 4] {
+            let worked = try XCTUnwrap(days[index].worked, "days[\(index)] must have a record")
+            XCTAssertEqual(worked % 60, 0, "days[\(index)].worked = \(worked)")
+            XCTAssertEqual(days[index].overtime % 60, 0,
+                           "days[\(index)].overtime = \(days[index].overtime)")
+        }
+        // Guards the index list above: if a fixture change gave these days records,
+        // the loop would be silently skipping them.
+        XCTAssertNil(days[1].worked)
+        XCTAssertNil(days[2].worked)
+        XCTAssertNil(days[3].worked)
     }
 
     /// Mirrors the existing gate on started/leaveAt/weekOvertime: refreshing
