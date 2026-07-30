@@ -1233,6 +1233,12 @@ Replace the `week_ot` block in `apply_status` (the four lines from `self.ot_item
             self.target_item.set_label("  " + note)
 
         days = status.get("days") or []
+        # Mirror the popover, which hides the strip entirely until some day has
+        # hours (`days.contains(where: { $0.worked != nil })` in MenuBarView). The
+        # wire ships all five rows unconditionally, so without this gate a fresh
+        # Monday morning shows five bare labels on Linux and nothing on macOS.
+        if not any(day.get("worked") is not None for day in days):
+            days = []
         for item, day in zip(self.day_items, days):
             item.set_label(day_label(day))
             item.set_visible(True)
