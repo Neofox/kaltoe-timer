@@ -42,7 +42,7 @@ struct MenuBarView: View {
             }
 
             separator
-            weekSummary
+            weekSection
 
             separator
             // The separator is conditional with the action: the preference row must
@@ -81,10 +81,18 @@ struct MenuBarView: View {
                 row("Leave at", WorkCalculator.leaveTime(clockIn: today.clockIn, rules: state.rules,
                                                          timeOff: off)
                     .formatted(date: .omitted, time: .shortened))
+                // Only present when something shortened the day. Family day and
+                // approved time off both move Leave at with no other explanation,
+                // and when they stack the break vanishes too, so the row moves
+                // five hours rather than the four the target change alone implies.
+                if let note = state.weekSummary.targetNote {
+                    Text(note).font(.caption).foregroundStyle(.secondary)
+                }
                 row("Time left", Formatting.hms(WorkCalculator.timeLeft(
                     clockIn: today.clockIn, now: Date(), rules: state.rules, timeOff: off)))
             } else if state.hasSession {
-                Text("Not clocked in yet").foregroundStyle(.secondary)
+                Text(state.weekSummary.todayIsDayOff ? "Day off" : "Not clocked in yet")
+                    .foregroundStyle(.secondary)
             } else {
                 Text("Session expired").foregroundStyle(.secondary)
             }
@@ -120,12 +128,20 @@ struct MenuBarView: View {
         .padding(.horizontal, 12)
     }
 
-    private var weekSummary: some View {
+    /// Named for the section, not for `state.weekSummary` — this is the view, that
+    /// is the data it reads.
+    private var weekSection: some View {
         VStack(alignment: .leading, spacing: rowSpacing) {
-            let weekOT = WorkCalculator.weeklyOvertime(
-                records: state.weekIncludingManual(now: Date()),
-                timeOff: state.timeOff, now: Date(), rules: state.rules)
-            row("Week OT", "\(Formatting.hm(weekOT)) / \(Formatting.hm(state.rules.weeklyOvertimeCap))")
+            // Rendered whenever the week holds any record, signed out included —
+            // the same rule Week OT already followed, so stale-but-real data stays
+            // on screen instead of blanking.
+            if state.weekSummary.days.contains(where: { $0.worked != nil }) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(state.weekSummary.days, id: \.date) { WeekBarRow(day: $0) }
+                }
+            }
+            row("Week OT", "\(Formatting.hm(state.weekSummary.overtime)) / "
+                + Formatting.hm(state.weekSummary.cap))
             if let error = state.syncError {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption).foregroundStyle(.orange)
