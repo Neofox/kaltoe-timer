@@ -1275,6 +1275,11 @@ the unit tests cannot reach, because `ImageRenderer` output is not assertable.
 - [ ] Neither clashes with macOS 26's tinted / translucent menu bar over a busy
       wallpaper.
 - [ ] Switching geometry in the popover re-renders the label immediately.
+- [ ] The segmented picker looks right inset 12pt in the 280pt popover, and its two
+      segments do not crowd. Never seen at real width.
+- [ ] VoiceOver announces the picker as "Menu bar label style" and the segments as
+      "Ring"/"Track", with no doubled announcement. No screen reader was available
+      during implementation, so this is unverified in either direction.
 - [ ] Neither geometry is clipped or vertically off-centre in the 22pt bar.
 - [ ] The ring still matches the text after raising the system menu bar text size.
       `ringSize` and the inner glyph are hardcoded at 14pt and 7pt, but the label font
