@@ -1101,7 +1101,7 @@ weekOvertimeCap closes the StatusLine half of follow-up 2."
 - Consumes: the JSON produced in Task 6 — `days` (a list of `{label, worked, target, overtime, isDayOff, isOngoing}`), `targetNote`, `weekOvertimeCap`.
 - Produces: nothing consumed by later tasks.
 
-The tray shows figures, not bars: rows are `Gtk.MenuItem` labels serialised over DBusMenu, which carries text, icons and checkmarks but not custom widgets. The cairo/Pango code already in this file renders the *tray icon* PNG, a different path. Because there is no bar, these rows do carry signed overtime.
+The tray shows figures, not bars: rows are `Gtk.MenuItem` labels serialised over DBusMenu, which carries text, icons and checkmarks but not custom widgets. The cairo/Pango code already in this file renders the *tray icon* PNG, a different path. Because there is no bar, these rows carry the overtime figure — floored at zero, so a short day shows its hours alone and only a day that earned overtime gets a `+0:35`.
 
 - [ ] **Step 1: Write the formatter with its check**
 
@@ -1298,7 +1298,7 @@ Check: five day rows with separators, the caption row indented under `Leave at` 
 git add linux/kaltoe_rows.py linux/kaltoe-tray.py linux/install.sh
 git commit -m "feat: week rows in the Linux tray menu
 
-The same per-day data as the macOS popover, as figures with signed overtime —
+The same per-day data as the macOS popover, as figures carrying overtime when there is any —
 tray rows are DBusMenu labels, which carry no custom widgets, so there is no
 bar to carry the overtime instead. Week OT gains the cap denominator.
 

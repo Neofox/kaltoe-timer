@@ -210,8 +210,12 @@ Fri   4:29   · on the clock
 Week OT +1:45 / 12:00
 ```
 
-Rows here **do** carry signed overtime, because without a bar there is nothing
-else to convey it.
+Rows here carry the day's overtime as a figure, because without a bar there is
+nothing else to convey it. It is **not** signed: `DaySummary.overtime` is floored
+at zero, so a day short of target shows its hours alone with nothing after them —
+`Wed   7:40`. Only a day that actually earned overtime gets a `+0:35`. An earlier
+draft of this section said "signed", which the rejected macOS layout would have
+been but this one is not.
 
 Bars were considered and rejected on a hard constraint: tray rows are
 `Gtk.MenuItem` labels serialised over DBusMenu to the host panel, which carries
