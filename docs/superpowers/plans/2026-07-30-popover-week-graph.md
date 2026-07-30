@@ -1286,9 +1286,13 @@ print("no days field — expected when the container has no session"
 ```
 Expected: valid JSON parses, and with no session in the container `days` is absent — which is itself the gate from Task 6 working. On a machine with a real session, five labelled rows print.
 
-Then, on the Linux desktop, install and confirm visually:
+Then install on the Linux desktop the way users do — from the tarball, not from the checkout. The repo's `linux/` has no `kaltoe-core` (it is a build artefact), so `./install.sh` run there aborts on its first argument and never exercises the shipped path:
 ```bash
-cd linux && ./install.sh && ~/.local/share/kaltoe-timer/kaltoe-tray.py
+# on the Mac
+./scripts/build-linux.sh && scp build/kaltoe-timer-linux-x86_64.tar.gz <linux-box>:
+# on the Linux box
+tar -xzf kaltoe-timer-linux-x86_64.tar.gz && cd kaltoe-timer-linux && ./install.sh
+~/.local/share/kaltoe-timer/kaltoe-tray.py
 ```
 Check: five day rows with separators, the caption row indented under `Leave at` on a shortened day, `Week OT +1:45 / 12:00`, and every one of them gone after `Restart core` fails. **This is also where to confirm the DBusMenu assumption** — if a custom widget does survive on this panel, say so, because it would reopen the bars-versus-figures choice.
 
