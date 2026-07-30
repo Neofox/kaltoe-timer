@@ -3,7 +3,7 @@ import XCTest
 
 final class StatusLineTests: XCTestCase {
     func testMapsDisplayFields() {
-        let line = StatusLine(display: MenuDisplay(state: .overtime(today: -59 * 60),
+        let line = StatusLine(display: MenuDisplay(state: .overtime(today: -59 * 60, clockedIn: true),
                                                    urgency: .critical),
                               hasSession: true, lastSync: nil, syncError: nil)
         XCTAssertEqual(line.text, "OT -0:59")
@@ -70,5 +70,29 @@ final class StatusLineTests: XCTestCase {
         XCTAssertEqual(StatusLine.secondsFlooredToMinute(.infinity), 0)
         XCTAssertEqual(StatusLine.secondsFlooredToMinute(-.infinity), 0)
         XCTAssertEqual(StatusLine.secondsFlooredToMinute(1e300), 0)
+    }
+
+    /// The NDJSON wire is frozen. `kaltoe-tray.py` maps exactly these three symbol
+    /// names in `ICON_BASE` and falls back to a generic timer for anything else, its
+    /// `LABEL_GUIDE` is sized from the `OT ` prefix, and `render_text_icon` stacks
+    /// the label at the first space — which on KDE is the only phase signal there is,
+    /// since that tray renders the text alone with no glyph. The Mac's expressive
+    /// glyphs and prefix-free text live on `labelGlyph`/`labelText` instead. If this
+    /// test fails, the Linux tray has regressed.
+    func testWireTextAndIconAreUnchangedForEveryState() {
+        let cases: [(DisplayState, String, String)] = [
+            (.noSession, "—", "timer"),
+            (.notClockedIn, "--:--", "timer"),
+            (.toLunch(timeLeft: 80 * 60), "1:20", "fork.knife"),
+            (.onBreak(timeLeft: 45 * 60), "BREAK 0:45", "cup.and.saucer"),
+            (.counting(timeLeft: 154 * 60), "2:34", "timer"),
+            (.overtime(today: 3600, clockedIn: true), "OT +1:00", "timer"),
+            (.overtime(today: 3600, clockedIn: false), "OT +1:00", "timer"),
+            (.overtime(today: -20 * 60, clockedIn: false), "OT -0:20", "timer"),
+        ]
+        for (state, text, icon) in cases {
+            XCTAssertEqual(state.menuBarText, text, "menuBarText for \(state)")
+            XCTAssertEqual(state.iconName, icon, "iconName for \(state)")
+        }
     }
 }

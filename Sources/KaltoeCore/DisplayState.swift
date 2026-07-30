@@ -20,7 +20,7 @@ public enum DisplayState: Equatable, Sendable {
     case toLunch(timeLeft: TimeInterval)   // counting down to the lunch-leave moment
     case onBreak(timeLeft: TimeInterval)   // counting down to work resuming
     case counting(timeLeft: TimeInterval)  // counting down to leave time
-    case overtime(today: TimeInterval)   // overtime worked today; negative if short
+    case overtime(today: TimeInterval, clockedIn: Bool)   // overtime worked today; negative if short
 
     private static let warningThreshold: TimeInterval = 30 * 60
     private static let criticalThreshold: TimeInterval = 10 * 60
@@ -72,7 +72,8 @@ public enum DisplayState: Equatable, Sendable {
         } else {
             urgency = .normal                       // day settled
         }
-        return MenuDisplay(state: .overtime(today: todayOvertime), urgency: urgency)
+        return MenuDisplay(state: .overtime(today: todayOvertime, clockedIn: clockedIn),
+                           urgency: urgency)
     }
 
     public var menuBarText: String {
@@ -82,7 +83,7 @@ public enum DisplayState: Equatable, Sendable {
         case .toLunch(let left): return Formatting.hm(left)
         case .onBreak(let left): return "BREAK " + Formatting.hm(left)
         case .counting(let left): return Formatting.hm(left)
-        case .overtime(let today): return "OT " + Formatting.signedHM(today)
+        case .overtime(let today, _): return "OT " + Formatting.signedHM(today)
         }
     }
 

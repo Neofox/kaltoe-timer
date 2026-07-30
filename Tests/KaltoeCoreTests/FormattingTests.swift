@@ -67,7 +67,7 @@ final class DisplayStateTests: XCTestCase {
                                                   weeklyOvertime: 3600,
                                                   now: d(2026, 7, 29, 19, 0),
                                                   rules: rules, calendar: seoul)
-        XCTAssertEqual(display.state, .overtime(today: 3600))
+        XCTAssertEqual(display.state, .overtime(today: 3600, clockedIn: true))
         XCTAssertEqual(display.state.menuBarText, "OT +1:00")
         XCTAssertEqual(display.urgency, .warning)
     }
@@ -82,7 +82,7 @@ final class DisplayStateTests: XCTestCase {
                                                   weeklyOvertime: 0,
                                                   now: d(2026, 7, 29, 17, 30),
                                                   rules: rules, calendar: seoul)
-        XCTAssertEqual(display.state, .overtime(today: -3600))
+        XCTAssertEqual(display.state, .overtime(today: -3600, clockedIn: false))
         XCTAssertEqual(display.state.menuBarText, "OT -1:00")
         XCTAssertEqual(display.urgency, .normal)
     }
@@ -174,7 +174,7 @@ final class PhaseDisplayTests: XCTestCase {
                                                   now: d(2026, 7, 29, 22, 30),
                                                   rules: rules, calendar: seoul)
         XCTAssertEqual(display.urgency, .critical)
-        XCTAssertEqual(display.state, .overtime(today: 4.5 * 3600))
+        XCTAssertEqual(display.state, .overtime(today: 4.5 * 3600, clockedIn: true))
     }
 
     /// Clocked out at 19:00 and left running: at 22:30 the cutoff has passed but
@@ -190,7 +190,7 @@ final class PhaseDisplayTests: XCTestCase {
                                                   now: d(2026, 7, 29, 22, 30),
                                                   rules: rules, calendar: seoul)
         XCTAssertEqual(display.urgency, .normal)
-        XCTAssertEqual(display.state, .overtime(today: 1 * 3600))
+        XCTAssertEqual(display.state, .overtime(today: 1 * 3600, clockedIn: false))
     }
 
     /// The weekly cap is critical regardless of clock state — 12h worked is 12h
@@ -216,7 +216,7 @@ final class PhaseDisplayTests: XCTestCase {
                                                now: d(2026, 7, 9, 9, 0), rules: rules, calendar: seoul)
         XCTAssertEqual(none, MenuDisplay(state: .noSession, urgency: .normal))
         XCTAssertEqual(DisplayState.counting(timeLeft: 60).iconName, "timer")
-        XCTAssertEqual(DisplayState.overtime(today: 0).iconName, "timer")
+        XCTAssertEqual(DisplayState.overtime(today: 0, clockedIn: true).iconName, "timer")
         XCTAssertEqual(DisplayState.noSession.iconName, "timer")
         XCTAssertEqual(DisplayState.notClockedIn.iconName, "timer")
     }
