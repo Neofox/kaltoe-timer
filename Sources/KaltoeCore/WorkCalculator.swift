@@ -42,6 +42,29 @@ public enum WorkCalculator {
         target > rules.dailyWork / 2 ? rules.breakTime : 0
     }
 
+    /// The break *already consumed* by `now`: the overlap of `[clockIn, now]` with
+    /// the day's lunch window, capped at the day's break.
+    ///
+    /// Exists because the day's bar needs hours worked so far, and deducting the
+    /// whole break up front would hold that at zero until an hour past clock-in.
+    ///
+    /// Uses `rules.lunchStart` rather than `lunchWindow(on:)`'s `leaveAt`, which is
+    /// shifted earlier by `lunchEarlyLeave`. That shift serves the "you may leave
+    /// for lunch now" countdown; break *accounting* has to follow the official
+    /// window, or a worker who never leaves early would be debited time they
+    /// worked.
+    public static func breakTaken(clockIn: Date, now: Date, rules: WorkRules,
+                                  timeOff: TimeInterval = 0,
+                                  calendar: Calendar = .current) -> TimeInterval {
+        let target = dailyTarget(on: clockIn, rules: rules, timeOff: timeOff, calendar: calendar)
+        let cap = breakDuration(target: target, rules: rules)
+        guard cap > 0 else { return 0 }
+        let midnight = calendar.startOfDay(for: clockIn)
+        let overlap = min(now, midnight.addingTimeInterval(rules.lunchEnd))
+            .timeIntervalSince(max(clockIn, midnight.addingTimeInterval(rules.lunchStart)))
+        return min(cap, max(0, overlap))
+    }
+
     /// Approved time-off seconds for the day containing `day` (0 if none).
     /// `map` keys must be `startOfDay`-normalized (parser convention).
     public static func timeOff(on day: Date, in map: [Date: TimeInterval],

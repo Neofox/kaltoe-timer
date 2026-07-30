@@ -282,4 +282,50 @@ final class WorkCalculatorTests: XCTestCase {
                                                      now: now, rules: rules),
                        3600 + 9000, accuracy: 1)
     }
+
+    // MARK: breakTaken
+
+    func testBreakTakenIsZeroBeforeLunchStarts() {
+        // Clocked in 09:12, now 10:00 — the 11:30 lunch has not begun.
+        XCTAssertEqual(WorkCalculator.breakTaken(clockIn: d(2026, 7, 31, 9, 12),
+                                                 now: d(2026, 7, 31, 10, 0), rules: rules), 0)
+    }
+
+    func testBreakTakenAccruesDuringLunch() {
+        // Lunch runs 11:30–12:30. At 12:00, half of it is spent.
+        XCTAssertEqual(WorkCalculator.breakTaken(clockIn: d(2026, 7, 31, 9, 12),
+                                                 now: d(2026, 7, 31, 12, 0), rules: rules),
+                       30 * 60)
+    }
+
+    func testBreakTakenCapsAtTheFullBreakAfterLunch() {
+        XCTAssertEqual(WorkCalculator.breakTaken(clockIn: d(2026, 7, 31, 9, 12),
+                                                 now: d(2026, 7, 31, 16, 0), rules: rules),
+                       3600)
+    }
+
+    /// Clocking in after lunch never consumed it, so nothing is deducted — this is
+    /// the case a naive `now − lunchStart` would get wrong.
+    func testBreakTakenIsZeroWhenClockingInAfterLunch() {
+        XCTAssertEqual(WorkCalculator.breakTaken(clockIn: d(2026, 7, 31, 13, 0),
+                                                 now: d(2026, 7, 31, 18, 0), rules: rules), 0)
+    }
+
+    /// A half-day target has no break at all (breakDuration returns 0), so there is
+    /// none to consume even long after the lunch window.
+    func testBreakTakenIsZeroWhenTheDayHasNoBreak() {
+        XCTAssertEqual(WorkCalculator.breakTaken(clockIn: d(2026, 7, 29, 9, 0),
+                                                 now: d(2026, 7, 29, 18, 0), rules: rules,
+                                                 timeOff: 4 * 3600), 0)
+    }
+
+    /// The cap is the day's break, not the window's width: a 30-minute break inside
+    /// a 60-minute window stops at 30.
+    func testBreakTakenCapsAtTheBreakNotTheWindow() {
+        var short = WorkRules()
+        short.breakTime = 30 * 60
+        XCTAssertEqual(WorkCalculator.breakTaken(clockIn: d(2026, 7, 31, 9, 12),
+                                                 now: d(2026, 7, 31, 16, 0), rules: short),
+                       30 * 60)
+    }
 }
