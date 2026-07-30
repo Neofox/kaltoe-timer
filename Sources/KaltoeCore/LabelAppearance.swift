@@ -100,9 +100,11 @@ public enum LabelPalette {
         ColourPair(light: RGBA(0xb0741a), dark: RGBA(0xe8a02a)),
     ]
 
-    /// Shared with the popover's week strip, which is also orange past target and
-    /// red at a limit. The working day's colours are the label's alone; these two
-    /// are the vocabulary the whole app speaks.
+    /// The label's own, tuned to read as the same orange-past-target vocabulary the
+    /// popover's week strip already speaks — not the same values as it: `WeekBarRow`
+    /// fills its over-target segment with the system `Color.orange`, and has no limit
+    /// colour at all. Making the strip consume these constants is a separate change
+    /// that has not happened.
     static let overtimeColour = ColourPair(light: RGBA(0xc96a12), dark: RGBA(0xe8862a))
     static let limitColour = ColourPair(light: RGBA(0xb52a22), dark: RGBA(0xe0433a))
     static let neutral = ColourPair(light: RGBA(0x6c6c74), dark: RGBA(0xa0a0a8))
@@ -156,12 +158,12 @@ public enum LabelPalette {
                           dark: lerp(stops[i].dark, stops[i + 1].dark, t))
     }
 
-    /// Weighted rather than the shorter `a + (b - a) * t`, because the endpoints have
-    /// to come out *exactly* equal to the stops and that form does not: at `t == 1`,
-    /// `a + (b - a)` rounds twice and lands one ULP off `b` for most channel pairs
-    /// (0x6a→0x2a is one). `progress == 1` is a real value — it is the whole
-    /// afternoon's destination — so the final stop being unreachable is not academic.
-    /// This form is exact at `t == 0` and `t == 1` by construction.
+    /// Weighted rather than the shorter `a + (b - a) * t`, which is not endpoint-exact:
+    /// at `t == 1` it rounds twice and misses `b` by one ULP for one of the eighteen
+    /// channel pairs — the final segment's dark blue, 0x6a→0x2a. The tests compare
+    /// whole `ColourPair`s against `stops[3]` for exact equality, so `spectrum(1)`, and
+    /// the clamped `2` and `.infinity` with it, could not pass. This form is exact at
+    /// both `t == 0` and `t == 1` by construction.
     static func lerp(_ a: RGBA, _ b: RGBA, _ t: Double) -> RGBA {
         RGBA(red: a.red * (1 - t) + b.red * t,
              green: a.green * (1 - t) + b.green * t,
