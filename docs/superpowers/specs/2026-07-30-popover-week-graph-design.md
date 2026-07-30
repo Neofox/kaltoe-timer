@@ -22,8 +22,18 @@ month, `WorkCalculator.isFamilyDay`). On such a day `Leave at` simply reads
 earlier than it should, with nothing on screen accounting for it. The compounding
 case is genuinely confusing: family day plus 2:00 of approved time off gives a
 4:00 target, and because `breakDuration` drops the lunch hour entirely once the
-target is at or below half a day, `Leave at` moves **four** hours earlier, not
-three. Nothing in the UI explains either subtraction, let alone their interaction.
+target is at or below half a day, `Leave at` moves **five** hours earlier — not
+the four the target reduction alone would suggest. The extra hour is the lunch
+that stopped applying, and the caption never names it (see the note at the end of
+this section). Nothing in the UI explains either subtraction, let alone their interaction.
+
+**Known limit of the chosen caption**, surfaced in review: on the compounding day
+the caption reads `Target 4:00 · family day, time off`, which accounts for four of
+the five hours `Leave at` moved. The disappearing lunch break is the fifth and is
+never named. That is the pinned contract and ships as-is — a caption that also
+explained the break would not fit one 11pt line — but it means the motivating
+complaint is only partly answered on exactly the day that motivated it. Recorded
+as a follow-up rather than redesigned.
 
 ## Visual design
 

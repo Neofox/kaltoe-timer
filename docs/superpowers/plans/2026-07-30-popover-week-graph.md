@@ -219,7 +219,8 @@ final class TargetNoteTests: XCTestCase {
     }
 
     /// The compounding case, and the reason this feature exists: both reductions
-    /// land on one day, and the break vanishes too, so Leave at moves four hours.
+    /// land on one day, and the break vanishes too, so Leave at moves five hours:
+    /// 8h + 1h break becomes 4h + no break, not 4h + 1h.
     func testFamilyDayAndTimeOffStack() {
         let key = Calendar.current.startOfDay(for: d(2026, 7, 31, 0, 0))
         XCTAssertEqual(TargetNote.compose(on: d(2026, 7, 31, 9, 12), rules: rules,
@@ -825,8 +826,8 @@ In `Sources/FlexTimer/MenuBarView.swift`, replace the body of `information(_:)` 
                     .formatted(date: .omitted, time: .shortened))
                 // Only present when something shortened the day. Family day and
                 // approved time off both move Leave at with no other explanation,
-                // and when they stack the break vanishes too, so the row moves four
-                // hours rather than three.
+                // and when they stack the break vanishes too, so the row moves
+                // five hours rather than the four the target change alone implies.
                 if let note = state.weekSummary.targetNote {
                     Text(note).font(.caption).foregroundStyle(.secondary)
                 }
