@@ -30,3 +30,123 @@ public enum TargetNote {
         return "Target \(Formatting.hm(target)) · " + reasons.joined(separator: ", ")
     }
 }
+
+/// One weekday in the week strip. Display-only: every field is derived, and
+/// nothing here feeds the leave-time or overtime calculations.
+public struct DaySummary: Equatable, Sendable {
+    public var date: Date               // startOfDay
+    public var label: String            // "Mon"
+    public var worked: TimeInterval?    // nil = no record that day
+    public var target: TimeInterval     // the bar's notch
+    public var overtime: TimeInterval   // from dailyOvertime, floored at 0 — see netWorked
+    public var isDayOff: Bool
+    public var isOngoing: Bool
+
+    public init(date: Date, label: String, worked: TimeInterval?, target: TimeInterval,
+                overtime: TimeInterval, isDayOff: Bool, isOngoing: Bool) {
+        self.date = date
+        self.label = label
+        self.worked = worked
+        self.target = target
+        self.overtime = overtime
+        self.isDayOff = isDayOff
+        self.isOngoing = isOngoing
+    }
+}
+
+/// The whole week as the UI needs it, computed once per tick and consumed by the
+/// menu bar pill, the popover and the daemon's status line — so the three cannot
+/// disagree the way the popover and the pill previously could.
+public struct WeekSummary: Equatable, Sendable {
+    public var days: [DaySummary]        // always 5, Mon–Fri
+    public var overtime: TimeInterval
+    public var cap: TimeInterval
+    public var targetNote: String?
+    public var todayIsDayOff: Bool
+
+    public init(days: [DaySummary] = [], overtime: TimeInterval = 0, cap: TimeInterval = 0,
+                targetNote: String? = nil, todayIsDayOff: Bool = false) {
+        self.days = days
+        self.overtime = overtime
+        self.cap = cap
+        self.targetNote = targetNote
+        self.todayIsDayOff = todayIsDayOff
+    }
+
+    /// Weekday labels, fixed rather than locale-derived: the rest of this UI is
+    /// English ("Started", "Leave at"), so a localised strip would be the only
+    /// translated text on screen.
+    private static let labels = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+
+    public static func compute(from data: WeekData, now: Date, rules: WorkRules,
+                               calendar: Calendar = .current) -> WeekSummary {
+        // weekIncludingManual, not `records`, so a manual start appears as a row
+        // exactly as it already counts toward the total.
+        let records = data.weekIncludingManual(now: now)
+        let weekStart = WorkCalculator.weekStart(of: now, calendar: calendar)
+        let days = Self.labels.indices.map { offset -> DaySummary in
+            let day = calendar.date(byAdding: .day, value: offset, to: weekStart) ?? weekStart
+            let key = calendar.startOfDay(for: day)
+            let off = WorkCalculator.timeOff(on: day, in: data.timeOff, calendar: calendar)
+            let target = WorkCalculator.dailyTarget(on: day, rules: rules, timeOff: off,
+                                                    calendar: calendar)
+            let record = records.first { calendar.isDate($0.clockIn, inSameDayAs: day) }
+            let worked = record.map {
+                netWorked($0, target: target, now: now, rules: rules, timeOff: off,
+                          calendar: calendar)
+            }
+            return DaySummary(date: key, label: Self.labels[offset], worked: worked,
+                              target: target,
+                              // The same function that feeds weeklyOvertime, floored
+                              // the same way, so a row cannot contradict the total
+                              // printed beneath it. Deriving it from `worked` instead
+                              // looks equivalent and is not: see netWorked below.
+                              overtime: record.map {
+                                  max(0, WorkCalculator.dailyOvertime(record: $0, now: now,
+                                                                      rules: rules,
+                                                                      timeOff: data.timeOff))
+                              } ?? 0,
+                              isDayOff: data.dayOffDates.contains(key),
+                              isOngoing: record.map { $0.clockOut == nil } ?? false)
+        }
+        return WeekSummary(
+            days: days,
+            overtime: WorkCalculator.weeklyOvertime(records: records, timeOff: data.timeOff,
+                                                    now: now, rules: rules),
+            cap: rules.weeklyOvertimeCap,
+            targetNote: TargetNote.compose(on: now, rules: rules, timeOff: data.timeOff,
+                                           calendar: calendar),
+            todayIsDayOff: days.first { calendar.isDate($0.date, inSameDayAs: now) }?
+                .isDayOff ?? false)
+    }
+
+    /// Net hours worked — the bar's length and the row's right-hand figure only.
+    /// Completed days mirror `dailyOvertime`'s derivation; open days deduct only the
+    /// break already spent, so the figure rises from clock-in rather than starting an
+    /// hour in the hole.
+    ///
+    /// **This is deliberately not the source of the row's overtime.** It is tempting
+    /// to write `max(0, worked - target)` and call it the same thing, and it is not:
+    /// clock in after the lunch window closes and `breakTaken` stays 0 forever while
+    /// `leaveTime` still adds the full break. A 13:00 start with an 8h target is due
+    /// out at 22:00, so at 22:30 `worked - target` reads +1:30 where `dailyOvertime`
+    /// reads +0:30 — and the row would contradict the weekly total directly beneath
+    /// it, which is the failure the signed-overtime layout was rejected to avoid.
+    /// `overtime` therefore comes from `dailyOvertime` above.
+    ///
+    /// The consequence, accepted: the orange segment is drawn from `worked` against
+    /// `target`, so after a late start it can lead the pill by up to the untaken
+    /// break. The numbers stay consistent; only the sliver is early.
+    private static func netWorked(_ record: WorkRecord, target: TimeInterval, now: Date,
+                                  rules: WorkRules, timeOff: TimeInterval,
+                                  calendar: Calendar) -> TimeInterval {
+        if let out = record.clockOut {
+            return record.flexWorkedNet
+                ?? max(0, out.timeIntervalSince(record.clockIn)
+                          - WorkCalculator.breakDuration(target: target, rules: rules))
+        }
+        return max(0, now.timeIntervalSince(record.clockIn)
+                      - WorkCalculator.breakTaken(clockIn: record.clockIn, now: now, rules: rules,
+                                                  timeOff: timeOff, calendar: calendar))
+    }
+}

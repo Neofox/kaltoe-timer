@@ -57,3 +57,163 @@ final class TargetNoteTests: XCTestCase {
                        "Target 6:00 · time off")
     }
 }
+
+final class WeekSummaryTests: XCTestCase {
+    /// `compute` reaches SettingsStore.manualStart through `weekIncludingManual`,
+    /// so without this a stray manual start in the developer's own domain would
+    /// materialise a row. Torn down rather than merely abandoned: leaked suites
+    /// accumulate as .plist files in ~/Library/Preferences.
+    /// Fixed, deliberately not `"weeksummary-tests-\(UUID())"` as the other suites
+    /// in this repo are. `removePersistentDomain` empties a suite's contents but
+    /// does not unlink its file, so a per-run UUID leaves one more empty .plist in
+    /// ~/Library/Preferences every single run — measured, and the reason 2000-odd
+    /// `flextimer-tests-*.plist` have piled up there. One stable name keeps that at
+    /// exactly one file forever.
+    private let suite = "weeksummary-tests"
+
+    /// Cleared on the way in as well as out, which is what makes a shared name safe:
+    /// a run killed mid-test leaves its manual start on disk, and this is what stops
+    /// the next run from reading it.
+    override func setUp() {
+        SettingsStore.defaults = UserDefaults(suiteName: suite)!
+        SettingsStore.defaults.removePersistentDomain(forName: suite)
+    }
+
+    /// Restores `.standard` rather than leaving the global pointing at a suite just
+    /// emptied: other classes in this bundle share the static, and each sets its own.
+    override func tearDown() {
+        SettingsStore.defaults.removePersistentDomain(forName: suite)
+        SettingsStore.defaults = .standard
+    }
+
+    /// The canonical week from the plan: Mon 8:35, Tue 9:10, Wed 7:40, Thu off,
+    /// Fri open from 09:12 and a family day. Week OT = 1:45.
+    private var week: WeekData {
+        WeekData(
+            records: [
+                WorkRecord(clockIn: d(2026, 7, 27, 9, 0), clockOut: d(2026, 7, 27, 18, 35),
+                           flexWorkedNet: nil),
+                WorkRecord(clockIn: d(2026, 7, 28, 9, 0), clockOut: d(2026, 7, 28, 19, 10),
+                           flexWorkedNet: nil),
+                WorkRecord(clockIn: d(2026, 7, 29, 9, 0), clockOut: d(2026, 7, 29, 17, 40),
+                           flexWorkedNet: nil),
+                WorkRecord(clockIn: d(2026, 7, 31, 9, 12), clockOut: nil, flexWorkedNet: nil),
+            ],
+            dayOffDates: [Calendar.current.startOfDay(for: d(2026, 7, 30, 0, 0))],
+            timeOff: [:])
+    }
+
+    private let now = d(2026, 7, 31, 14, 41)
+
+    private func summary(_ data: WeekData? = nil, now override: Date? = nil) -> WeekSummary {
+        WeekSummary.compute(from: data ?? week, now: override ?? now, rules: rules)
+    }
+
+    func testAlwaysFiveWeekdayRowsInOrder() {
+        XCTAssertEqual(summary().days.map(\.label), ["Mon", "Tue", "Wed", "Thu", "Fri"])
+    }
+
+    /// Five rows even with no records at all — the strip must not collapse.
+    func testFiveRowsWithAnEmptyWeek() {
+        let empty = summary(WeekData())
+        XCTAssertEqual(empty.days.count, 5)
+        XCTAssertTrue(empty.days.allSatisfy { $0.worked == nil })
+        XCTAssertEqual(empty.overtime, 0)
+    }
+
+    func testCompletedDaysDeductTheBreak() {
+        let days = summary().days
+        XCTAssertEqual(days[0].worked, 8 * 3600 + 35 * 60)   // 09:00–18:35 − 1h
+        XCTAssertEqual(days[1].worked, 9 * 3600 + 10 * 60)
+        XCTAssertEqual(days[2].worked, 7 * 3600 + 40 * 60)
+    }
+
+    /// Flex's own net figure wins when supplied, matching dailyOvertime.
+    func testFlexNetWorkedIsPreferredWhenPresent() {
+        let data = WeekData(records: [
+            WorkRecord(clockIn: d(2026, 7, 27, 9, 0), clockOut: d(2026, 7, 27, 18, 35),
+                       flexWorkedNet: 7 * 3600)
+        ])
+        XCTAssertEqual(summary(data).days[0].worked, 7 * 3600)
+    }
+
+    /// 09:12 to 14:41 is 5:29 elapsed, and lunch is fully spent by then, so 4:29.
+    func testOngoingDayDeductsOnlyTheBreakAlreadyTaken() {
+        XCTAssertEqual(summary().days[4].worked, 4 * 3600 + 29 * 60)
+        XCTAssertTrue(summary().days[4].isOngoing)
+    }
+
+    /// The case breakTaken exists for: at 10:00 nothing has been deducted, so the
+    /// bar shows 48 minutes rather than sitting at zero.
+    func testOngoingDayBeforeLunchDeductsNothing() {
+        let early = summary(now: d(2026, 7, 31, 10, 0))
+        XCTAssertEqual(early.days[4].worked, 48 * 60)
+    }
+
+    func testDayOffIsMarkedAndHasNoWork() {
+        let thursday = summary().days[3]
+        XCTAssertTrue(thursday.isDayOff)
+        XCTAssertNil(thursday.worked)
+        XCTAssertFalse(thursday.isOngoing)
+    }
+
+    /// Friday is the last Friday of July, so its notch sits at 6h, not 8h.
+    func testFamilyDayShortensOnlyItsOwnTarget() {
+        let days = summary().days
+        XCTAssertEqual(days[0].target, 8 * 3600)
+        XCTAssertEqual(days[4].target, 6 * 3600)
+    }
+
+    func testTimeOffShortensThatDaysTarget() {
+        var data = week
+        data.timeOff = [Calendar.current.startOfDay(for: d(2026, 7, 29, 0, 0)): 2 * 3600]
+        XCTAssertEqual(summary(data).days[2].target, 6 * 3600)
+    }
+
+    /// The property that lets the rows sit under the total without contradicting
+    /// it, on an ordinary week. Short days floor at zero, exactly as weeklyOvertime
+    /// counts them. `testPostLunchClockInStillAgreesWithTheTotal` is the case that
+    /// actually stresses it.
+    func testPerDayOvertimeSumsToTheWeeklyTotal() {
+        let s = summary()
+        XCTAssertEqual(s.days.map(\.overtime), [35 * 60, 70 * 60, 0, 0, 0])
+        XCTAssertEqual(s.days.reduce(0) { $0 + $1.overtime }, s.overtime)
+        XCTAssertEqual(s.overtime, 105 * 60)
+        XCTAssertEqual(s.cap, rules.weeklyOvertimeCap)
+    }
+
+    func testTargetNoteReflectsToday() {
+        XCTAssertEqual(summary().targetNote, "Target 6:00 · family day")
+        // Wednesday is ordinary, so a Wednesday `now` has nothing to explain.
+        XCTAssertNil(summary(now: d(2026, 7, 29, 15, 0)).targetNote)
+    }
+
+    func testTodayIsDayOffTracksTheDayOffSet() {
+        XCTAssertFalse(summary().todayIsDayOff)
+        XCTAssertTrue(summary(now: d(2026, 7, 30, 10, 0)).todayIsDayOff)
+    }
+
+    /// Regression test for a defect the plan originally shipped: deriving the row's
+    /// overtime from `worked - target` diverges from the published total whenever the
+    /// worker clocked in after lunch, because `breakTaken` is 0 while `leaveTime`
+    /// still adds the whole break. 13:00 start, 8h target, due out 22:00; at 22:30 the
+    /// naive form gives +1:30 and the total gives +0:30. They must agree.
+    func testPostLunchClockInStillAgreesWithTheTotal() {
+        let data = WeekData(records: [
+            WorkRecord(clockIn: d(2026, 7, 29, 13, 0), clockOut: nil, flexWorkedNet: nil)
+        ])
+        let s = WeekSummary.compute(from: data, now: d(2026, 7, 29, 22, 30), rules: rules)
+        XCTAssertEqual(s.days[2].overtime, 30 * 60)
+        XCTAssertEqual(s.days[2].overtime, s.overtime)
+        // The bar still measures actual time on the clock, break untaken.
+        XCTAssertEqual(s.days[2].worked, 9 * 3600 + 30 * 60)
+    }
+
+    /// A manual start is a real record everywhere else, so it must appear as a row.
+    func testManualStartAppearsAsARow() {
+        SettingsStore.setManualStart(d(2026, 7, 31, 9, 12), on: d(2026, 7, 31, 9, 12))
+        let s = WeekSummary.compute(from: WeekData(), now: now, rules: rules)
+        XCTAssertEqual(s.days[4].worked, 4 * 3600 + 29 * 60)
+        XCTAssertTrue(s.days[4].isOngoing)
+    }
+}
