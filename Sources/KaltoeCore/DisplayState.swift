@@ -94,4 +94,47 @@ public enum DisplayState: Equatable, Sendable {
         case .noSession, .notClockedIn, .counting, .overtime: return "timer"
         }
     }
+
+    /// Menu-bar-only glyph, deliberately parallel to `iconName` rather than
+    /// replacing it. `iconName` is the daemon's NDJSON contract: `kaltoe-tray.py`
+    /// maps exactly `timer`, `fork.knife` and `cup.and.saucer` in `ICON_BASE` and
+    /// falls back to a generic timer for anything else, so putting these names on the
+    /// wire would silently flatten the lunch phases on Linux.
+    public var labelGlyph: String {
+        switch self {
+        case .noSession: return "zzz"
+        case .notClockedIn: return "timer"
+        case .toLunch: return "fork.knife"
+        case .onBreak: return "cup.and.saucer"
+        case .counting(let left):
+            return left <= Self.warningThreshold ? "figure.walk" : "timer"
+        case .overtime(let today, let clockedIn):
+            // Settled outranks everything: a day you have clocked out of reads as
+            // closed even if it ended short, in which case the fill did not finish
+            // and the figure is signed.
+            guard clockedIn else { return "checkmark" }
+            return today < 60 ? "figure.walk.departure" : "flame"
+        }
+    }
+
+    /// Menu-bar-only text: `menuBarText` minus the `BREAK`/`OT` word prefixes, which
+    /// `labelGlyph` now carries. The prefixes stay on the wire because on KDE the
+    /// tray renders that text alone with no glyph at all, making them its only phase
+    /// signal.
+    public var labelText: String {
+        switch self {
+        case .noSession: return ""
+        case .notClockedIn: return "--:--"
+        case .toLunch(let left), .onBreak(let left), .counting(let left):
+            return Formatting.hm(left)
+        case .overtime(let today, let clockedIn):
+            // 자유! for exactly the span `signedHM` would render "+0:00", so nothing
+            // is displaced. Not a state, an event or a timer — just what this
+            // property returns for one minute, which is why it cannot get stuck on,
+            // fire repeatedly under the 1s tick, or fire retroactively on a launch
+            // at 20:00.
+            if clockedIn, today < 60 { return "자유!" }
+            return Formatting.signedHM(today)
+        }
+    }
 }
