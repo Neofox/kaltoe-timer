@@ -1,7 +1,12 @@
 # Menu bar label — what only hardware can confirm
 
-Spec: `specs/2026-07-30-menu-bar-overhaul-design.md`. Every item here is a claim
-the unit tests cannot reach, because `ImageRenderer` output is not assertable.
+Spec: `specs/2026-07-30-menu-bar-overhaul-design.md`. Almost every item here is a
+claim the unit tests cannot reach, because `ImageRenderer` output is not assertable.
+Three are partly covered — the 자유! minute is asserted in `LabelVocabularyTests`, and
+the fill's advance through lunch and its monotonicity follow from `dayProgress` being
+`elapsed / span` over a phase-independent denominator, covered in
+`WorkCalculatorTests` — so what hardware adds for those is *seeing the rendered fill
+do it*, not the arithmetic.
 
 ## Both geometries
 
@@ -12,6 +17,17 @@ the unit tests cannot reach, because `ImageRenderer` output is not assertable.
       one mockup cell that looked wrong.
 - [ ] Neither clashes with macOS 26's tinted / translucent menu bar over a busy
       wallpaper.
+- [ ] The countdown text contrasts with the bar **as it is actually drawn**, not as
+      the system appearance says. Try Light appearance over a dark wallpaper, and Dark
+      appearance over a light one: macOS will draw light menu bar text over a dark
+      wallpaper while the appearance is still Light, and `barForeground` is
+      `colorScheme == .dark ? .white : .black` baked into a non-template raster, in
+      every state. A template image would have inverted by itself; this raster cannot.
+      This is the control that replaced the retired high-contrast preference — before
+      the overhaul the exposure was bounded, because the template `.plain` path was the
+      default and the alerting `.pill` baked white on a saturated fill. The new
+      working-day and idle states bake black-or-white text over a faint or transparent
+      background, which is the combination that fails.
 - [ ] Switching geometry in the popover re-renders the label immediately.
 - [ ] The segmented picker looks right inset 12pt in the 280pt popover, and its two
       segments do not crowd. Never seen at real width.

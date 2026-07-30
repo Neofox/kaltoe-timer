@@ -229,9 +229,10 @@ And the palette, pure:
 ```swift
 public enum LabelPalette {
     public struct Colours: Equatable, Sendable {
-        public var fill: ColourPair        // arc stroke, or capsule fill
-        public var glyphTint: ColourPair?  // nil = follow the bar's own colour
-        public var track: ColourPair       // the unfilled remainder
+        public var fill: LabelFill         // arc stroke, or capsule fill
+        public var glyphTint: LabelFill?   // nil = follow the bar's own colour
+        public var track: ColourPair       // the unfilled remainder — the only bare
+                                           // pair, having no system colour to defer to
         public var dashed: Bool            // Ring's stroke, or Track's outline
     }
     public static func resolve(progress: Double, phase: LabelPhase) -> Colours
