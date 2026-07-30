@@ -21,7 +21,9 @@ final class TargetNoteTests: XCTestCase {
     }
 
     /// The compounding case, and the reason this feature exists: both reductions
-    /// land on one day, and the break vanishes too, so Leave at moves four hours.
+    /// land on one day, and because a 4h target is at or below half a day the break
+    /// vanishes with them, so Leave at moves five hours, not four — 18:12 to 13:12
+    /// (clock-in + 8h + 1h break, versus clock-in + 4h + no break).
     func testFamilyDayAndTimeOffStack() {
         let key = Calendar.current.startOfDay(for: d(2026, 7, 31, 0, 0))
         XCTAssertEqual(TargetNote.compose(on: d(2026, 7, 31, 9, 12), rules: rules,
@@ -40,5 +42,18 @@ final class TargetNoteTests: XCTestCase {
         var off = WorkRules()
         off.familyDayEarlyLeave = 0
         XCTAssertNil(TargetNote.compose(on: d(2026, 7, 31, 9, 12), rules: off, timeOff: [:]))
+    }
+
+    /// The family-day gate at compose's line 16, which no other test reaches:
+    /// testFamilyDayDisabledByRules exits at the earlier target < dailyWork guard,
+    /// so without this, deleting the gate leaves the whole suite green while a
+    /// disabled policy gets named in the caption.
+    func testFamilyDayDisabledStillNamesTimeOffAlone() {
+        var off = WorkRules()
+        off.familyDayEarlyLeave = 0
+        let key = Calendar.current.startOfDay(for: d(2026, 7, 31, 0, 0))
+        XCTAssertEqual(TargetNote.compose(on: d(2026, 7, 31, 9, 12), rules: off,
+                                          timeOff: [key: 2 * 3600]),
+                       "Target 6:00 · time off")
     }
 }
