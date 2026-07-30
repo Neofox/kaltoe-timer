@@ -10,6 +10,11 @@ final class AppState: ObservableObject {
     @Published var week: [WorkRecord] = []
     @Published var dayOffDates: Set<Date> = []
     @Published var timeOff: [Date: TimeInterval] = [:]
+    /// Derived once per tick and published so the popover renders without
+    /// computing anything. The popover used to derive weekly overtime itself on
+    /// every body pass, which was both a second pass per second and a way for the
+    /// pill and the popover to show different figures.
+    @Published var weekSummary = WeekSummary()
     @Published var lastSync: Date?
     @Published var syncError: String?
     @Published var hasSession: Bool = CookieVault.load()?.isEmpty == false {
@@ -114,18 +119,17 @@ final class AppState: ObservableObject {
     func recompute(now: Date) {
         let record = todayRecord(now: now)
         hookRunner?.evaluate(today: record, now: now)
-        // Derived once and shared. This runs every second, and the display and
-        // the notifier need the same figure — computing it twice was thousands
-        // of redundant passes an hour.
-        let weekly = WorkCalculator.weeklyOvertime(records: weekIncludingManual(now: now),
-                                                   timeOff: timeOff, now: now, rules: rules)
+        // Derived once and shared. This runs every second, and the display, the
+        // notifier and the popover all need the same figures.
+        let summary = WeekSummary.compute(from: weekData, now: now, rules: rules)
+        weekSummary = summary
         let display = DisplayState.computeDisplay(hasSession: hasSession, today: record,
-                                                  weeklyOvertime: weekly,
+                                                  weeklyOvertime: summary.overtime,
                                                   timeOff: timeOff,
                                                   now: now, rules: rules)
         menuDisplay = display
         menuText = display.state.menuBarText
-        limitNotifier?.evaluate(weeklyOvertime: weekly,
+        limitNotifier?.evaluate(weeklyOvertime: summary.overtime,
                                 clockedIn: record?.clockOut == nil && record != nil,
                                 now: now, rules: rules)
     }

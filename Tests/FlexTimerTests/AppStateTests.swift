@@ -228,3 +228,62 @@ final class AppStateTests: XCTestCase {
                                                        hasSession: true, hasTodayRecord: false))
     }
 }
+
+/// A separate class purely so it can carry `setUp`/`tearDown` without imposing them
+/// on `AppStateTests`, whose sixteen methods isolate `SettingsStore.defaults`
+/// per-method (or not at all). Retrofitting those is a logged follow-up, not this
+/// change's business, and a class-level `setUp` here would retrofit all of them at
+/// once.
+@MainActor
+final class AppStateWeekSummaryTests: XCTestCase {
+    /// `weekSummary` reads `SettingsStore.rules` and, through `weekIncludingManual`,
+    /// `SettingsStore.manualStart` — both of which the README tells users to set with
+    /// `defaults write`. Without a throwaway suite this test would read the
+    /// developer's own `dailyWorkHours`/`familyDayEarlyLeaveHours` and fail on their
+    /// machine while passing on a clean one.
+    ///
+    /// Fixed, deliberately not `"flextimer-tests-\(UUID())"` as the neighbouring
+    /// methods are: `removePersistentDomain` empties a suite but never unlinks its
+    /// file, so a per-run UUID leaks one more .plist into ~/Library/Preferences every
+    /// run — measured, and the reason 2000-odd `flextimer-tests-*.plist` have piled up
+    /// there. One stable name keeps that at exactly one file forever.
+    private let suite = "flextimer-appstate-weeksummary-tests"
+
+    /// Cleared on the way in as well as out, which is what makes a shared name safe:
+    /// a run killed mid-test leaves its keys on disk for the next one to read.
+    override func setUp() {
+        SettingsStore.defaults = UserDefaults(suiteName: suite)!
+        SettingsStore.defaults.removePersistentDomain(forName: suite)
+    }
+
+    /// `.standard` back as a neutral hand-back, matching `WeekSummaryTests`:
+    /// `SettingsStore.defaults` is process-global across the whole bundle and class
+    /// ordering is undefined, so leaving this suite installed would silently change
+    /// what unrelated tests read. Returning the global as it was found is the choice
+    /// that leaves no trace.
+    override func tearDown() {
+        SettingsStore.defaults.removePersistentDomain(forName: suite)
+        SettingsStore.defaults = .standard
+    }
+
+    /// The pill and the popover used to derive weekly overtime independently, so
+    /// they could disagree. One published summary makes that impossible — this
+    /// pins the agreement rather than the number.
+    func testRecomputePublishesAWeekSummaryMatchingThePill() {
+        let state = AppState()
+        state.hasSession = true
+        state.week = [
+            WorkRecord(clockIn: d(2026, 7, 27, 9, 0), clockOut: d(2026, 7, 27, 18, 35),
+                       flexWorkedNet: nil),
+            WorkRecord(clockIn: d(2026, 7, 31, 9, 12), clockOut: nil, flexWorkedNet: nil),
+        ]
+        state.recompute(now: d(2026, 7, 31, 14, 41))
+
+        XCTAssertEqual(state.weekSummary.days.count, 5)
+        XCTAssertEqual(state.weekSummary.days.map(\.label), ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        XCTAssertEqual(state.weekSummary.overtime, 35 * 60)  // Monday's +0:35 only
+        XCTAssertEqual(state.weekSummary.days[4].worked, 4 * 3600 + 29 * 60)
+        // 2026-07-31 is the last Friday of July.
+        XCTAssertEqual(state.weekSummary.targetNote, "Target 6:00 · family day")
+    }
+}
