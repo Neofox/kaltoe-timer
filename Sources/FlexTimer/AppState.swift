@@ -7,6 +7,14 @@ import KaltoeCore
 final class AppState: ObservableObject {
     @Published var menuText = "--:--"
     @Published var menuDisplay = MenuDisplay(state: .notClockedIn, urgency: .normal)
+    /// Progress from clock-in to leave time, 0…1. Derived once per tick like
+    /// `weekSummary`, so the label does no arithmetic in its body.
+    @Published var labelProgress: Double = 0
+    /// Mirrors the stored setting, written through on set so the picker persists,
+    /// and published so the label re-renders the moment it changes.
+    @Published var labelGeometry = SettingsStore.labelGeometry {
+        didSet { SettingsStore.labelGeometry = labelGeometry }
+    }
     @Published var week: [WorkRecord] = []
     @Published var dayOffDates: Set<Date> = []
     @Published var timeOff: [Date: TimeInterval] = [:]
@@ -128,7 +136,18 @@ final class AppState: ObservableObject {
                                                   timeOff: timeOff,
                                                   now: now, rules: rules)
         menuDisplay = display
-        menuText = display.state.menuBarText
+        menuText = display.state.labelText
+        labelProgress = record.map {
+            // Measured at clock-out once the day is closed, not at `now`. `dayProgress`
+            // divides elapsed-since-clock-in by the whole span, so a settled day would
+            // keep climbing all evening and read as a full ring hours after you went
+            // home — when the whole point of the settled state is that a day ended short
+            // of target visibly did not finish.
+            WorkCalculator.dayProgress(clockIn: $0.clockIn, now: $0.clockOut ?? now,
+                                       rules: rules,
+                                       timeOff: WorkCalculator.timeOff(on: $0.clockIn,
+                                                                       in: timeOff))
+        } ?? 0
         limitNotifier?.evaluate(weeklyOvertime: summary.overtime,
                                 clockedIn: record?.clockOut == nil && record != nil,
                                 now: now, rules: rules)

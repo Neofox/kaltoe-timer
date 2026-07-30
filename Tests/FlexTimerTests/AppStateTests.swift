@@ -25,8 +25,10 @@ final class AppStateTests: XCTestCase {
 
         // Past leave time 17:59 (08:59 + 8h target + 1h break) → today's OT accrues
         // live: 19:00 − 17:59 = +1:01. Monday's +2h01 is no longer in the menu bar.
+        // No `OT ` prefix: `menuText` is `labelText` now, and the glyph carries the
+        // phase. The prefix stays on the wire in `menuBarText` for the Linux tray.
         state.recompute(now: d(2026, 7, 7, 19, 0))
-        XCTAssertEqual(state.menuText, "OT +1:01")
+        XCTAssertEqual(state.menuText, "+1:01")
     }
 
     func testNoRecordTodayShowsPlaceholder() {
@@ -37,11 +39,13 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.menuText, "--:--")
     }
 
-    func testNoSessionShowsDash() {
+    /// Signed out is glyph-only: `labelText` is empty and the `zzz` glyph says it.
+    /// `menuBarText`'s em dash lives on for the daemon, which has no glyph.
+    func testNoSessionShowsNoText() {
         let state = AppState()
         state.hasSession = false
         state.recompute(now: d(2026, 7, 7, 8, 0))
-        XCTAssertEqual(state.menuText, "—")
+        XCTAssertEqual(state.menuText, "")
     }
 
     func testManualStartDrivesCountdownAndWeeklySum() {
@@ -55,12 +59,12 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.menuText, "2:34")
     }
 
-    func testExpiredSessionShowsDashDespiteStaleWeekData() {
+    func testExpiredSessionShowsNoTextDespiteStaleWeekData() {
         let state = AppState()
         state.hasSession = false
         state.week = [WorkRecord(clockIn: d(2026, 7, 9, 9, 0), clockOut: nil, flexWorkedNet: nil)]
         state.recompute(now: d(2026, 7, 9, 15, 0))
-        XCTAssertEqual(state.menuText, "—")
+        XCTAssertEqual(state.menuText, "")
     }
 
     func testWeekRolloverDropsLastWeeksRecordsFromSum() {
@@ -133,7 +137,7 @@ final class AppStateTests: XCTestCase {
         // Past 12:55 → overtime phase; today's OT = 13:00 − 12:55 = +0:05, measured
         // against the time-off-reduced 4h target.
         state.recompute(now: d(2026, 1, 2, 13, 0))
-        XCTAssertEqual(state.menuText, "OT +0:05")
+        XCTAssertEqual(state.menuText, "+0:05")
     }
 
     func testHighContrastToggleWritesThroughToSettings() {
