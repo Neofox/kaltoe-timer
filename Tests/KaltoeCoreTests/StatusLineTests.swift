@@ -57,4 +57,18 @@ final class StatusLineTests: XCTestCase {
         XCTAssertEqual(line(-250).weekOvertime, -240)  // -4m10s -> -4m (toward zero, matches signedHM)
         XCTAssertEqual(line(0).weekOvertime, 0)
     }
+
+    /// `Int(Double)` **traps** on NaN, ±infinity or an out-of-range magnitude, and this
+    /// is reachable from settings rather than only from bad arithmetic:
+    /// `weeklyOvertimeCapHours` is a `defaults write` knob README documents, and it
+    /// reaches `weekOvertimeCap` unfiltered. A typo there crash-looped the daemon
+    /// (SIGTRAP, exit 133) before the clamp landed — verified by hand then, pinned here,
+    /// because the next regression would be silent until someone's daemon stopped
+    /// coming back. Garbage in must yield 0: a visibly wrong row beats no daemon.
+    func testNonFiniteAndOutOfRangeIntervalsClampToZero() {
+        XCTAssertEqual(StatusLine.secondsFlooredToMinute(.nan), 0)
+        XCTAssertEqual(StatusLine.secondsFlooredToMinute(.infinity), 0)
+        XCTAssertEqual(StatusLine.secondsFlooredToMinute(-.infinity), 0)
+        XCTAssertEqual(StatusLine.secondsFlooredToMinute(1e300), 0)
+    }
 }

@@ -58,7 +58,10 @@ public struct DaySummary: Equatable, Sendable {
 /// menu bar pill, the popover and the daemon's status line — so the three cannot
 /// disagree the way the popover and the pill previously could.
 public struct WeekSummary: Equatable, Sendable {
-    public var days: [DaySummary]        // always 5, Mon–Fri
+    /// Always 5, Mon–Fri — in every value `compute` returns. Not in the
+    /// default-initialised placeholder that `AppState.weekSummary` holds until the
+    /// first `recompute`, which is empty.
+    public var days: [DaySummary]
     public var overtime: TimeInterval
     public var cap: TimeInterval
     public var targetNote: String?

@@ -16,7 +16,11 @@ def day_label(day):
     """One week row: 'Mon   8:35   +0:35', or 'Fri   4:29   · on the clock'.
 
     Overtime is spelled out here because, unlike the macOS popover, there is no
-    bar to carry it — DBusMenu carries no custom widgets.
+    bar to carry it. Not for want of a transport: DBusMenu carries no custom
+    widgets, true, but `icon-data` is a standard com.canonical.dbusmenu item
+    property holding raw PNG bytes, so a drawn per-row bar *could* travel. It
+    loses on sizing — a row icon is rendered at the panel's own small square
+    menu-icon size, which cannot hold a proportional bar anyone could read.
 
     The marker says "on the clock", not "today": `isOngoing` is
     `record.clockOut == nil`, so it marks the day still being worked, which is

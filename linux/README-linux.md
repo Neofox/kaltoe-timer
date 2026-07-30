@@ -69,16 +69,17 @@ then one row per weekday, then the week's overtime against the cap:
     Week OT +1:45 / 12:00
 
 Figures, not bars: tray rows are `Gtk.MenuItem` labels serialised over
-DBusMenu, which carries text and icons but no custom widgets, so the Mac
-popover's drawn bar isn't available here. That's why these rows spell overtime
-out (`+0:35`) where the Mac shows it as an orange segment — a day that stayed
-short of its target shows its hours alone. `· on the clock` marks the day
-still being worked, which can be an earlier weekday whose record was never
-closed rather than today. A day off reads `off`; there is no separate "Day
-off" line as on the Mac. As on the Mac the rows are Monday–Friday, weekend
-work gets no row, and the whole block stays hidden until some day in the week
-has hours — plus it hides while signed out, the way `Week OT` already did,
-where the Mac popover keeps the last known rows on screen.
+DBusMenu, and although a drawn bar could ride along as a row icon, your
+panel renders row icons at its own small square icon size — too small for a
+bar you could read. That's why these rows spell overtime out (`+0:35`) where
+the Mac shows it as an orange segment — a day that stayed short of its
+target shows its hours alone. `· on the clock` marks the day still being
+worked, which can be an earlier weekday whose record was never closed rather
+than today. A day off reads `off`; there is no separate "Day off" line as on
+the Mac. As on the Mac the rows are Monday–Friday, weekend work gets no row,
+and the whole block stays hidden until some day in the week has hours — plus
+it hides while signed out, the way `Week OT` already did, where the Mac
+popover keeps the last known rows on screen.
 
 The indented `Target …` caption appears only when approved time off or family
 day (the last Friday of the month) shortened today, and names which. One

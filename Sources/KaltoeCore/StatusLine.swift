@@ -27,15 +27,27 @@ public struct StatusLine: Codable, Equatable, Sendable {
 
     /// **Seconds**, with the sub-minute part dropped — 3660 in, 3600 out, not 61.
     /// The invariant every interval on this wire obeys, in one place so it cannot be
-    /// forgotten on the next field added. `main.swift` emits on change, so a
-    /// second-resolution interval would turn a once-per-minute emission into once
-    /// per second — and on Plasma every emission drives a full tray-icon
-    /// render/write/unlink cycle (`kaltoe-tray.py:_set_text_icon`).
+    /// forgotten on the next field added. `main.swift` emits on change, so without it
+    /// a second-resolution interval would move on every tick — sixty emissions a
+    /// minute instead of the one or two below, and on Plasma every emission drives a
+    /// full tray-icon render/write/unlink cycle (`kaltoe-tray.py:_set_text_icon`).
+    ///
+    /// One or two, deliberately: truncation makes each *field* minute-cadenced, not
+    /// the line as a whole. `weekOvertime` floors the **sum**, so prior days'
+    /// fractional seconds offset its minute boundary from the clock-in-aligned
+    /// fields, and the overtime phase has therefore emitted twice a minute since
+    /// before this week strip existed. What the invariant buys is the 60× reduction,
+    /// not a single emission per minute.
     ///
     /// "Floored" is loose for negatives: the rounding is toward zero, so −250 gives
     /// −240, not −300. That matches `Formatting.signedHM`, and it is pinned for
-    /// `weekOvertime` — the only field here that can go negative — by
-    /// `StatusLineTests.testWeekOvertimeRoundsToWholeMinutesTowardZero`.
+    /// `weekOvertime` by
+    /// `StatusLineTests.testWeekOvertimeRoundsToWholeMinutesTowardZero`. `weekOvertime`
+    /// is not the only field here that can go negative, and the other one matters for
+    /// exactly the reason the next paragraph raises: `weekOvertimeCap` copies
+    /// `rules.weeklyOvertimeCap` with no floor, so `weeklyOvertimeCapHours -float -5`
+    /// puts a negative denominator on the wire — where the tray's `hm` clamps it and
+    /// renders a confident, wrong `/ 0:00`.
     ///
     /// Total by construction. `Int(Double)` **traps** on NaN, ±infinity or an
     /// out-of-range magnitude, and this is reachable from hostile settings rather

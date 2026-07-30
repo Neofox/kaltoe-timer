@@ -217,16 +217,25 @@ at zero, so a day short of target shows its hours alone with nothing after them 
 draft of this section said "signed", which the rejected macOS layout would have
 been but this one is not.
 
-Bars were considered and rejected on a hard constraint: tray rows are
-`Gtk.MenuItem` labels serialised over DBusMenu to the host panel, which carries
-text, icons and checkmarks but not custom widgets. The cairo/Pango code already
-in `kaltoe-tray.py` renders the *tray icon* PNG, which is a different path
-entirely. Block-glyph bars were the remaining option and lose too much: at one
-cell per hour, 35 and 70 minutes of overtime both round to a single cell, making
-Monday and Tuesday above indistinguishable, and glyph widths depend on the
-panel's theme font. **Verify the DBusMenu limitation on the Fedora KDE setup
-before implementing** — the conclusion is from the protocol's capabilities, not
-from a test on that machine.
+Bars were considered and rejected, but not on the constraint an earlier draft of
+this section claimed. Tray rows are `Gtk.MenuItem` labels serialised over
+DBusMenu to the host panel, and it is true that the protocol carries text, icons
+and checkmarks but no custom widgets — the conclusion drawn from that was too
+strong. `icon-data` is a standard `com.canonical.dbusmenu` item property
+carrying raw PNG bytes, so a bar drawn with the cairo/Pango code already in
+`kaltoe-tray.py` (currently used only for the *tray icon* PNG, a separate path)
+could in fact reach the panel.
+
+What defeats it is **sizing**, not transport: a row's `icon-data` is rendered at
+the panel's own menu-icon size — a small square, on the order of the row's text
+height — and a proportional bar for a ten-hour scale is unreadable at that size,
+so the figure carries more information in the same space. Note also that the
+Plasma pixmap-cache argument offered alongside this one does *not* apply: that
+cache is keyed by icon **name** (see `kaltoe-tray.py:_set_text_icon`), and
+`icon-data` is nameless. Block-glyph bars were the remaining option and lose too
+much as well: at one cell per hour, 35 and 70 minutes of overtime both round to
+a single cell, making Monday and Tuesday above indistinguishable, and glyph
+widths depend on the panel's theme font.
 
 ## Protocol change
 

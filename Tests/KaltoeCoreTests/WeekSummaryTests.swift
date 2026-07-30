@@ -44,10 +44,13 @@ final class TargetNoteTests: XCTestCase {
         XCTAssertNil(TargetNote.compose(on: d(2026, 7, 31, 9, 12), rules: off, timeOff: [:]))
     }
 
-    /// The family-day gate at compose's line 16, which no other test reaches:
-    /// testFamilyDayDisabledByRules exits at the earlier target < dailyWork guard,
-    /// so without this, deleting the gate leaves the whole suite green while a
-    /// disabled policy gets named in the caption.
+    /// The only test that exercises the **rejection** side of compose's
+    /// `rules.familyDayEarlyLeave > 0` clause. testFamilyDayAlone reaches the same
+    /// clause but takes its true branch, and testFamilyDayDisabledByRules never
+    /// reaches it at all — it exits at the earlier `target < rules.dailyWork` guard.
+    /// Only here is the clause met on a real family day with familyDayEarlyLeave == 0,
+    /// so without this, deleting it leaves the whole suite green while a disabled
+    /// policy gets named in the caption.
     func testFamilyDayDisabledStillNamesTimeOffAlone() {
         var off = WorkRules()
         off.familyDayEarlyLeave = 0
