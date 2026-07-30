@@ -125,7 +125,7 @@ final class AppStateTests: XCTestCase {
         // in the leave-time math; 12:35 is past the lunch-phase window, so the menu
         // shows the plain countdown).
         state.week = [WorkRecord(clockIn: d(2026, 1, 2, 8, 55), clockOut: nil, flexWorkedNet: nil)]
-        state.timeOff = [Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0)): 4 * 3600]
+        state.timeOff = [Calendar.current.startOfDay(for: d(2026, 1, 2, 0, 0)): 4.0 * 3600]
 
         state.recompute(now: d(2026, 1, 2, 12, 35))
         XCTAssertEqual(state.menuText, "0:20")
@@ -182,7 +182,7 @@ final class AppStateTests: XCTestCase {
         state.week = (27...29).map {
             WorkRecord(clockIn: d(2026, 7, $0, 8, 0), clockOut: d(2026, 7, $0, 20, 0), flexWorkedNet: nil)
         } + [WorkRecord(clockIn: d(2026, 7, 30, 8, 0), clockOut: d(2026, 7, 30, 18, 0), flexWorkedNet: nil)]
-        state.timeOff = [Calendar.current.startOfDay(for: d(2026, 7, 30, 0, 0)): 2 * 3600]
+        state.timeOff = [Calendar.current.startOfDay(for: d(2026, 7, 30, 0, 0)): 2.0 * 3600]
         state.recompute(now: d(2026, 7, 30, 20, 30))
         XCTAssertEqual(state.menuDisplay.urgency, .critical)
 

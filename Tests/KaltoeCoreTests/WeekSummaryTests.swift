@@ -16,7 +16,7 @@ final class TargetNoteTests: XCTestCase {
     func testTimeOffAlone() {
         let key = Calendar.current.startOfDay(for: d(2026, 7, 29, 0, 0))
         XCTAssertEqual(TargetNote.compose(on: d(2026, 7, 29, 9, 0), rules: rules,
-                                          timeOff: [key: 2 * 3600]),
+                                          timeOff: [key: 2.0 * 3600]),
                        "Target 6:00 · time off")
     }
 
@@ -27,7 +27,7 @@ final class TargetNoteTests: XCTestCase {
     func testFamilyDayAndTimeOffStack() {
         let key = Calendar.current.startOfDay(for: d(2026, 7, 31, 0, 0))
         XCTAssertEqual(TargetNote.compose(on: d(2026, 7, 31, 9, 12), rules: rules,
-                                          timeOff: [key: 2 * 3600]),
+                                          timeOff: [key: 2.0 * 3600]),
                        "Target 4:00 · family day, time off")
     }
 
@@ -53,7 +53,7 @@ final class TargetNoteTests: XCTestCase {
         off.familyDayEarlyLeave = 0
         let key = Calendar.current.startOfDay(for: d(2026, 7, 31, 0, 0))
         XCTAssertEqual(TargetNote.compose(on: d(2026, 7, 31, 9, 12), rules: off,
-                                          timeOff: [key: 2 * 3600]),
+                                          timeOff: [key: 2.0 * 3600]),
                        "Target 6:00 · time off")
     }
 }
@@ -181,7 +181,7 @@ final class WeekSummaryTests: XCTestCase {
 
     func testTimeOffShortensThatDaysTarget() {
         var data = week
-        data.timeOff = [Calendar.current.startOfDay(for: d(2026, 7, 29, 0, 0)): 2 * 3600]
+        data.timeOff = [Calendar.current.startOfDay(for: d(2026, 7, 29, 0, 0)): 2.0 * 3600]
         XCTAssertEqual(summary(data).days[2].target, 6 * 3600)
     }
 
@@ -191,7 +191,7 @@ final class WeekSummaryTests: XCTestCase {
     /// actually stresses it.
     func testPerDayOvertimeSumsToTheWeeklyTotal() {
         let s = summary()
-        XCTAssertEqual(s.days.map(\.overtime), [35 * 60, 70 * 60, 0, 0, 0])
+        XCTAssertEqual(s.days.map(\.overtime), [35.0 * 60, 70.0 * 60, 0, 0, 0])
         XCTAssertEqual(s.days.reduce(0) { $0 + $1.overtime }, s.overtime)
         XCTAssertEqual(s.overtime, 105 * 60)
         XCTAssertEqual(s.cap, rules.weeklyOvertimeCap)
