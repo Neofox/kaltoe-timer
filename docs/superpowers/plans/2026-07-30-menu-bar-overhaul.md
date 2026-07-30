@@ -1276,6 +1276,14 @@ the unit tests cannot reach, because `ImageRenderer` output is not assertable.
       wallpaper.
 - [ ] Switching geometry in the popover re-renders the label immediately.
 - [ ] Neither geometry is clipped or vertically off-centre in the 22pt bar.
+- [ ] The ring still matches the text after raising the system menu bar text size.
+      `ringSize` and the inner glyph are hardcoded at 14pt and 7pt, but the label font
+      is `NSFont.menuBarFont(ofSize: 0)`, which honours that setting — so the text can
+      grow while the ring cannot follow.
+- [ ] Idle CPU with the popover closed is unchanged from before the overhaul.
+      Rasterisation is now unconditional at 1 Hz, where the old default `.plain` path
+      rasterised nothing at all. This is the design, not a regression — but it is the
+      one cost of it, and it has never been measured.
 
 ## The spectrum
 
