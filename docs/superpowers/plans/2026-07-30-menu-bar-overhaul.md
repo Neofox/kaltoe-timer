@@ -906,7 +906,13 @@ In `recompute` (`:119-135`), change the `menuText` assignment (`:131`) and add p
         menuDisplay = display
         menuText = display.state.labelText
         labelProgress = record.map {
-            WorkCalculator.dayProgress(clockIn: $0.clockIn, now: now, rules: rules,
+            // Measured at clock-out once the day is closed, not at `now`. `dayProgress`
+            // divides elapsed-since-clock-in by the whole span, so a settled day would
+            // keep climbing all evening and read as a full ring hours after you went
+            // home — when the whole point of the settled state is that a day ended short
+            // of target visibly did not finish.
+            WorkCalculator.dayProgress(clockIn: $0.clockIn, now: $0.clockOut ?? now,
+                                       rules: rules,
                                        timeOff: WorkCalculator.timeOff(on: $0.clockIn,
                                                                        in: timeOff))
         } ?? 0
