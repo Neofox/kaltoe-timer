@@ -81,7 +81,8 @@ def render_text_icon(text, urgency, out_path):
     """Render the tray label into a square PNG so Plasma shows it at full
     panel height: auto-fitted text (stacked at the first space), plain
     light-gray normally, white on an orange/red rounded square at
-    warning/critical (the Mac pill)."""
+    warning/critical (this tray's own alert badge — the only place the urgency
+    colours appear on Linux at all, since a plain tray label carries no colour)."""
     stacked = text.replace(" ", "\n", 1)
     pad = 8 if urgency in PILL_COLORS else 3
     avail = ICON_SIZE - 2 * pad

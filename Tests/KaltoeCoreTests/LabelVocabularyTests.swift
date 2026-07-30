@@ -105,14 +105,20 @@ final class LabelVocabularyTests: XCTestCase {
                        "Clocked out, -0:20 against today's target")
     }
 
-    /// 자유! is punctuation, which reads as nothing aloud. At-limit outranks it: the
-    /// two coincide when the weekly cap is reached in that same minute, and the cap
-    /// is the more important thing to say.
+    /// 자유! is punctuation, which reads as nothing aloud. At-limit outranks it, but
+    /// does not silence it: when the weekly cap is reached in that same minute the
+    /// figure is "+0:00" — the nothing `labelText` swaps for 자유! — so speech says
+    /// both facts in words rather than announcing the figure the screen suppresses.
     func testSpokenJayuMinuteSaysWords() {
         XCTAssertEqual(spoken(.overtime(today: 0, clockedIn: true), .warning), "Free to go")
         XCTAssertEqual(spoken(.overtime(today: 59, clockedIn: true), .warning), "Free to go")
         XCTAssertEqual(spoken(.overtime(today: 60, clockedIn: true), .warning), "Overtime +0:01")
         XCTAssertEqual(spoken(.overtime(today: 0, clockedIn: true), .critical),
-                       "Overtime +0:00, at the limit")
+                       "Free to go, at the limit")
+        XCTAssertEqual(spoken(.overtime(today: 59, clockedIn: true), .critical),
+                       "Free to go, at the limit")
+        // Past the celebration the at-limit phrasing keeps its figure.
+        XCTAssertEqual(spoken(.overtime(today: 60, clockedIn: true), .critical),
+                       "Overtime +0:01, at the limit")
     }
 }

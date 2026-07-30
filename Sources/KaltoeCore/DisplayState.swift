@@ -24,6 +24,10 @@ public enum DisplayState: Equatable, Sendable {
 
     private static let warningThreshold: TimeInterval = 30 * 60
     private static let criticalThreshold: TimeInterval = 10 * 60
+    /// How long the 자유! celebration lasts: exactly the span `signedHM` would render
+    /// as "+0:00". `fileprivate` rather than `private` only because the speech that
+    /// has to agree with it lives on `MenuDisplay`, one type over in this file.
+    fileprivate static let jayuWindow: TimeInterval = 60
 
     /// Smart single value with day phases and an overwork urgency level.
     ///
@@ -107,13 +111,16 @@ public enum DisplayState: Equatable, Sendable {
         case .toLunch: return "fork.knife"
         case .onBreak: return "cup.and.saucer"
         case .counting(let left):
+            // Shares `warningThreshold` with `Urgency.warning`, so retuning the
+            // urgency threshold moves the walking figure with it — the two values
+            // coincide on purpose, and the coupling is the constant, not a test.
             return left <= Self.warningThreshold ? "figure.walk" : "timer"
         case .overtime(let today, let clockedIn):
             // Settled outranks everything: a day you have clocked out of reads as
             // closed even if it ended short, in which case the fill did not finish
             // and the figure is signed.
             guard clockedIn else { return "checkmark" }
-            return today < 60 ? "figure.walk.departure" : "flame"
+            return today < Self.jayuWindow ? "figure.walk.departure" : "flame"
         }
     }
 
@@ -133,7 +140,7 @@ public enum DisplayState: Equatable, Sendable {
             // property returns for one minute, which is why it cannot get stuck on,
             // fire repeatedly under the 1s tick, or fire retroactively on a launch
             // at 20:00.
-            if clockedIn, today < 60 { return "자유!" }
+            if clockedIn, today < Self.jayuWindow { return "자유!" }
             return Formatting.signedHM(today)
         }
     }
@@ -170,16 +177,22 @@ public extension MenuDisplay {
         case .overtime(let today, let clockedIn):
             let figure = Formatting.signedHM(today)
             guard clockedIn else { return "Clocked out, \(figure) against today's target" }
+            let jayu = today < DisplayState.jayuWindow
             // Through `LabelPhase` rather than reading `urgency` here: `.critical`
             // arrives off the clock too, and that derivation already exists.
             //
             // Ahead of the 자유! minute deliberately. The two can coincide — the
             // weekly cap is `.critical` whatever today's figure is — and hitting the
-            // cap is the more important of the two things to say.
-            if LabelPhase(self) == .atLimit { return "Overtime \(figure), at the limit" }
+            // cap is the more important of the two things to say. It does not *replace*
+            // the celebration, though: in that minute the figure is "+0:00", which is
+            // exactly the nothing `labelText` swaps for 자유!, so speech carries both
+            // facts in words instead of announcing a figure the screen suppresses.
+            if LabelPhase(self) == .atLimit {
+                return jayu ? "Free to go, at the limit" : "Overtime \(figure), at the limit"
+            }
             // The minute `labelText` spends on 자유!. Punctuation reads as nothing at
             // all aloud, so speech gets words for it.
-            return today < 60 ? "Free to go" : "Overtime \(figure)"
+            return jayu ? "Free to go" : "Overtime \(figure)"
         }
     }
 }

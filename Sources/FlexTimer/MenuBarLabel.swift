@@ -47,10 +47,15 @@ struct MenuBarLabel: View {
     /// past target. In the ordinary case this changes nothing: being past leave time
     /// already clamps `progress` to 1. `.settled` stays progress-driven deliberately
     /// — a short day's partly-filled ring is the whole point of that state.
+    ///
+    /// Clamped on the way out for the same reason `LabelPalette.spectrum` clamps its
+    /// copy of the same value: `progress` arrives already clamped and finite today,
+    /// but the two consumers of `dayProgress` should agree about how much they trust
+    /// it, and `.trim(to:)` and a frame width are no more forgiving than an array index.
     private var fillFraction: Double {
         switch phase {
         case .overtime, .atLimit: return 1
-        case .idle, .working, .settled: return progress
+        case .idle, .working, .settled: return min(1, max(0, progress))
         }
     }
 
@@ -88,7 +93,12 @@ struct MenuBarLabel: View {
         ZStack {
             Circle()
                 .inset(by: ringStroke / 2)
-                .stroke(colour(colours.track),
+                // The dashed stroke takes the fill colour in both geometries, so the
+                // idle state — the one every user sees every morning — draws at the
+                // same weight here as in Track. `.idle` sets `fill` to the neutral
+                // grey precisely to be that stroke; the faint `track` wash it used to
+                // use can be all but invisible on a light bar.
+                .stroke(colours.dashed ? colour(colours.fill) : colour(colours.track),
                         style: StrokeStyle(lineWidth: ringStroke, lineCap: .round,
                                            dash: colours.dashed ? [1.5, 2.0] : []))
             if !colours.dashed {

@@ -5,10 +5,13 @@ import KaltoeCore
 
 @MainActor
 final class AppState: ObservableObject {
-    @Published var menuText = "--:--"
+    /// The Mac label's text — `labelText`, not the wire's `menuBarText`. Named for
+    /// what it holds, beside `labelProgress` and `labelGeometry`.
+    @Published var labelText = "--:--"
     @Published var menuDisplay = MenuDisplay(state: .notClockedIn, urgency: .normal)
-    /// Progress from clock-in to leave time, 0…1. Derived once per tick like
-    /// `weekSummary`, so the label does no arithmetic in its body.
+    /// Progress from clock-in to leave time, 0…1, and 0 whenever there is no session
+    /// or no record for today. Derived once per tick like `weekSummary`, so the label
+    /// does no arithmetic in its body.
     @Published var labelProgress: Double = 0
     /// Mirrors the stored setting, written through on set so the picker persists,
     /// and published so the label re-renders the moment it changes.
@@ -130,8 +133,12 @@ final class AppState: ObservableObject {
                                                   timeOff: timeOff,
                                                   now: now, rules: rules)
         menuDisplay = display
-        menuText = display.state.labelText
-        labelProgress = record.map {
+        labelText = display.state.labelText
+        // Gated on `hasSession` for the same reason `computeDisplay` is: an expired
+        // session leaves the last fetched week behind, and publishing a non-zero
+        // progress beside a label the palette draws as `.idle` would couple two facts
+        // that are independent. Unobservable today, since `.idle` draws no fill.
+        labelProgress = !hasSession ? 0 : record.map {
             // Measured at clock-out once the day is closed, not at `now`. `dayProgress`
             // divides elapsed-since-clock-in by the whole span, so a settled day would
             // keep climbing all evening and read as a full ring hours after you went

@@ -3,7 +3,12 @@ import XCTest
 
 final class StatusLineTests: XCTestCase {
     func testMapsDisplayFields() {
-        let line = StatusLine(display: MenuDisplay(state: .overtime(today: -59 * 60, clockedIn: true),
+        // `clockedIn: false`, because a day that finished 59 minutes short is by
+        // definition a day you clocked out of: `computeDisplay` clamps clocked-in
+        // overtime at `max(0, …)`, so the clocked-in pairing is unreachable — and it
+        // would make `labelText` read 자유! for a day that never reached target.
+        // `.critical` is still right off the clock; the weekly cap yields it either way.
+        let line = StatusLine(display: MenuDisplay(state: .overtime(today: -59 * 60, clockedIn: false),
                                                    urgency: .critical),
                               hasSession: true, lastSync: nil, syncError: nil)
         XCTAssertEqual(line.text, "OT -0:59")

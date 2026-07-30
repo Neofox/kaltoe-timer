@@ -28,7 +28,7 @@ public enum SettingsStore {
     }
 
     /// Menu bar label geometry. An absent or unrecognised value reads as `.ring`,
-    /// so a typo in the documented `defaults write` degrades to the default rather
+    /// so a typo in a hand-written `defaults write` degrades to the default rather
     /// than leaving the label undrawable.
     public static var labelGeometry: LabelGeometry {
         get { LabelGeometry(rawValue: defaults.string(forKey: "labelGeometry") ?? "") ?? .ring }
