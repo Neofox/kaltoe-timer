@@ -111,14 +111,23 @@ public enum LabelPalette {
     }
 
     /// Spectrum stops, equally spaced across `progress` 0…1: blue, teal, green,
-    /// amber. Dark values are the approved mockup's; the light values are the same
-    /// hues darkened to hold contrast on a light bar, and are the two-known-plus-
-    /// derived starting point that the hardware pass adjusts.
+    /// amber. The light values are the same hues darkened to hold contrast on a
+    /// light bar.
+    ///
+    /// Saturated past the original mockup's values, which read washed-out at ring
+    /// size: an 18pt ring shows each hue through a 2pt stroke, far less area than
+    /// the mockup's swatches, and a pale colour has little chance to register.
+    /// The mid-day green was the worst of them at S=0.45. Hues are unchanged —
+    /// only saturation and value moved, so the progression reads the same.
+    ///
+    /// Every stop clears 3:1 against both bars, the WCAG floor for a graphical
+    /// element. Two got slightly worse in the trade and are the ones to watch if
+    /// these are ever pushed further: dark blue 6.7→5.0, light teal 4.1→3.5.
     static let stops: [ColourPair] = [
-        ColourPair(light: RGBA(0x1f6fd0), dark: RGBA(0x5aa9f8)),
-        ColourPair(light: RGBA(0x1f8578), dark: RGBA(0x3fbfb0)),
-        ColourPair(light: RGBA(0x4f9e3c), dark: RGBA(0x7fc06a)),
-        ColourPair(light: RGBA(0xb0741a), dark: RGBA(0xe8a02a)),
+        ColourPair(light: RGBA(0x0a64d1), dark: RGBA(0x258ef7)),
+        ColourPair(light: RGBA(0x079482), dark: RGBA(0x14ccb6)),
+        ColourPair(light: RGBA(0x329e18), dark: RGBA(0x51cc29)),
+        ColourPair(light: RGBA(0xb87209), dark: RGBA(0xf29b0c)),
     ]
 
     /// The alerting colours are not constants here at all — they are `LabelFill`'s
