@@ -1,4 +1,4 @@
-# 칼퇴타이머 v2.0.1 — 설치 가이드 / Install Guide
+# 칼퇴타이머 v2.0.2 — 설치 가이드 / Install Guide
 
 > 한국어 안내: `설치가이드-KR.md`
 
@@ -12,6 +12,12 @@ account inside the app; nothing is sent anywhere except to flex.team itself.
 ---
 
 ## What's new
+
+**v2.0.2 — appearance**
+
+- **Bolder ring colours.** The progress colours through the working day were
+  washed out at menu bar size, the midday green especially. They keep the same
+  hues, just stronger.
 
 **v2.0.1 — bug fix**
 
@@ -36,7 +42,7 @@ account inside the app; nothing is sent anywhere except to flex.team itself.
 
 ---
 
-## macOS — `칼퇴타이머-v2.0.1.zip`
+## macOS — `칼퇴타이머-v2.0.2.zip`
 
 Requires **macOS 26 or later** on **Apple Silicon** (M1 or newer). This build is
 arm64-only — it will not launch on an Intel Mac.
