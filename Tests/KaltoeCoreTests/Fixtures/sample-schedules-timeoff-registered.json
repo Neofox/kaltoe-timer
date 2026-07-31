@@ -86,30 +86,6 @@
         }
       ],
       "legalTimeBlocks": []
-    },
-    {
-      "date": "2026-08-06",
-      "timezone": "Asia/Seoul",
-      "dayOffs": [],
-      "timeBlocks": [
-        {
-          "type": "CUSTOM_TIME_OFF",
-          "value": {
-            "allDay": false,
-            "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1785967200000 },
-            "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1785974400000 },
-            "timeOffPolicyId": "4296240",
-            "timeOffEventId": "10559200",
-            "status": "TIME_OFF_REGISTERED",
-            "timeOffRegisterUnit": "HOUR",
-            "restMinutes": 0,
-            "usedMinutes": 120,
-            "usedPaidMinutes": 120,
-            "cancelApprovals": [{ "approvalId": "01kynz4d1bvng9cgd5xszqw9nr", "status": "WAITING" }]
-          }
-        }
-      ],
-      "legalTimeBlocks": []
     }
   ]
 }
