@@ -23,6 +23,18 @@ final class FormattingTests: XCTestCase {
     func testHMS() {
         XCTAssertEqual(Formatting.hms(2 * 3600 + 34 * 60 + 12), "2:34:12")
     }
+
+    /// `Int(Double)` traps on NaN and on the infinities, and all three formatters reach
+    /// it before any clamping. Not theoretical: `weeklyOvertimeCapHours` is a documented
+    /// `defaults write` knob, and `MenuBarView` passes the cap straight into `hm`, so
+    /// `-float nan` crash-looped the popover on input `StatusLine` already survived.
+    func testFormattersSurviveNonFiniteInput() {
+        for bad in [Double.nan, .infinity, -.infinity] {
+            XCTAssertEqual(Formatting.hm(bad), "0:00", "hm(\(bad))")
+            XCTAssertEqual(Formatting.hms(bad), "0:00:00", "hms(\(bad))")
+            XCTAssertEqual(Formatting.signedHM(bad), "+0:00", "signedHM(\(bad))")
+        }
+    }
 }
 
 final class DisplayStateTests: XCTestCase {
