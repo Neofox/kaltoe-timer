@@ -32,8 +32,12 @@ struct MenuBarLabel: View {
 
     private var phase: LabelPhase { LabelPhase(display) }
 
+    /// Resolved from `fillFraction`, not from `progress`, so the arc's length and its
+    /// colour are always computed from the same number — and so both land in the render
+    /// cache's key together. Behaviour-identical: `resolve` reads `progress` only in the
+    /// `.working` case, where `fillFraction` *is* the clamped progress.
     private var colours: LabelPalette.Colours {
-        LabelPalette.resolve(progress: progress, phase: phase)
+        LabelPalette.resolve(progress: fillFraction, phase: phase)
     }
 
     /// How much of the arc or capsule to fill. `progress` everywhere except past
@@ -52,11 +56,18 @@ struct MenuBarLabel: View {
     /// copy of the same value: `progress` arrives already clamped and finite today,
     /// but the two consumers of `dayProgress` should agree about how much they trust
     /// it, and `.trim(to:)` and a frame width are no more forgiving than an array index.
+    /// Quantised on the way out, so the render cache has a stable key. The ring's
+    /// circumference is about 50pt, so at 2× one step is half a pixel — invisible —
+    /// while a 9h day drops from 32,400 rasterisations to at most 200.
+    private static let fillSteps: Double = 200
+
     private var fillFraction: Double {
+        let raw: Double
         switch phase {
-        case .overtime, .atLimit: return 1
-        case .idle, .working, .settled: return min(1, max(0, progress))
+        case .overtime, .atLimit: raw = 1
+        case .idle, .working, .settled: raw = min(1, max(0, progress))
         }
+        return (raw * Self.fillSteps).rounded() / Self.fillSteps
     }
 
     /// Resolves a fill. The `.system` cases are the whole reason `LabelFill` exists:
@@ -170,13 +181,6 @@ struct MenuBarLabel: View {
     }
 
     @MainActor private func rendered() -> NSImage {
-        let content = Group {
-            switch geometry {
-            case .ring: ringLabel
-            case .track: trackLabel
-            }
-        }
-        let renderer = ImageRenderer(content: content)
         // Render at the highest scale factor across all screens, not
         // NSScreen.main (the screen with the active window — precisely the
         // display this feature is not about). MenuBarExtra draws one image on
@@ -184,9 +188,58 @@ struct MenuBarLabel: View {
         // upscale a 1x bitmap onto a 2x bar on mixed-DPI setups, blurring the
         // countdown on the very screen we're trying to keep legible.
         // Downsampling a high-res rep onto a 1x bar is fine; the reverse isn't.
-        renderer.scale = NSScreen.screens.map(\.backingScaleFactor).max() ?? 2
+        let scale = NSScreen.screens.map(\.backingScaleFactor).max() ?? 2
+
+        // In the key so that plugging in a display re-renders at the new scale rather
+        // than serving a bitmap sized for the old one.
+        let key = LabelRenderCache.Key(glyph: display.state.labelGlyph, text: text,
+                                       fill: fillFraction, colours: colours,
+                                       geometry: geometry,
+                                       dark: colorScheme == .dark, scale: scale)
+        if key == LabelRenderCache.key, let cached = LabelRenderCache.image { return cached }
+
+        let content = Group {
+            switch geometry {
+            case .ring: ringLabel
+            case .track: trackLabel
+            }
+        }
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = scale
         let image = renderer.nsImage ?? NSImage()
         image.isTemplate = false
+        LabelRenderCache.key = key
+        LabelRenderCache.image = image
         return image
     }
+}
+
+/// The rasterised label, memoised on everything that determines its pixels.
+///
+/// `body` runs about once a second because `display` carries a `timeLeft` that changes
+/// on every tick — but the pixels almost never do. The text is minute-resolution and the
+/// fill advances a fraction of a pixel per second, so rasterising on every pass meant
+/// roughly sixty renders a minute for one or two distinct images. Measured 3% idle CPU
+/// before this, against a `.plain` template path that used to rasterise nothing at all.
+///
+/// Main-actor isolated rather than `nonisolated(unsafe)`: `rendered()` is already
+/// `@MainActor`, so the isolation is free rather than a shrug. One slot is the whole
+/// cache, because there is exactly one menu bar label in the process — `MenuBarExtra`
+/// draws a single image on every bar.
+@MainActor private enum LabelRenderCache {
+    /// Every input `rendered()` reads. Miss anything and the label goes stale; the fill
+    /// and the colours both derive from the quantised `fillFraction`, so the pair cannot
+    /// drift apart.
+    struct Key: Equatable {
+        let glyph: String
+        let text: String
+        let fill: Double
+        let colours: LabelPalette.Colours
+        let geometry: LabelGeometry
+        let dark: Bool
+        let scale: CGFloat
+    }
+
+    static var key: Key?
+    static var image: NSImage?
 }
