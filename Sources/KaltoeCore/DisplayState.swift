@@ -17,6 +17,7 @@ public struct MenuDisplay: Equatable, Sendable {
 public enum DisplayState: Equatable, Sendable {
     case noSession
     case notClockedIn
+    case weekend                           // Saturday or Sunday — the timer stands down
     case toLunch(timeLeft: TimeInterval)   // counting down to the lunch-leave moment
     case onBreak(timeLeft: TimeInterval)   // counting down to work resuming
     case counting(timeLeft: TimeInterval)  // counting down to leave time
@@ -42,6 +43,14 @@ public enum DisplayState: Equatable, Sendable {
                                now: Date, rules: WorkRules,
                                calendar: Calendar = .current) -> MenuDisplay {
         guard hasSession else { return MenuDisplay(state: .noSession, urgency: .normal) }
+        // Weekends short-circuit everything below, a live record included: a countdown to
+        // a notional leave time is noise on a Saturday. Signed-out stays above this
+        // because "sign in" is something you can act on and 주말! is not. Urgency is
+        // always `.normal` — there is nothing here to warn about, and weekend hours earn
+        // no overtime for it to warn with (`WorkCalculator.dailyOvertime`).
+        if WorkCalculator.isWeekend(now, calendar: calendar) {
+            return MenuDisplay(state: .weekend, urgency: .normal)
+        }
         guard let today else { return MenuDisplay(state: .notClockedIn, urgency: .normal) }
         let off = WorkCalculator.timeOff(on: today.clockIn, in: timeOff, calendar: calendar)
         let left = WorkCalculator.timeLeft(clockIn: today.clockIn, now: now, rules: rules, timeOff: off)
@@ -84,6 +93,7 @@ public enum DisplayState: Equatable, Sendable {
         switch self {
         case .noSession: return "—"
         case .notClockedIn: return "--:--"
+        case .weekend: return "주말!"
         case .toLunch(let left): return Formatting.hm(left)
         case .onBreak(let left): return "BREAK " + Formatting.hm(left)
         case .counting(let left): return Formatting.hm(left)
@@ -95,6 +105,10 @@ public enum DisplayState: Equatable, Sendable {
         switch self {
         case .toLunch: return "fork.knife"
         case .onBreak: return "cup.and.saucer"
+        // Its own case rather than folded into the `timer` list: this one is additive
+        // on the wire, and `ICON_BASE` maps neither, so it degrades to the generic
+        // timer icon on Linux by falling through `.get` rather than by claiming to be one.
+        case .weekend: return "beach.umbrella"
         case .noSession, .notClockedIn, .counting, .overtime: return "timer"
         }
     }
@@ -108,6 +122,7 @@ public enum DisplayState: Equatable, Sendable {
         switch self {
         case .noSession: return "zzz"
         case .notClockedIn: return "timer"
+        case .weekend: return "beach.umbrella"
         case .toLunch: return "fork.knife"
         case .onBreak: return "cup.and.saucer"
         case .counting(let left):
@@ -132,6 +147,7 @@ public enum DisplayState: Equatable, Sendable {
         switch self {
         case .noSession: return ""
         case .notClockedIn: return "--:--"
+        case .weekend: return "주말!"
         case .toLunch(let left), .onBreak(let left), .counting(let left):
             return Formatting.hm(left)
         case .overtime(let today, let clockedIn):
@@ -166,6 +182,8 @@ public extension MenuDisplay {
             // coincidence of vocabulary, and any later state with no text would
             // inherit the phrase.
             return "Signed out"
+        // English like every other announcement here, where the label says 주말!.
+        case .weekend: return "Weekend"
         case .notClockedIn:
             return "Not clocked in"
         case .toLunch(let left):

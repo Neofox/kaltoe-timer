@@ -120,4 +120,9 @@ final class LabelAppearanceTests: XCTestCase {
         XCTAssertEqual(LabelGeometry(rawValue: "track"), .track)
         XCTAssertEqual(LabelGeometry.allCases, [.ring, .track])
     }
+    /// Weekend reuses the idle styling — neutral, dashed, no fill. Nothing is running,
+    /// which is what `.idle` already means, so no new palette branch is needed.
+    func testWeekendIsIdlePhase() {
+        XCTAssertEqual(LabelPhase(MenuDisplay(state: .weekend, urgency: .normal)), .idle)
+    }
 }

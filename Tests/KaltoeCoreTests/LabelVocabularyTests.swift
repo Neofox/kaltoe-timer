@@ -121,4 +121,9 @@ final class LabelVocabularyTests: XCTestCase {
         XCTAssertEqual(spoken(.overtime(today: 60, clockedIn: true), .critical),
                        "Overtime +0:01, at the limit")
     }
+    func testWeekendVocabulary() {
+        XCTAssertEqual(DisplayState.weekend.labelGlyph, "beach.umbrella")
+        XCTAssertEqual(DisplayState.weekend.labelText, "주말!")
+        XCTAssertEqual(MenuDisplay(state: .weekend, urgency: .normal).spokenLabel, "Weekend")
+    }
 }

@@ -83,7 +83,9 @@ public enum LabelPhase: Equatable, Sendable {
     /// urgency alone would paint a finished day red.
     public init(_ display: MenuDisplay) {
         switch display.state {
-        case .noSession, .notClockedIn:
+        // Weekend joins them: nothing is running, which is exactly what `.idle` draws —
+        // neutral, dashed, no fill. No new palette branch, and no new colour.
+        case .noSession, .notClockedIn, .weekend:
             self = .idle
         case .toLunch, .onBreak, .counting:
             self = .working

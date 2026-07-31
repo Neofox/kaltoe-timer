@@ -220,4 +220,42 @@ final class PhaseDisplayTests: XCTestCase {
         XCTAssertEqual(DisplayState.noSession.iconName, "timer")
         XCTAssertEqual(DisplayState.notClockedIn.iconName, "timer")
     }
+
+    /// Saturday and Sunday short-circuit the whole weekday machine, a live record
+    /// included.
+    func testWeekendBeatsAnyRecord() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        let sat = WorkRecord(clockIn: d(2026, 8, 1, 9, 0), clockOut: nil, flexWorkedNet: nil)
+        let display = DisplayState.computeDisplay(hasSession: true, today: sat,
+                                                  weeklyOvertime: 0,
+                                                  now: d(2026, 8, 1, 14, 0), rules: rules,
+                                                  calendar: cal)
+        XCTAssertEqual(display.state, .weekend)
+        XCTAssertEqual(display.urgency, .normal)
+    }
+
+    /// Signed out outranks it: "sign in" is actionable where 주말! is not.
+    func testSignedOutBeatsWeekend() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        let display = DisplayState.computeDisplay(hasSession: false, today: nil,
+                                                  weeklyOvertime: 0,
+                                                  now: d(2026, 8, 1, 14, 0), rules: rules,
+                                                  calendar: cal)
+        XCTAssertEqual(display.state, .noSession)
+    }
+
+    /// The Monday after is an ordinary day, so the guard is the weekday and not the
+    /// presence of a record.
+    func testWeekdayIsUnaffected() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        let mon = WorkRecord(clockIn: d(2026, 8, 3, 9, 0), clockOut: nil, flexWorkedNet: nil)
+        let display = DisplayState.computeDisplay(hasSession: true, today: mon,
+                                                  weeklyOvertime: 0,
+                                                  now: d(2026, 8, 3, 14, 0), rules: rules,
+                                                  calendar: cal)
+        XCTAssertNotEqual(display.state, .weekend)
+    }
 }

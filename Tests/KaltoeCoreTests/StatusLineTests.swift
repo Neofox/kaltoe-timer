@@ -77,14 +77,20 @@ final class StatusLineTests: XCTestCase {
         XCTAssertEqual(StatusLine.secondsFlooredToMinute(1e300), 0)
     }
 
-    /// The NDJSON wire is frozen. `kaltoe-tray.py` maps exactly these three symbol
-    /// names in `ICON_BASE` and falls back to a generic timer for anything else, its
-    /// `LABEL_GUIDE` is sized from the `OT ` prefix, and `render_text_icon` stacks
-    /// the label at the first space — which on KDE is the only phase signal there is,
-    /// since that tray renders the text alone with no glyph. The Mac's expressive
-    /// glyphs and prefix-free text live on `labelGlyph`/`labelText` instead. If this
-    /// test fails, the Linux tray has regressed.
-    func testWireTextAndIconAreUnchangedForEveryState() {
+    /// Pins every state's wire output. The eight `.overtime`-and-earlier rows are
+    /// **frozen** — `kaltoe-tray.py` maps exactly `timer`/`fork.knife`/`cup.and.saucer`
+    /// in `ICON_BASE` and falls back to a generic timer for anything else, its
+    /// `LABEL_GUIDE` is sized from the `OT ` prefix, and `render_text_icon` stacks the
+    /// label at the first space, which on KDE is the only phase signal there is since
+    /// that tray renders the text alone with no glyph. The Mac's expressive glyphs and
+    /// prefix-free text live on `labelGlyph`/`labelText` instead. If one of those rows
+    /// fails, the Linux tray has regressed.
+    ///
+    /// `.weekend` is **additive**, not frozen: it is a new state rather than a change to
+    /// an existing one, so `beach.umbrella` reaching `ICON_BASE` degrades to the generic
+    /// timer icon via `.get`, and `주말!` has no space to stack at and is narrower than
+    /// the guide.
+    func testWireTextAndIconForEveryState() {
         let cases: [(DisplayState, String, String)] = [
             (.noSession, "—", "timer"),
             (.notClockedIn, "--:--", "timer"),
@@ -94,6 +100,7 @@ final class StatusLineTests: XCTestCase {
             (.overtime(today: 3600, clockedIn: true), "OT +1:00", "timer"),
             (.overtime(today: 3600, clockedIn: false), "OT +1:00", "timer"),
             (.overtime(today: -20 * 60, clockedIn: false), "OT -0:20", "timer"),
+            (.weekend, "주말!", "beach.umbrella"),
         ]
         for (state, text, icon) in cases {
             XCTAssertEqual(state.menuBarText, text, "menuBarText for \(state)")
