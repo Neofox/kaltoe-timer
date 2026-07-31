@@ -152,6 +152,32 @@ final class FlexRecordParserTests: XCTestCase {
         XCTAssertNil(result.timeOff[wednesday], "a full day off is not also partial time off")
     }
 
+    func testTimeOffWithAPendingCancellationDoesNotCount() throws {
+        // Deliberately the conservative read: any cancellation entry suppresses the
+        // block, including one still waiting. Counting leave that turns out to be
+        // cancelled would send someone home early; not counting leave whose
+        // cancellation is pending only shows a later leave time than the truth.
+        let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-timeoff-registered"),
+                                                clock: emptyClock)
+        let thursday = Calendar.current.startOfDay(for: d(2026, 8, 6, 0, 0))
+        XCTAssertNil(result.timeOff[thursday], "a block with a cancellation on it must not count")
+    }
+
+    func testUnexpectedCancellationShapeDoesNotThrowOutTheWeek() throws {
+        // Guards the `IgnoredValue` element type. The cancellation shape is
+        // unverified, and with a typed element a surprise like this fails to
+        // decode and takes the entire week's parse down with it.
+        let json = """
+        {"dailySchedules":[{"date":"2026-08-12","timezone":"Asia/Seoul","dayOffs":[],
+          "timeBlocks":[{"type":"CUSTOM_TIME_OFF","value":{
+            "allDay":false,"status":"TIME_OFF_REGISTERED","usedMinutes":120,
+            "cancelApprovals":["cancelled",7]}}],"legalTimeBlocks":[]}]}
+        """
+        let result = try FlexRecordParser.parse(schedules: Data(json.utf8), clock: emptyClock)
+        XCTAssertNil(result.timeOff[Calendar.current.startOfDay(for: d(2026, 8, 12, 0, 0))],
+                     "a block carrying cancellations must not count, whatever their shape")
+    }
+
     func testExistingFixtureHasNoTimeOffEntries() throws {
         let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
                                                 clock: try fixture("sample-clock"))

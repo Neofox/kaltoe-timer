@@ -39,7 +39,16 @@ enum FlexRecordParser {
         let usedMinutes: Int?
         let status: String?
         let approval: Approval?
+        let cancelApprovals: [IgnoredValue]?
         let eventSource: String?
+    }
+
+    /// Decodes from any JSON value without reading it. Used where we need an
+    /// array's count but not its contents: the element shape here is unverified,
+    /// and a decoding error would throw out the whole week's parse — leaving the
+    /// app with no data at all, which is far worse than misreading one block.
+    private struct IgnoredValue: Decodable {
+        init(from decoder: Decoder) throws {}
     }
 
     private struct Approval: Decodable {
@@ -67,8 +76,17 @@ enum FlexRecordParser {
     /// Pending leave (`APPROVAL_WAITING`, `APPROVAL_PENDING`) is not granted and
     /// must not count — a mistaken duplicate request is a normal thing to have
     /// sitting on a day beside the real one.
+    ///
+    /// Any entry in `cancelApprovals` disqualifies the block, whatever it says.
+    /// The status vocabulary of a cancellation is unverified, so this cannot yet
+    /// distinguish a granted cancellation from one still waiting, and it treats
+    /// both as disqualifying. That direction is chosen, not incidental: counting
+    /// leave that turns out to be cancelled sends someone home early, while
+    /// ignoring leave whose cancellation is merely pending only shows a leave time
+    /// later than the truth. Narrow this once a real cancelled block is captured.
     private static func isGranted(_ v: TimeBlockValue) -> Bool {
-        v.approval?.status == "APPROVED" || v.status == "TIME_OFF_REGISTERED"
+        guard v.cancelApprovals?.isEmpty ?? true else { return false }
+        return v.approval?.status == "APPROVED" || v.status == "TIME_OFF_REGISTERED"
     }
 
     private struct Timestamp: Decodable {
