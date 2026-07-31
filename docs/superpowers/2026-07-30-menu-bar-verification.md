@@ -40,13 +40,14 @@ do it*, not the arithmetic.
       is `NSFont.menuBarFont(ofSize: 0)`, which honours that setting — so the text can
       grow while the ring cannot follow. 18 already leaves only 2pt either side of the
       22pt bar, so the ring has no room to grow with it.
-- [x] Idle CPU with the popover closed. **Measured 2026-07-31: 3%**, and accepted.
-      Rasterisation is unconditional at 1 Hz where the old default `.plain` path
-      rasterised nothing, so this is a real new cost rather than unchanged. Worth
-      knowing there is headroom if it ever grates: the rendered content changes only
-      once a minute for the text, and the ring's fill advances sub-pixel per second, so
-      almost every one of those renders is redundant. Memoising on the visible inputs
-      would cut most of it.
+- [x] Idle CPU with the popover closed. **3% measured 2026-07-31, then 1.2% after the
+      raster was memoised** (`46c6f6a`) — a 60% cut, and the remainder is the 1 Hz body
+      pass itself rather than rasterisation. The old `.plain` template path rasterised
+      nothing at all, so some new cost was always the price of a drawn label.
+- [x] The quantised fill does not visibly step. **Confirmed 2026-07-31.** The fill
+      advances in 200 discrete steps so the render cache has a stable key; each step is
+      about half a pixel at 2×. If a future change makes it jumpy, `fillSteps` in
+      `MenuBarLabel.swift` is the one number to raise.
 
 - [ ] `beach.umbrella` is legible at 9pt inside the ring. It is a detailed glyph and
       may mush at that size; `sun.max` is the cleaner fallback, at the cost of meaning
