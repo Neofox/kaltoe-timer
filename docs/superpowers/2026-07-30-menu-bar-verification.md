@@ -36,13 +36,17 @@ do it*, not the arithmetic.
       during implementation, so this is unverified in either direction.
 - [ ] Neither geometry is clipped or vertically off-centre in the 22pt bar.
 - [ ] The ring still matches the text after raising the system menu bar text size.
-      `ringSize` and the inner glyph are hardcoded at 14pt and 7pt, but the label font
+      `ringSize` and the inner glyph are hardcoded at 18pt and 9pt, but the label font
       is `NSFont.menuBarFont(ofSize: 0)`, which honours that setting — so the text can
-      grow while the ring cannot follow.
-- [ ] Idle CPU with the popover closed is unchanged from before the overhaul.
-      Rasterisation is now unconditional at 1 Hz, where the old default `.plain` path
-      rasterised nothing at all. This is the design, not a regression — but it is the
-      one cost of it, and it has never been measured.
+      grow while the ring cannot follow. 18 already leaves only 2pt either side of the
+      22pt bar, so the ring has no room to grow with it.
+- [x] Idle CPU with the popover closed. **Measured 2026-07-31: 3%**, and accepted.
+      Rasterisation is unconditional at 1 Hz where the old default `.plain` path
+      rasterised nothing, so this is a real new cost rather than unchanged. Worth
+      knowing there is headroom if it ever grates: the rendered content changes only
+      once a minute for the text, and the ring's fill advances sub-pixel per second, so
+      almost every one of those renders is redundant. Memoising on the visible inputs
+      would cut most of it.
 
 ## The spectrum
 
