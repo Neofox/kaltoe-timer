@@ -37,12 +37,38 @@ enum FlexRecordParser {
         let endTimestampExclusive: Timestamp?
         let allDay: Bool?
         let usedMinutes: Int?
+        let status: String?
         let approval: Approval?
         let eventSource: String?
     }
 
     private struct Approval: Decodable {
         let status: String?
+    }
+
+    /// Whether a time-off block has actually been granted, and so should shorten
+    /// the day's target.
+    ///
+    /// Flex signals that two ways, and which one arrives depends on the leave's
+    /// policy rather than on the leave itself:
+    ///
+    /// - it went through an approval workflow — `approval.status == "APPROVED"`,
+    ///   alongside `status == "APPROVAL_COMPLETED"`;
+    /// - it was registered under a policy needing no approval — `status ==
+    ///   "TIME_OFF_REGISTERED"` and **no `approval` object at all**. Hourly leave
+    ///   booked this way reads as `nil` through `approval`, which is why gating on
+    ///   the approval alone dropped real leave and left the target at a full day.
+    ///
+    /// Both conditions are read rather than only `status`, so a workflow-approved
+    /// block keeps counting even if its `status` vocabulary shifts. Unrecognised
+    /// statuses fail closed: the day keeps its full target, which shows a later
+    /// leave time than the truth rather than sending someone home early.
+    ///
+    /// Pending leave (`APPROVAL_WAITING`, `APPROVAL_PENDING`) is not granted and
+    /// must not count — a mistaken duplicate request is a normal thing to have
+    /// sitting on a day beside the real one.
+    private static func isGranted(_ v: TimeBlockValue) -> Bool {
+        v.approval?.status == "APPROVED" || v.status == "TIME_OFF_REGISTERED"
     }
 
     private struct Timestamp: Decodable {
@@ -112,13 +138,13 @@ enum FlexRecordParser {
             }
 
             // Personal leave arrives as time blocks, not dayOffs. Type names vary
-            // (ANNUAL_TIME_OFF, FORBIDDEN_TIME_OFF, ...) so match on shape:
-            // usedMinutes + APPROVED. Full-day blocks carry no timestamps.
+            // (ANNUAL_TIME_OFF, CUSTOM_TIME_OFF, FORBIDDEN_TIME_OFF, ...) so match
+            // on shape: usedMinutes + granted. Full-day blocks carry no timestamps.
             if let dayDate, isWeekday {
                 let key = Calendar.current.startOfDay(for: dayDate)
                 for block in day.timeBlocks {
                     guard let v = block.value, let minutes = v.usedMinutes, minutes > 0,
-                          v.approval?.status == "APPROVED" else { continue }
+                          Self.isGranted(v) else { continue }
                     if v.allDay == true {
                         dayOffDates.insert(key)
                     } else {

@@ -1,0 +1,91 @@
+{
+  "dailySchedules": [
+    {
+      "date": "2026-07-29",
+      "timezone": "Asia/Seoul",
+      "dayOffs": [],
+      "timeBlocks": [
+        {
+          "type": "CUSTOM_TIME_OFF",
+          "value": {
+            "allDay": false,
+            "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1785276000000 },
+            "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1785283200000 },
+            "timeOffPolicyId": "4296240",
+            "timeOffEventId": "10558864",
+            "status": "TIME_OFF_REGISTERED",
+            "timeOffRegisterUnit": "HOUR",
+            "restMinutes": 0,
+            "usedMinutes": 120,
+            "usedPaidMinutes": 120,
+            "cancelApprovals": []
+          }
+        },
+        {
+          "type": "ANNUAL_TIME_OFF",
+          "value": {
+            "allDay": false,
+            "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1785283200000 },
+            "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1785290400000 },
+            "timeOffPolicyId": "468647",
+            "timeOffEventId": "10558417",
+            "status": "APPROVAL_WAITING",
+            "timeOffRegisterUnit": "HOUR",
+            "restMinutes": 0,
+            "usedMinutes": 120,
+            "usedPaidMinutes": 120,
+            "approval": { "approvalId": "01kynz4d1bvng9cgd5xszqw9np", "status": "WAITING" },
+            "cancelApprovals": []
+          }
+        }
+      ],
+      "legalTimeBlocks": []
+    },
+    {
+      "date": "2026-07-30",
+      "timezone": "Asia/Seoul",
+      "dayOffs": [],
+      "timeBlocks": [
+        {
+          "type": "ANNUAL_TIME_OFF",
+          "value": {
+            "allDay": false,
+            "startTimestamp": { "zoneId": "Asia/Seoul", "timestamp": 1785369600000 },
+            "endTimestampExclusive": { "zoneId": "Asia/Seoul", "timestamp": 1785376800000 },
+            "timeOffPolicyId": "468647",
+            "timeOffEventId": "10558999",
+            "status": "APPROVAL_WAITING",
+            "timeOffRegisterUnit": "HOUR",
+            "restMinutes": 0,
+            "usedMinutes": 120,
+            "usedPaidMinutes": 120,
+            "approval": { "approvalId": "01kynz4d1bvng9cgd5xszqw9nq", "status": "WAITING" },
+            "cancelApprovals": []
+          }
+        }
+      ],
+      "legalTimeBlocks": []
+    },
+    {
+      "date": "2026-08-05",
+      "timezone": "Asia/Seoul",
+      "dayOffs": [],
+      "timeBlocks": [
+        {
+          "type": "FORBIDDEN_TIME_OFF",
+          "value": {
+            "allDay": true,
+            "timeOffEventId": "10559100",
+            "status": "TIME_OFF_REGISTERED",
+            "timeOffRegisterUnit": "DAY",
+            "restMinutes": 0,
+            "usedMinutes": 480,
+            "usedPaidMinutes": 480,
+            "cancelApprovals": []
+          }
+        }
+      ],
+      "legalTimeBlocks": []
+    }
+  ]
+}

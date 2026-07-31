@@ -120,6 +120,38 @@ final class FlexRecordParserTests: XCTestCase {
         XCTAssertFalse(result.dayOffDates.contains(monday))
     }
 
+    // MARK: - Registered time off (no approval object)
+    //
+    // Hourly leave taken under a policy that needs no approval carries
+    // status TIME_OFF_REGISTERED on the block itself and no `approval` at all,
+    // so the old `approval?.status == "APPROVED"` gate silently dropped it.
+    // Fixture mirrors a real 2026-07-29 capture: 2h registered, then a 2h
+    // duplicate left waiting for approval.
+
+    func testRegisteredTimeOffCountsWithoutAnApprovalObject() throws {
+        let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-timeoff-registered"),
+                                                clock: emptyClock)
+        let wednesday = Calendar.current.startOfDay(for: d(2026, 7, 29, 0, 0))
+        XCTAssertEqual(result.timeOff[wednesday], 120 * 60,
+                       "TIME_OFF_REGISTERED carries no approval object and must still count")
+    }
+
+    func testWaitingTimeOffIgnoredEvenWithNoOtherBlockOnTheDay() throws {
+        let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-timeoff-registered"),
+                                                clock: emptyClock)
+        let thursday = Calendar.current.startOfDay(for: d(2026, 7, 30, 0, 0))
+        XCTAssertNil(result.timeOff[thursday], "APPROVAL_WAITING must not reduce the day's target")
+    }
+
+    func testAllDayRegisteredTimeOffBecomesADayOff() throws {
+        let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules-timeoff-registered"),
+                                                clock: emptyClock)
+        let wednesday = Calendar.current.startOfDay(for: d(2026, 8, 5, 0, 0))
+        XCTAssertTrue(result.dayOffDates.contains(wednesday),
+                      "an allDay TIME_OFF_REGISTERED block is a full day off")
+        XCTAssertNil(result.timeOff[wednesday], "a full day off is not also partial time off")
+    }
+
     func testExistingFixtureHasNoTimeOffEntries() throws {
         let result = try FlexRecordParser.parse(schedules: try fixture("sample-schedules"),
                                                 clock: try fixture("sample-clock"))
