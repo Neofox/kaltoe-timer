@@ -86,8 +86,18 @@ struct MenuBarLabel: View {
 
     // MARK: geometry
 
-    private let ringSize: CGFloat = 14
+    /// The three ring metrics live together because they must move together: the
+    /// glyph has to stay inside `ringSize - 2 * ringStroke` of clear space, and
+    /// bumping the diameter without the glyph leaves it rattling around.
+    ///
+    /// The ceiling is the menu bar's 22pt. Note the label's height is the taller of
+    /// the ring and the text line, and `NSFont.menuBarFont` runs about 16pt — so at
+    /// the original 14 the ring was not the height driver at all, which is why it
+    /// read small beside the digits. At 18 it is, with 2pt to spare either side.
+    /// That spare is the whole margin: much past 18 and the bar clips or downscales.
+    private let ringSize: CGFloat = 18
     private let ringStroke: CGFloat = 2
+    private let ringGlyphSize: CGFloat = 9
 
     private var ring: some View {
         ZStack {
@@ -111,7 +121,7 @@ struct MenuBarLabel: View {
                     .rotationEffect(.degrees(-90))
             }
             Image(systemName: display.state.labelGlyph)
-                .font(.system(size: 7, weight: .semibold))
+                .font(.system(size: ringGlyphSize, weight: .semibold))
                 .foregroundStyle(glyphColour)
         }
         .frame(width: ringSize, height: ringSize)
