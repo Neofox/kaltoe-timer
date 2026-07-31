@@ -104,19 +104,10 @@ public struct WeekSummary: Equatable, Sendable {
         // exactly as it already counts toward the total.
         let records = data.weekIncludingManual(now: now)
         let weekStart = WorkCalculator.weekStart(of: now, calendar: calendar)
-        // Five rows, Mon–Fri, always — weekends are deliberately not modelled.
-        //
-        // The accepted consequence, and the one exception to "the rows sum to the
-        // total": `overtime` below is `weeklyOvertime` over *every* record in the week,
-        // while these rows cover Mon–Fri. A Saturday or Sunday record — a real Flex
-        // one, or a weekend manual start that `weekIncludingManual` appends — counts
-        // toward the total and lands in no row, so the rows can sum to less than the
-        // figure printed directly beneath them. Weekend work is rare enough here that
-        // the spec chose five fixed rows over a strip that changes width; adding a
-        // sixth or seventh row, or filtering weekend records out of the total, would
-        // both be behaviour changes, and the latter would make the popover disagree
-        // with the menu bar pill. Pinned by
-        // `testWeekendRecordCountsInTheTotalButHasNoRow`.
+        // Five rows, Mon–Fri, always — weekends are deliberately not modelled, and
+        // since `dailyOvertime` returns 0 for a weekend record the rows and the total
+        // beneath them agree. Pinned by
+        // `testWeekendRecordEarnsNoOvertimeAndHasNoRow`.
         let days = Self.labels.indices.map { offset -> DaySummary in
             let day = calendar.date(byAdding: .day, value: offset, to: weekStart) ?? weekStart
             let key = calendar.startOfDay(for: day)

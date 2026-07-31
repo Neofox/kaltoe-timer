@@ -419,4 +419,39 @@ final class WorkCalculatorTests: XCTestCase {
         XCTAssertTrue(WorkCalculator.isWeekend(d(2026, 8, 1, 0, 0), calendar: cal))
         XCTAssertTrue(WorkCalculator.isWeekend(d(2026, 8, 1, 23, 59), calendar: cal))
     }
+    // MARK: weekend overtime
+
+    /// A Saturday that would be +1:00 on a Tuesday earns nothing.
+    func testDailyOvertimeIsZeroForAWeekendRecord() {
+        let sat = WorkRecord(clockIn: d(2026, 8, 1, 9, 0), clockOut: d(2026, 8, 1, 19, 0),
+                             flexWorkedNet: nil)
+        XCTAssertEqual(WorkCalculator.dailyOvertime(record: sat, now: d(2026, 8, 1, 20, 0),
+                                                    rules: rules), 0)
+        // The same shift on the Monday still earns it, so the guard is the weekend and
+        // not the arithmetic.
+        let mon = WorkRecord(clockIn: d(2026, 8, 3, 9, 0), clockOut: d(2026, 8, 3, 19, 0),
+                             flexWorkedNet: nil)
+        XCTAssertEqual(WorkCalculator.dailyOvertime(record: mon, now: d(2026, 8, 3, 20, 0),
+                                                    rules: rules), 3600)
+    }
+
+    /// An open weekend record earns nothing either — the live-accrual branch is a
+    /// separate path through `dailyOvertime`.
+    func testDailyOvertimeIsZeroForAnOpenWeekendRecord() {
+        let sat = WorkRecord(clockIn: d(2026, 8, 1, 9, 0), clockOut: nil, flexWorkedNet: nil)
+        XCTAssertEqual(WorkCalculator.dailyOvertime(record: sat, now: d(2026, 8, 1, 21, 0),
+                                                    rules: rules), 0)
+    }
+
+    func testWeeklyOvertimeExcludesTheWeekend() {
+        let records = [
+            WorkRecord(clockIn: d(2026, 8, 1, 9, 0), clockOut: d(2026, 8, 1, 19, 0),
+                       flexWorkedNet: nil),   // Sat, would be +1:00
+            WorkRecord(clockIn: d(2026, 8, 3, 9, 0), clockOut: d(2026, 8, 3, 18, 0),
+                       flexWorkedNet: nil),   // Mon, exactly on target
+        ]
+        XCTAssertEqual(WorkCalculator.weeklyOvertime(records: records,
+                                                     now: d(2026, 8, 3, 20, 0),
+                                                     rules: rules), 0)
+    }
 }

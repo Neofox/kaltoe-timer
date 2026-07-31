@@ -227,20 +227,19 @@ final class WeekSummaryTests: XCTestCase {
         XCTAssertEqual(s.days[2].worked, 9 * 3600 + 30 * 60)
     }
 
-    /// Pins the one accepted gap in "the rows sum to the total", so that it cannot
-    /// change without a red test. **The divergence below is intentional.** Weekends are
-    /// deliberately not modelled (five fixed rows, Mon–Fri), but `weeklyOvertime` counts
-    /// every record in the week, so a Saturday record contributes to the total and gets
-    /// no row: the rows sum to 0 while the total reads 1h.
+    /// Was `testWeekendRecordCountsInTheTotalButHasNoRow`, and asserted the opposite.
+    /// A weekend record used to feed a total the Mon–Fri rows could not account for, so
+    /// the rows summed to 0 while the total read 1h. Weekends now earn nothing, which is
+    /// what makes the rows and the total agree.
     ///
-    /// If you are here because this test failed, the assertion is not the bug. Either
-    /// weekend rows were added — in which case rewrite this to expect six or seven rows
-    /// — or weekend records were filtered out of the total, which would make the popover
-    /// disagree with the menu bar pill and is a spec change, not a fix.
+    /// The old comment here warned that filtering weekend records out of the total
+    /// "would make the popover disagree with the menu bar pill". It does not: the guard
+    /// lives in `WorkCalculator.dailyOvertime`, upstream of both, so there is no figure
+    /// either surface can compute differently.
     ///
     /// Sat 2026-08-01 09:00–19:00 is 10h gross, less the 1h break = 9h net against an
-    /// ordinary 8h target (Saturday is not a family day), so +1:00.
-    func testWeekendRecordCountsInTheTotalButHasNoRow() {
+    /// ordinary 8h target, so it would have been +1:00.
+    func testWeekendRecordEarnsNoOvertimeAndHasNoRow() {
         let data = WeekData(records: [
             WorkRecord(clockIn: d(2026, 8, 1, 9, 0), clockOut: d(2026, 8, 1, 19, 0),
                        flexWorkedNet: nil)
@@ -250,8 +249,8 @@ final class WeekSummaryTests: XCTestCase {
         XCTAssertEqual(s.days.count, 5)
         XCTAssertTrue(s.days.allSatisfy { $0.worked == nil })
         XCTAssertEqual(s.days.reduce(0) { $0 + $1.overtime }, 0)
-        // ...while the total carries the Saturday hour. This is the divergence.
-        XCTAssertEqual(s.overtime, 60 * 60)
+        // The rows and the total now agree, both at zero.
+        XCTAssertEqual(s.overtime, 0)
         // A weekend `now` matches no row, so nothing claims today is a day off.
         XCTAssertFalse(s.todayIsDayOff)
     }

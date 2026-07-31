@@ -106,6 +106,19 @@ public enum WorkCalculator {
     /// 0 until leave time, then accrues live.
     public static func dailyOvertime(record: WorkRecord, now: Date, rules: WorkRules,
                               timeOff: [Date: TimeInterval] = [:]) -> TimeInterval {
+        // Weekends earn nothing. Not a tuning decision: the label refuses to show a
+        // countdown on a weekend, so overtime it declines to explain must not reach the
+        // weekly total or the cap notifications either — that divergence between the
+        // strip's five rows and the figure printed beneath them is the whole reason this
+        // exists. Free by construction, too: `weeklyOvertime` floors each day at zero,
+        // so a weekend day under target already contributed nothing.
+        //
+        // Resolves against `.current`, because this function takes no calendar — the same
+        // half-injected-calendar gap `WeekSummary.compute` documents. Consequence to
+        // know: a test that injects a calendar into `computeDisplay` gets weekend
+        // awareness on the *state* and `.current` on the *overtime*. Both agree on any
+        // KST machine.
+        guard !isWeekend(record.clockIn) else { return 0 }
         let off = Self.timeOff(on: record.clockIn, in: timeOff)
         let target = dailyTarget(on: record.clockIn, rules: rules, timeOff: off)
         if let out = record.clockOut {
