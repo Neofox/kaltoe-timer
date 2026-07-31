@@ -17,6 +17,7 @@ The menu bar displays a progress fill, a glyph and a countdown, with one of the 
 - **Day settled**: `+1:00` with a `checkmark` icon — clocked out. The check means _settled_, not _target met_: a short day gets it too, beside a negative figure and a fill that visibly did not finish
 - **Not clocked in**: `--:--` with a `timer` icon and an empty dashed fill — signed in but no active clock record
 - **Signed out**: a `zzz` icon alone, with no number — no Flex session or logged out
+- **Weekend**: `주말!` with a `beach.umbrella` icon — Saturday and Sunday. The timer stands down: no countdown, no target, and weekend hours earn no overtime, so the week strip's rows and the `Week OT` total always agree. A weekend clock-in is still recorded by Flex and still runs your clock hooks; 칼퇴타이머 just declines to count it.
 
 The `BREAK` and `OT` word prefixes are gone from the menu bar label — the glyph carries the phase now. They remain on the **Linux tray**, which has no expressive glyph: on KDE that tray renders the countdown text alone, so `BREAK 0:45` is the only thing distinguishing a break from a countdown there.
 
@@ -37,8 +38,6 @@ Click the menu item to open the dropdown:
 - If no Flex record exists for today, offers a start-time picker (works offline)
 
 **Week strip**: one row per weekday, Monday to Friday, always five rows. Each row is a track — accent-coloured up to that day's work target, orange past it, with a 1pt notch marking the target and the hours worked printed on the right. So each row carries its own overtime rather than only feeding the total beneath it. On the day you're currently clocked in on the label turns accent-coloured and the accent fill is drawn at reduced strength, with a dashed outline continuing to its target. A day off reads `off` and a weekday with no record shows `·`; both render dimmed. All five bars share a fixed 10-hour scale so they're comparable, so a day beyond that saturates at a full bar — the exact figure is still printed beside it. The strip stays hidden until some day in the week has hours, and once shown it survives session expiry rather than blanking.
-
-**Monday–Friday only — weekend work is deliberately not in the strip**. A Saturday or Sunday record still counts toward `Week OT` but gets no row, so nine hours worked on a Saturday adds `+1:00` to the total with nothing on screen explaining it. That predates the strip (weekend days get the same 8h target as weekdays, which nobody chose); the strip only makes it noticeable. Recorded as follow-up 23, written up under "Weekends, and what this deliberately leaves alone" in `docs/superpowers/specs/2026-07-30-popover-week-graph-design.md`.
 
 **Shortened days**: approved time off and family day (the last Friday of the month) both cut the day's target, which moves `Leave at` earlier with nothing on screen to say why. When either applies, a caption appears under `Leave at` — `Target 4:00 · family day, time off`. The lunch break also disappears once the target falls to half a day or less (policy: a 4h half-day has no lunch), so `Leave at` can move five hours earlier where the target dropped only four — the caption accounts for those four hours and never names the vanished break.
 

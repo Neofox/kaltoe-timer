@@ -48,6 +48,12 @@ do it*, not the arithmetic.
       almost every one of those renders is redundant. Memoising on the visible inputs
       would cut most of it.
 
+- [ ] `beach.umbrella` is legible at 9pt inside the ring. It is a detailed glyph and
+      may mush at that size; `sun.max` is the cleaner fallback, at the cost of meaning
+      "sunny" rather than "weekend". Only observable on a Saturday or Sunday.
+- [ ] The KDE text-icon path renders `주말!` rather than tofu boxes. Pango should
+      resolve it, but that tray has never rendered Korean before.
+
 ## The spectrum
 
 - [ ] The four working-day stops are distinguishable from each other in passing,

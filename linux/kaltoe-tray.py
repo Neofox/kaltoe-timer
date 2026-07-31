@@ -82,7 +82,8 @@ def render_text_icon(text, urgency, out_path):
     panel height: auto-fitted text (stacked at the first space), plain
     light-gray normally, white on an orange/red rounded square at
     warning/critical (this tray's own alert badge — the only place the urgency
-    colours appear on Linux at all, since a plain tray label carries no colour)."""
+    colours reach the label *text*; on the icon path they arrive instead as the
+    -warning/-critical icon variants, stroked in the same two colours)."""
     stacked = text.replace(" ", "\n", 1)
     pad = 8 if urgency in PILL_COLORS else 3
     avail = ICON_SIZE - 2 * pad
