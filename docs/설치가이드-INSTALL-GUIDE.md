@@ -1,4 +1,4 @@
-# 칼퇴타이머 v2.0 — 설치 가이드 / Install Guide
+# 칼퇴타이머 v2.0.1 — 설치 가이드 / Install Guide
 
 > 한국어 안내: `설치가이드-KR.md`
 
@@ -11,7 +11,16 @@ account inside the app; nothing is sent anywhere except to flex.team itself.
 
 ---
 
-## What's new in v2.0
+## What's new
+
+**v2.0.1 — bug fix**
+
+- **Fixed:** hourly leave booked under a policy that needs no approval was
+  being ignored, leaving the day at its full target and showing `Leave at`
+  later than it should be. It now shortens the day like any other leave.
+  Leave still waiting for approval continues not to count.
+
+**v2.0 — new features**
 
 - **Redrawn menu bar label.** The countdown is now a *ring* closing around the
   icon or a *track* filling behind the label — your day's progress at a glance.
@@ -27,7 +36,7 @@ account inside the app; nothing is sent anywhere except to flex.team itself.
 
 ---
 
-## macOS — `칼퇴타이머-v2.0.zip`
+## macOS — `칼퇴타이머-v2.0.1.zip`
 
 Requires **macOS 26 or later** on **Apple Silicon** (M1 or newer). This build is
 arm64-only — it will not launch on an Intel Mac.
