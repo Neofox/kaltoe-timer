@@ -397,4 +397,26 @@ final class WorkCalculatorTests: XCTestCase {
         XCTAssertEqual(WorkCalculator.dayProgress(clockIn: d(2026, 7, 6, 9, 0),
                                                  now: d(2026, 7, 6, 14, 0), rules: wild), 0)
     }
+    // MARK: isWeekend
+
+    /// Gregorian weekday numbering is 1 = Sunday … 7 = Saturday, so the weekday range
+    /// is 2...6. Injected calendar, because the boundary is exactly where a
+    /// host-timezone shift would move the answer.
+    func testIsWeekendAcrossTheBoundary() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        XCTAssertFalse(WorkCalculator.isWeekend(d(2026, 7, 31, 12, 0), calendar: cal)) // Fri
+        XCTAssertTrue(WorkCalculator.isWeekend(d(2026, 8, 1, 12, 0), calendar: cal))   // Sat
+        XCTAssertTrue(WorkCalculator.isWeekend(d(2026, 8, 2, 12, 0), calendar: cal))   // Sun
+        XCTAssertFalse(WorkCalculator.isWeekend(d(2026, 8, 3, 12, 0), calendar: cal))  // Mon
+    }
+
+    /// Midnight and one minute to midnight on the same Saturday, so a naive
+    /// hour-of-day mistake cannot pass.
+    func testIsWeekendHoldsAcrossTheWholeDay() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        XCTAssertTrue(WorkCalculator.isWeekend(d(2026, 8, 1, 0, 0), calendar: cal))
+        XCTAssertTrue(WorkCalculator.isWeekend(d(2026, 8, 1, 23, 59), calendar: cal))
+    }
 }

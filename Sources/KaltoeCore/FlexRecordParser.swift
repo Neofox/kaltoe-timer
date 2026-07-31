@@ -103,7 +103,7 @@ enum FlexRecordParser {
         // earliest WORK start to latest WORK end.
         for day in schedules.dailySchedules {
             let dayDate = dayFormatter.date(from: day.date)
-            let isWeekday = dayDate.map { (2...6).contains(Calendar.current.component(.weekday, from: $0)) } ?? false
+            let isWeekday = dayDate.map { !WorkCalculator.isWeekend($0) } ?? false
 
             if let offs = day.dayOffs,
                offs.contains(where: { !weekendMarkers.contains($0.type) }),

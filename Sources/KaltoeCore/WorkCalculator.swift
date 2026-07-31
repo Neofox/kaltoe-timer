@@ -136,6 +136,16 @@ public enum WorkCalculator {
         return !calendar.isDate(nextWeek, equalTo: date, toGranularity: .month)   // +7d leaves the month
     }
 
+    /// Saturday or Sunday.
+    ///
+    /// Not a new concept — `FlexRecordParser` already had to know weekday-ness to gate
+    /// day-offs and time-off blocks, and computed it inline. This is that expression,
+    /// named so both callers share one definition, and taking a `calendar` like the
+    /// other date predicates here.
+    public static func isWeekend(_ date: Date, calendar: Calendar = .current) -> Bool {
+        !(2...6).contains(calendar.component(.weekday, from: date))
+    }
+
     /// Net work target for a given day: dailyWork, reduced on family day, then
     /// reduced by approved time off; floored at 0.
     public static func dailyTarget(on day: Date, rules: WorkRules, timeOff: TimeInterval = 0,
