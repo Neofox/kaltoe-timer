@@ -5,11 +5,15 @@ A macOS menu bar timer that reads your flex.team clock-in and counts down to
 flex-time rules: an 8-hour target, a fixed lunch window, a weekly overtime cap,
 and a family day that shortens the last Friday of the month.
 
-<!-- MENUBAR -->
+![칼퇴타이머 in the menu bar, dropdown open](docs/images/popover.png)
 
 ## The label
 
-A glyph, a countdown, and a fill that closes as the countdown runs down.
+![The menu bar label eight minutes from 칼퇴](docs/images/menubar.png)
+
+A glyph, a countdown, and a fill that closes as the countdown runs down — here
+with eight minutes left, so the ring is nearly shut, amber, and the glyph has
+started walking.
 
 | Phase | Reads | Meaning |
 | --- | --- | --- |
@@ -36,8 +40,6 @@ Pick a **ring** around the glyph or a **track** capsule behind the label under
 `라벨 스타일`.
 
 ## The dropdown
-
-<!-- POPOVER -->
 
 남은 시간 leads, then 퇴근 예정 and 출근, the week strip, and 주간 초과근무
 against the 12h cap.
