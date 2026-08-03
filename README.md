@@ -215,3 +215,33 @@ distributable with:
     ./scripts/build-linux.sh   # requires Docker; outputs build/kaltoe-timer-linux-x86_64.tar.gz
 
 Install instructions for the recipient are in `linux/README-linux.md`.
+
+### Tray icon render tests
+
+The tray icon is a PNG this code draws with Cairo, so short of a Plasma panel
+the only way to check it is to render it. `--render-test` is that seam, and it
+now takes the progress border's fill and colour as optional trailing arguments:
+
+    rm -rf build/render-test && mkdir -p build/render-test
+    docker run --rm --platform linux/amd64 -v "$PWD/linux":/app \
+      -v "$PWD/build/render-test":/out -w /app fedora:latest \
+      bash -c 'dnf install -y python3-gobject python3-cairo gtk3 \
+          libayatana-appindicator-gtk3 webkit2gtk4.1 libnotify \
+          gobject-introspection >/dev/null 2>&1
+        python3 kaltoe-tray.py --render-test /out/normal.png "2:34" normal
+        python3 kaltoe-tray.py --render-test /out/break.png "BREAK 0:45" normal
+        python3 kaltoe-tray.py --render-test /out/critical.png "OT -0:59" critical
+        python3 kaltoe-tray.py --render-test /out/border.png "1:25" normal 0.18 "#258ef7"'
+
+Then look at them — **resampled to about 22px, not at their native 64**. The
+panel scales them down, and text that is comfortable at full size can be mush
+there; that resampled view is what chose the border's padding, and judging at
+64 would have chosen differently.
+
+Use the real renderer for this. A stand-in built on Cairo's toy text API reads
+differently enough from Pango to reverse a conclusion, which it once did.
+
+Geometry has its own GTK-free tests, runnable anywhere:
+
+    python3 linux/test_kaltoe_border.py   # progress-border path arithmetic
+    python3 linux/test_kaltoe_rows.py     # week row label formatting

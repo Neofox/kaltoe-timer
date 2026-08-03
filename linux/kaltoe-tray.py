@@ -82,13 +82,21 @@ FONT_PROBE_SIZE = 40
 BORDER_INSET = 2
 BORDER_WIDTH = 5
 BORDER_RADIUS = 10
-# No breathing gap between the border and the digits, deliberately. The text
+# No breathing gap between the border and the digits, deliberately: the text
 # auto-fits whatever this leaves, and the icon is resampled to a ~22px panel
-# where the two-line break label ("BREAK 0:35") is the tightest thing the tray
-# ever draws. Rendered at panel size and compared, a 3px gap took that label
-# from legible to mush while a flush fit is nearly indistinguishable from the
-# borderless original — so the gap costs the one case that cannot afford it and
-# buys nothing the rounded corners do not already give.
+# where every point matters.
+#
+# Settled by rendering 7, 8 and 10 through `--render-test` and comparing at
+# panel size. The single-line countdown — what the panel shows for almost the
+# whole day — is clearly sharpest at 7 and visibly compressed by 10. The
+# two-line break label is the tightest thing the tray draws, and it is marginal
+# at all three, so it cannot earn the padding: no value rescues it, and paying
+# for it would blunt the case that is on screen all day.
+#
+# (An earlier revision justified this the other way round, claiming the gap
+# turned the break label to mush. That was measured against a stand-in renderer
+# using Cairo's toy text API. Pango disagrees — if anything the break label is
+# a touch crisper at 10 — so the conclusion held and the reason did not.)
 BORDER_PAD = BORDER_INSET + BORDER_WIDTH
 
 
@@ -557,8 +565,16 @@ class TrayApp:
 def main():
     if sys.argv[1:2] == ["--render-test"]:
         if len(sys.argv) < 5:
-            raise SystemExit("usage: kaltoe-tray.py --render-test <out.png> <text> <urgency>")
-        render_text_icon(sys.argv[3], sys.argv[4], sys.argv[2])
+            raise SystemExit("usage: kaltoe-tray.py --render-test <out.png> <text> "
+                             "<urgency> [fill] [#rrggbb]")
+        # fill/colour are optional so every existing invocation still means what
+        # it did. Supplying them is the only way to see the progress border come
+        # out of the real renderer — kaltoe_border's tests prove the geometry,
+        # but Pango, the padding and the border share one canvas, and only this
+        # path draws all three together.
+        fill = float(sys.argv[5]) if len(sys.argv) > 5 else None
+        color = sys.argv[6] if len(sys.argv) > 6 else None
+        render_text_icon(sys.argv[3], sys.argv[4], sys.argv[2], fill=fill, color=color)
         print(f"wrote {sys.argv[2]}")
         return
     if not os.path.exists(CORE_BIN):
