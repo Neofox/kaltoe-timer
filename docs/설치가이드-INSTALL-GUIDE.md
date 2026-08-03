@@ -1,4 +1,4 @@
-# 칼퇴타이머 v2.0.2 — 설치 가이드 / Install Guide
+# 칼퇴타이머 v2.1.0 — 설치 가이드 / Install Guide
 
 > 한국어 안내: `설치가이드-KR.md`
 
@@ -12,6 +12,27 @@ account inside the app; nothing is sent anywhere except to flex.team itself.
 ---
 
 ## What's new
+
+**v2.1.0 — Korean menu, and a clearer ring**
+
+- **The menu is in Korean.** 남은 시간, 퇴근 예정, 출근, 주간 초과근무, and the
+  week strip's 월–금. The one line still in English is the shortened-day note
+  (`Target 6:00 · family day`), which the Linux tray shares.
+- **The ring now measures whatever the countdown is counting.** In the morning
+  it fills toward lunch, during the break toward going back, and in the
+  afternoon toward leave time — so a full ring always means the number beside
+  it has run out. It used to measure the whole day, which left "10 minutes to
+  lunch" sitting next to a barely-filled ring. The colour still travels across
+  the whole day, so the morning still looks like the morning.
+- **Week bars fill to the day's target.** The bars no longer keep empty space
+  in reserve for overtime you may never work — a full bar means the day is
+  done. When a day does run over, the whole strip rescales together so the five
+  rows stay comparable.
+- **A quieter menu.** 남은 시간 leads in larger type; days you haven't worked
+  recede instead of matching the day you have; the last sync moved next to the
+  re-sync button it belongs to; 라벨 스타일 is one line instead of two.
+- **Thicker ring.** A slightly heavier stroke, so the colours read at menu bar
+  size.
 
 **v2.0.2 — appearance**
 
@@ -30,7 +51,7 @@ account inside the app; nothing is sent anywhere except to flex.team itself.
 
 - **Redrawn menu bar label.** The countdown is now a *ring* closing around the
   icon or a *track* filling behind the label — your day's progress at a glance.
-  Pick the style in the menu under **Label style**.
+  Pick the style in the menu under **라벨 스타일** (label style).
 - **Week strip.** The popover shows one row per weekday (Mon–Fri), each bar
   carrying its own overtime against that day's target.
 - **Shortened days.** Approved time off and family day (last Friday of the
@@ -42,7 +63,7 @@ account inside the app; nothing is sent anywhere except to flex.team itself.
 
 ---
 
-## macOS — `칼퇴타이머-v2.0.2.zip`
+## macOS — `칼퇴타이머-v2.1.0.zip`
 
 Requires **macOS 26 or later** on **Apple Silicon** (M1 or newer). This build is
 arm64-only — it will not launch on an Intel Mac.
