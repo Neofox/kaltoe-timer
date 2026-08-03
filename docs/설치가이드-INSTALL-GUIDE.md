@@ -1,4 +1,4 @@
-# 칼퇴타이머 v2.1.0 — 설치 가이드 / Install Guide
+# 칼퇴타이머 v2.2.0 — 설치 가이드 / Install Guide
 
 > 한국어 안내: `설치가이드-KR.md`
 
@@ -12,6 +12,17 @@ account inside the app; nothing is sent anywhere except to flex.team itself.
 ---
 
 ## What's new
+
+**v2.2.0 — a progress ring for Linux**
+
+- **The Fedora/KDE tray icon has a progress border.** Its outline fills
+  clockwise as the countdown runs down, in the same colours the Mac ring uses,
+  so the panel finally shows at a glance what macOS has shown for a while. It
+  measures whatever the number inside it is counting — the morning fills toward
+  lunch, the break toward going back, the afternoon toward leave time — and it
+  steps aside at the warning and critical stages, where the icon already turns
+  into a solid orange or red badge.
+- **macOS is unchanged** in this release apart from the version number.
 
 **v2.1.0 — Korean menu, and a clearer ring**
 
@@ -64,7 +75,7 @@ account inside the app; nothing is sent anywhere except to flex.team itself.
 
 ---
 
-## macOS — `칼퇴타이머-v2.1.0.zip`
+## macOS — `칼퇴타이머-v2.2.0.zip`
 
 Requires **macOS 26 or later** on **Apple Silicon** (M1 or newer). This build is
 arm64-only — it will not launch on an Intel Mac.
