@@ -54,7 +54,7 @@ struct MenuBarView: View {
             }
             LabelGeometryRow(geometry: $state.labelGeometry)
             separator
-            MenuRow(icon: "power", title: "Quit") { NSApp.terminate(nil) }
+            MenuRow(icon: "power", title: "종료") { NSApp.terminate(nil) }
         }
         .padding(.vertical, 6)
         .frame(width: 280)
@@ -72,29 +72,41 @@ struct MenuBarView: View {
     @ViewBuilder private func information(_ today: WorkRecord?) -> some View {
         VStack(alignment: .leading, spacing: rowSpacing) {
             if case .onBreak = state.menuDisplay.state {
-                row("Back at", WorkCalculator.lunchWindow(on: Date(), rules: state.rules).endAt
+                row("복귀", WorkCalculator.lunchWindow(on: Date(), rules: state.rules).endAt
                     .formatted(date: .omitted, time: .shortened))
             }
             if let today, state.hasSession {
                 let off = WorkCalculator.timeOff(on: today.clockIn, in: state.timeOff)
-                row("Started", today.clockIn.formatted(date: .omitted, time: .shortened))
-                row("Leave at", WorkCalculator.leaveTime(clockIn: today.clockIn, rules: state.rules,
-                                                         timeOff: off)
+                // Ordered and weighted by why you opened the popover. The countdown is
+                // the answer you came for, so it leads at `.hero`; leave time is the
+                // fact behind it; clock-in is something you already know and only ever
+                // check to confirm, so it recedes to a caption. They used to be three
+                // identical rows in the opposite order, which made the least useful
+                // line the first one read.
+                row("남은 시간", Formatting.hms(WorkCalculator.timeLeft(
+                    clockIn: today.clockIn, now: Date(), rules: state.rules, timeOff: off)),
+                    .hero)
+                row("퇴근 예정", WorkCalculator.leaveTime(clockIn: today.clockIn,
+                                                       rules: state.rules, timeOff: off)
                     .formatted(date: .omitted, time: .shortened))
                 // Only present when something shortened the day. Family day and
-                // approved time off both move Leave at with no other explanation,
+                // approved time off both move 퇴근 예정 with no other explanation,
                 // and when they stack the break vanishes too, so the row moves
                 // five hours rather than the four the target change alone implies.
+                //
+                // The one English string left in the popover: `TargetNote` composes it
+                // inside KaltoeCore so the Linux tray need not carry a second copy of
+                // the wording, which puts it on the daemon's wire. Translating it here
+                // would mean translating it there too.
                 if let note = state.weekSummary.targetNote {
                     Text(note).font(.caption).foregroundStyle(.secondary)
                 }
-                row("Time left", Formatting.hms(WorkCalculator.timeLeft(
-                    clockIn: today.clockIn, now: Date(), rules: state.rules, timeOff: off)))
+                row("출근", today.clockIn.formatted(date: .omitted, time: .shortened))
             } else if state.hasSession {
-                Text(state.weekSummary.todayIsDayOff ? "Day off" : "Not clocked in yet")
+                Text(state.weekSummary.todayIsDayOff ? "휴무" : "아직 출근 전")
                     .foregroundStyle(.secondary)
             } else {
-                Text("Session expired").foregroundStyle(.secondary)
+                Text("세션 만료").foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 12)
@@ -102,22 +114,36 @@ struct MenuBarView: View {
 
     @ViewBuilder private var primaryAction: some View {
         if state.hasSession {
-            MenuRow(icon: "arrow.clockwise", title: "Flex re-sync") {
+            MenuRow(icon: "arrow.clockwise", title: "Flex 재동기화") {
                 Task { await state.refresh() }
+            } trailing: {
+                // The last sync belongs beside the button that changes it, not under
+                // the week's overtime total where it used to sit — there it read as a
+                // footnote to a figure it has nothing to do with.
+                //
+                // Only on the signed-in variant: `lastSync` survives an expired
+                // session, so on the sign-in row it would timestamp data you can no
+                // longer refresh. Dimmed with opacity rather than `.secondary` so it
+                // follows the row's foreground to white on hover instead of staying
+                // grey against the accent fill.
+                if let sync = state.lastSync {
+                    Text(sync.formatted(date: .omitted, time: .shortened))
+                        .font(.caption).opacity(0.7)
+                }
             }
         } else {
-            MenuRow(icon: "person.crop.circle", title: "Sign in to Flex…") { state.signIn() }
+            MenuRow(icon: "person.crop.circle", title: "Flex 로그인…") { state.signIn() }
         }
     }
 
     private var manualEntry: some View {
         VStack(alignment: .leading, spacing: rowSpacing) {
-            Text("Or set it manually").font(.caption).foregroundStyle(.secondary)
+            Text("직접 입력").font(.caption).foregroundStyle(.secondary)
             HStack {
-                DatePicker("Started at", selection: $manualTime, displayedComponents: .hourAndMinute)
+                DatePicker("출근 시각", selection: $manualTime, displayedComponents: .hourAndMinute)
                     .datePickerStyle(.field)
                     .controlSize(.small)
-                Button("Set") {
+                Button("설정") {
                     SettingsStore.setManualStart(manualTime, on: Date())
                     state.recompute(now: Date())
                 }
@@ -146,25 +172,44 @@ struct MenuBarView: View {
                     }
                 }
             }
-            row("Week OT", "\(Formatting.hm(state.weekSummary.overtime)) / "
+            row("주간 초과근무", "\(Formatting.hm(state.weekSummary.overtime)) / "
                 + Formatting.hm(state.weekSummary.cap))
+            // The error stays here while the sync timestamp moved to the re-sync row:
+            // a failure is about the week's figures being stale, which is exactly the
+            // claim the rows above it are making.
             if let error = state.syncError {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption).foregroundStyle(.orange)
-            }
-            if let sync = state.lastSync {
-                Text("Synced \(sync.formatted(date: .omitted, time: .shortened))")
-                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 12)
     }
 
-    private func row(_ label: String, _ value: String) -> some View {
+    /// How loudly a row speaks. The popover is roughly half things you opened it to
+    /// read and half things you will ignore all week; one uniform body font made the
+    /// two indistinguishable, which is what made the menu feel busy for its size.
+    private enum RowWeight {
+        case hero      // the number you came for
+        case normal
+
+        var font: Font {
+            switch self {
+            case .hero: return .title3
+            case .normal: return .body
+            }
+        }
+    }
+
+    private func row(_ label: String, _ value: String,
+                     _ weight: RowWeight = .normal) -> some View {
         HStack {
             Text(label).foregroundStyle(.secondary)
             Spacer()
             Text(value).monospacedDigit()
         }
+        // On the row rather than per Text, so the label and its figure always scale
+        // together — a large figure beside a body-sized label reads as a mismatch
+        // rather than as emphasis.
+        .font(weight.font)
     }
 }

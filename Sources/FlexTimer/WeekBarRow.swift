@@ -23,9 +23,13 @@ struct WeekBarRow: View {
     let scale: TimeInterval
 
     /// Fixed rather than measured with a GeometryReader: the popover is a fixed
-    /// 280pt, so 280 − 2×12 padding − 26 label − 36 value − 2×8 spacing = 178 is
+    /// 280pt, so 280 − 2×12 padding − 18 label − 36 value − 2×8 spacing = 186 is
     /// known here, and a reader would add a layout pass per row per second.
-    private let trackWidth: CGFloat = 178
+    ///
+    /// 186 rather than the old 178 because the day column shrank with its contents:
+    /// one Korean character needs nowhere near the 26pt "Wed" did, and left to itself
+    /// the surplus would have shown as a gap between the label and the bar.
+    private let trackWidth: CGFloat = 186
     private let trackHeight: CGFloat = 7
 
     var body: some View {
@@ -33,7 +37,7 @@ struct WeekBarRow: View {
             Text(day.label)
                 .font(.caption)
                 .foregroundStyle(day.isOngoing ? Color.accentColor : Color.secondary)
-                .frame(width: 26, alignment: .leading)
+                .frame(width: 18, alignment: .leading)
             track
             Text(value)
                 .font(.caption)
@@ -64,7 +68,13 @@ struct WeekBarRow: View {
 
     private var track: some View {
         ZStack(alignment: .leading) {
-            Capsule().fill(Color.secondary.opacity(0.25))
+            // Fainter where there is nothing to show. At one opacity for every row, a
+            // week with one day worked drew four empty tracks with the same weight as
+            // the worked day's unfilled remainder, so the strip read as five equal
+            // bars of which one happened to be coloured. `emphasis` alone did not
+            // separate them: it dims the whole row, and an empty row has nothing in it
+            // *but* the track.
+            Capsule().fill(Color.secondary.opacity(day.worked == nil ? 0.14 : 0.25))
                 .frame(width: trackWidth, height: trackHeight)
             if let worked = day.worked {
                 // Today's remaining target, as an outline the fill grows into.
@@ -90,16 +100,34 @@ struct WeekBarRow: View {
                         .offset(x: x(day.target))
                 }
             }
-            Rectangle().fill(Color.secondary)
-                .frame(width: 1, height: trackHeight + 6)
-                .offset(x: x(day.target))
+            // Only where the notch has something to mark. Once `barScale` became the
+            // longest target rather than a fixed 10h, an ordinary day's target *is*
+            // the end of the track, so this drew a full-strength 13pt rule against a
+            // 7pt bar on all five rows at the same x — five column borders between the
+            // bars and their figures, which is how the strip came to look like a
+            // table. A shortened day (family day, time off) still carries its notch
+            // inboard, which is the only case where it ever said anything.
+            //
+            // The threshold is a point of track rather than an equality: exact targets
+            // land exactly on `trackWidth`, but a 7:59 target against an 8:00 scale
+            // would otherwise put a rule four tenths of a point from the end.
+            if trackWidth - x(day.target) >= 1 {
+                Rectangle().fill(Color.secondary)
+                    .frame(width: 1, height: trackHeight + 6)
+                    .offset(x: x(day.target))
+            }
         }
         .frame(width: trackWidth, height: trackHeight)
     }
 
+    /// Blank for a day with no record: the empty track already says nothing happened,
+    /// and a column of `·` placeholders down four untouched weekdays was the loudest
+    /// thing in the strip. "off" stays — a day off is a fact about the day, not an
+    /// absence of one — and alignment does not depend on either, since the column is a
+    /// fixed 36pt frame.
     private var value: String {
         if let worked = day.worked { return Formatting.hm(worked) }
-        return day.isDayOff ? "off" : "·"
+        return day.isDayOff ? "off" : ""
     }
 
     private var spokenLabel: String {

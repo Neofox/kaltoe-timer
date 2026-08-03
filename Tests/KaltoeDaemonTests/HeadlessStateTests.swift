@@ -149,7 +149,7 @@ final class HeadlessStateTests: XCTestCase {
         let line = state.status(now: d(2026, 7, 31, 14, 41))
         let days = try XCTUnwrap(line.days)
         XCTAssertEqual(days.count, 5)
-        XCTAssertEqual(days.map(\.label), ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        XCTAssertEqual(days.map(\.label), ["월", "화", "수", "목", "금"])
         XCTAssertEqual(days[0].worked, 8 * 3600 + 35 * 60)
         XCTAssertEqual(days[0].overtime, 35 * 60)
         XCTAssertNil(days[2].worked)                       // no Wednesday record

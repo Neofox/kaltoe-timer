@@ -305,7 +305,7 @@ final class AppStateWeekSummaryTests: XCTestCase {
         guard state.weekSummary.days.count == 5 else {
             return XCTFail("expected 5 weekday rows, got \(state.weekSummary.days.count)")
         }
-        XCTAssertEqual(state.weekSummary.days.map(\.label), ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        XCTAssertEqual(state.weekSummary.days.map(\.label), ["월", "화", "수", "목", "금"])
         XCTAssertEqual(state.weekSummary.overtime, 35 * 60)  // Monday's +0:35 only
         XCTAssertEqual(state.weekSummary.days[4].worked, 4 * 3600 + 29 * 60)
         // 2026-07-31 is the last Friday of July.

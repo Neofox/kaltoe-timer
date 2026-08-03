@@ -76,10 +76,19 @@ public struct WeekSummary: Equatable, Sendable {
         self.todayIsDayOff = todayIsDayOff
     }
 
-    /// Weekday labels, fixed rather than locale-derived: the rest of this UI is
-    /// English ("Started", "Leave at"), so a localised strip would be the only
-    /// translated text on screen.
-    private static let labels = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+    /// Weekday labels, fixed rather than locale-derived — but Korean, which inverts
+    /// the reason they were fixed. They were English because the popover's chrome was
+    /// ("Started", "Leave at"), and a localised strip would have been the only
+    /// translated text on screen; that chrome is now Korean, so English weekdays would
+    /// be the last untranslated thing instead.
+    ///
+    /// Still hardcoded rather than taken from `Calendar`: a locale-derived strip would
+    /// render in whatever language the machine happens to be set to, which is the one
+    /// thing neither reading of this wanted.
+    ///
+    /// These travel on the daemon's wire as `days[].label`, so the Linux tray's rows
+    /// move with them — `kaltoe_rows.day_label` prints the string it is handed.
+    private static let labels = ["월", "화", "수", "목", "금"]
 
     /// Hours the popover's bar track spans, shared by every row so the five stay
     /// comparable — a per-row scale would make bars of equal length mean different

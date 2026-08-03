@@ -120,9 +120,9 @@ final class WeekSummaryTests: XCTestCase {
     }
 
     func testAlwaysFiveWeekdayRowsInOrder() {
-        XCTAssertEqual(summary().days.map(\.label), ["Mon", "Tue", "Wed", "Thu", "Fri"])
+        XCTAssertEqual(summary().days.map(\.label), ["월", "화", "수", "목", "금"])
         // The labels are a fixed array, so they alone prove nothing about which days
-        // the rows stand for: a Sunday-first weekStart would still read Mon...Fri.
+        // the rows stand for: a Sunday-first weekStart would still read 월...금.
         // Monday of the canonical week is 2026-07-27.
         XCTAssertEqual(summary().days[0].date,
                        Calendar.current.startOfDay(for: d(2026, 7, 27, 0, 0)))
