@@ -52,6 +52,76 @@ final class StatusLineTests: XCTestCase {
         XCTAssertTrue(json.contains(#""weekOvertime":240"#), json)
     }
 
+    // MARK: the tray's progress border
+
+    /// No record, no border. The tray draws nothing rather than an empty outline,
+    /// which is why this is gated on the caller's `dayProgress` rather than inferred.
+    func testBorderFieldsOmittedWithoutDayProgress() throws {
+        let line = StatusLine(display: MenuDisplay(state: .notClockedIn, urgency: .normal),
+                              hasSession: true, lastSync: nil, syncError: nil)
+        XCTAssertNil(line.fill)
+        XCTAssertNil(line.fillColor)
+        let json = String(data: try StatusLine.encoder().encode(line), encoding: .utf8) ?? ""
+        XCTAssertFalse(json.contains("fill"), json)
+    }
+
+    /// The border measures the *phase*, so it carries `fillProgress` rather than the
+    /// day's progress — the two are different numbers and the wire needs both.
+    func testBorderCarriesPhaseProgressAndDayColour() throws {
+        let line = StatusLine(display: MenuDisplay(state: .toLunch(timeLeft: 600),
+                                                   urgency: .normal, fillProgress: 0.5),
+                              hasSession: true, lastSync: nil, syncError: nil,
+                              dayProgress: 0)
+        XCTAssertEqual(line.fill, 0.5)
+        // dayProgress 0 is the spectrum's first stop, dark variant.
+        XCTAssertEqual(line.fillColor, LabelPalette.stops[0].dark.hex)
+        XCTAssertEqual(line.fillColor, "#258ef7")
+        let json = String(data: try StatusLine.encoder().encode(line), encoding: .utf8) ?? ""
+        // Doubled delimiter: the colour's own `#` closes a single-hash raw string.
+        XCTAssertTrue(json.contains(##""fillColor":"#258ef7""##), json)
+    }
+
+    /// The cadence guard. `main.swift` emits on change and `fillProgress` moves every
+    /// second, so an unquantised fraction would put sixty lines a minute on the wire,
+    /// each one a full tray-icon render on Plasma. 120 steps means neighbouring
+    /// values collapse onto one.
+    func testFillQuantisesSoTheWireStaysChangeCadenced() {
+        func fill(_ value: Double) -> Double? {
+            StatusLine(display: MenuDisplay(state: .counting(timeLeft: 60), urgency: .normal,
+                                            fillProgress: value),
+                       hasSession: true, lastSync: nil, syncError: nil, dayProgress: 0.5).fill
+        }
+        XCTAssertEqual(fill(0.5001), fill(0.5))
+        XCTAssertEqual(fill(0.5), 0.5)
+        // One step is 1/120; either side of a boundary must differ.
+        XCTAssertNotEqual(fill(0.5), fill(0.5 + 1.0 / 120))
+    }
+
+    /// Past target the border is full and takes the alerting colour. It happens to be
+    /// unreachable on screen — the tray suppresses the border under warning and
+    /// critical, where the pill already owns the icon — but the wire should still
+    /// state something true.
+    func testOvertimeFillsTheBorderInSystemOrange() {
+        let line = StatusLine(display: MenuDisplay(state: .overtime(today: 600, clockedIn: true),
+                                                   urgency: .warning, fillProgress: 1),
+                              hasSession: true, lastSync: nil, syncError: nil, dayProgress: 1)
+        XCTAssertEqual(line.fill, 1)
+        XCTAssertEqual(line.fillColor, "#ff9500")
+    }
+
+    /// Hostile settings reach this: `dailyWorkHours 0` collapses the day's span, and
+    /// `Double` arithmetic on it can yield NaN. NaN is not representable in JSON and
+    /// would throw at encode time, taking the daemon down over a decoration.
+    func testNonFiniteFillEncodesAsZeroRatherThanCrashingTheDaemon() throws {
+        let line = StatusLine(display: MenuDisplay(state: .counting(timeLeft: 60),
+                                                   urgency: .normal,
+                                                   fillProgress: .nan),
+                              hasSession: true, lastSync: nil, syncError: nil,
+                              dayProgress: .infinity)
+        XCTAssertEqual(line.fill, 0)
+        XCTAssertNoThrow(try StatusLine.encoder().encode(line))
+    }
+
     func testWeekOvertimeRoundsToWholeMinutesTowardZero() {
         func line(_ ot: TimeInterval) -> StatusLine {
             StatusLine(display: MenuDisplay(state: .notClockedIn, urgency: .normal),

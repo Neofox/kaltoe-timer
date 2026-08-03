@@ -24,6 +24,22 @@ public struct StatusLine: Codable, Equatable, Sendable {
     /// The weekly overtime ceiling, so the tray can render "/ 12:00" as the
     /// popover does rather than a bare total.
     public var weekOvertimeCap: Int?
+    /// 0…1 — how much of the tray icon's border to stroke, quantised (see
+    /// `quantised`). This is `MenuDisplay.fillProgress`, so the border measures
+    /// whatever the countdown beside it is counting: the morning fills toward lunch,
+    /// the break toward resumption, the afternoon toward leave time.
+    ///
+    /// Omitted when signed out or before clocking in, alongside `started` and
+    /// `leaveAt`, so the tray draws no border at all rather than an empty one.
+    public var fill: Double?
+    /// `"#rrggbb"` for that border, resolved from `LabelPalette` against the whole
+    /// day's progress — so, exactly as on the Mac, the border's *length* tracks the
+    /// current phase while its *colour* travels blue→amber across the day.
+    ///
+    /// Resolved here rather than reimplemented in Python for the reason `TargetNote`
+    /// is composed in this module: a second copy of the spectrum in the tray would be
+    /// free to drift from this one, and nobody would notice for months.
+    public var fillColor: String?
 
     /// **Seconds**, with the sub-minute part dropped — 3660 in, 3600 out, not 61.
     /// The invariant every interval on this wire obeys, in one place so it cannot be
@@ -63,6 +79,31 @@ public struct StatusLine: Codable, Equatable, Sendable {
         return overflowed ? 0 : seconds
     }
 
+    /// Rounds a 0…1 fraction to `steps` even divisions — what
+    /// `secondsFlooredToMinute` is for intervals, and load-bearing for the same
+    /// reason. `main.swift` emits on change, and a raw `fillProgress` moves every
+    /// second, so putting one on this wire unquantised would mean sixty emissions a
+    /// minute, each driving a full tray-icon render/write/unlink on Plasma. That is
+    /// the exact pathology the interval invariant exists to prevent.
+    ///
+    /// The step counts are a cadence budget, not a resolution preference:
+    ///
+    /// - `fill` at 120 steps. Its denominator is the *segment*, and the shortest one
+    ///   is the 70-minute lunch break — 35 seconds per step, so under two emissions a
+    ///   minute at the worst moment of the day. On a 64pt icon the border's perimeter
+    ///   is about 232pt, so a step is under 2pt: below what anyone can see move.
+    /// - `fillColor` at 60 steps of the whole day. A 9-hour day is then one step per
+    ///   nine minutes, contributing essentially nothing, and the spectrum interpolates
+    ///   so smoothly that sixty stops across it are indistinguishable from continuous.
+    ///
+    /// Total by construction like its sibling: a non-finite input yields 0 rather than
+    /// putting `NaN` — which is not representable in JSON and would throw at encode
+    /// time, taking the daemon down — on the wire.
+    static func quantised(_ value: Double, steps: Double) -> Double {
+        guard value.isFinite else { return 0 }
+        return (min(1, max(0, value)) * steps).rounded() / steps
+    }
+
     /// One weekday for the tray. Every interval goes through
     /// `secondsFlooredToMinute`.
     public struct DayLine: Codable, Equatable, Sendable {
@@ -83,9 +124,13 @@ public struct StatusLine: Codable, Equatable, Sendable {
         }
     }
 
+    /// - Parameter dayProgress: `WorkCalculator.dayProgress`, or nil to omit the
+    ///   border fields entirely. The caller decides that rather than this initialiser
+    ///   inferring it from `hasSession`, because "is there a border to draw" is the
+    ///   same question as "is there a record", which only the caller has.
     public init(display: MenuDisplay, hasSession: Bool, lastSync: Date?, syncError: String?,
                 started: Date? = nil, leaveAt: Date? = nil, weekOvertime: TimeInterval? = nil,
-                summary: WeekSummary? = nil) {
+                summary: WeekSummary? = nil, dayProgress: Double? = nil) {
         self.text = display.state.menuBarText
         self.icon = display.state.iconName
         self.urgency = display.urgency.rawValue
@@ -98,6 +143,12 @@ public struct StatusLine: Codable, Equatable, Sendable {
         self.days = summary?.days.map(DayLine.init)
         self.targetNote = summary?.targetNote
         self.weekOvertimeCap = summary.map { Self.secondsFlooredToMinute($0.cap) }
+        if let dayProgress {
+            self.fill = Self.quantised(display.fillProgress, steps: 120)
+            self.fillColor = LabelPalette.resolve(
+                progress: Self.quantised(dayProgress, steps: 60),
+                phase: LabelPhase(display)).fill.wireHex
+        }
     }
 
     public static func encoder() -> JSONEncoder {

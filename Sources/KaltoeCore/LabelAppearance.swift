@@ -33,6 +33,21 @@ public struct RGBA: Equatable, Sendable {
                   blue: Double(hex & 0xff) / 255,
                   alpha: alpha)
     }
+
+    /// `"#5aa9f8"` — the form the daemon puts on the wire, because the Linux tray
+    /// strokes its border with Cairo and cannot resolve a `LabelFill`.
+    ///
+    /// Alpha is dropped: nothing on that wire is translucent, and a border drawn at
+    /// less than full opacity over a panel of unknown colour is not a thing the tray
+    /// can reason about. Components are clamped before scaling — this is public
+    /// surface, and `String(format:)` on a NaN would emit garbage into the JSON.
+    public var hex: String {
+        func channel(_ value: Double) -> Int {
+            guard value.isFinite else { return 0 }
+            return Int((min(1, max(0, value)) * 255).rounded())
+        }
+        return String(format: "#%02x%02x%02x", channel(red), channel(green), channel(blue))
+    }
 }
 
 /// One colour in both menu bar appearances. A spectrum stop is not a single colour:
@@ -63,6 +78,27 @@ public enum LabelFill: Equatable, Sendable {
     case pair(ColourPair)
     case systemOrange
     case systemRed
+
+    /// One concrete `#rrggbb` for the Linux tray's progress border.
+    ///
+    /// The **dark** half of a pair, unconditionally. The tray cannot ask its panel
+    /// what colour it is — appindicator exposes no such thing — and the icon renderer
+    /// already assumes a dark one, drawing its text at `#dfdfdf` to match the static
+    /// icons. Sending the light variant to a dark panel would be the worse mistake of
+    /// the two, since these are the values tuned to be legible there.
+    ///
+    /// The two alerting cases resolve to Apple's own systemOrange and systemRed, which
+    /// are exactly `kaltoe-tray.py`'s `PILL_COLORS`. That is not a coincidence to
+    /// preserve by hand: the border is suppressed under warning and critical precisely
+    /// because the pill already owns those states, so if these ever diverge from the
+    /// tray's constants nothing on screen can show it.
+    public var wireHex: String {
+        switch self {
+        case .pair(let pair): return pair.dark.hex
+        case .systemOrange: return RGBA(0xff9500).hex
+        case .systemRed: return RGBA(0xff3b30).hex
+        }
+    }
 }
 
 /// What the label's colour depends on. Narrower than `DisplayState` because colour

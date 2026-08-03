@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 DEST="$HOME/.local/share/kaltoe-timer"
 mkdir -p "$DEST/icons" "$HOME/.config/autostart"
-cp kaltoe-core kaltoe-tray.py kaltoe_rows.py README-linux.md "$DEST/"
+cp kaltoe-core kaltoe-tray.py kaltoe_rows.py kaltoe_border.py README-linux.md "$DEST/"
 cp icons/*.svg "$DEST/icons/"
 chmod +x "$DEST/kaltoe-core" "$DEST/kaltoe-tray.py"
 

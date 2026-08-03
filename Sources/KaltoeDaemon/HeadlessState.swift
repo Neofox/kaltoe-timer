@@ -56,15 +56,24 @@ final class HeadlessState {
                                                   timeOff: weekData.timeOff,
                                                   now: now, rules: rules)
         var leaveAt: Date?
+        // Measured at clock-out once the day is closed, exactly as `AppState` does for
+        // the Mac label: `dayProgress` divides elapsed-since-clock-in by the whole
+        // span, so a settled day would otherwise keep climbing all evening and leave a
+        // full border on the panel hours after you went home.
+        var dayProgress: Double?
         if hasSession, let today {
             let off = WorkCalculator.timeOff(on: today.clockIn, in: weekData.timeOff)
             leaveAt = WorkCalculator.leaveTime(clockIn: today.clockIn, rules: rules, timeOff: off)
+            dayProgress = WorkCalculator.dayProgress(clockIn: today.clockIn,
+                                                     now: today.clockOut ?? now,
+                                                     rules: rules, timeOff: off)
         }
         return StatusLine(display: display, hasSession: hasSession,
                           lastSync: lastSync, syncError: syncError,
                           started: hasSession ? today?.clockIn : nil,
                           leaveAt: leaveAt,
                           weekOvertime: hasSession ? summary.overtime : nil,
-                          summary: hasSession ? summary : nil)
+                          summary: hasSession ? summary : nil,
+                          dayProgress: dayProgress)
     }
 }

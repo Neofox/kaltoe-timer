@@ -21,6 +21,7 @@ from pathlib import Path
 # ModuleNotFoundError at startup. kaltoe_rows is GTK-free, hence safe to import
 # above the `gi` block.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from kaltoe_border import rgb as border_rgb, segments as border_segments
 from kaltoe_rows import day_label, hm
 
 # WebKitGTK's DMABUF/GPU renderer crash-loops on some Wayland+driver combos
@@ -75,17 +76,43 @@ TRAY_MODE = os.environ.get("KALTOE_TRAY_MODE") or (
 ICON_SIZE = 64
 PILL_COLORS = {"warning": (1.0, 0.584, 0.0), "critical": (1.0, 0.231, 0.188)}
 FONT_PROBE_SIZE = 40
+# Border metrics, in the 64pt icon's own units. The width is what carries the
+# colour — the same lesson the Mac ring learned at 2pt, scaled up: this canvas is
+# 64 where that ring is 18, so 5 here is the lighter stroke of the two.
+BORDER_INSET = 2
+BORDER_WIDTH = 5
+BORDER_RADIUS = 10
+# No breathing gap between the border and the digits, deliberately. The text
+# auto-fits whatever this leaves, and the icon is resampled to a ~22px panel
+# where the two-line break label ("BREAK 0:35") is the tightest thing the tray
+# ever draws. Rendered at panel size and compared, a 3px gap took that label
+# from legible to mush while a flush fit is nearly indistinguishable from the
+# borderless original — so the gap costs the one case that cannot afford it and
+# buys nothing the rounded corners do not already give.
+BORDER_PAD = BORDER_INSET + BORDER_WIDTH
 
 
-def render_text_icon(text, urgency, out_path):
+def render_text_icon(text, urgency, out_path, fill=None, color=None):
     """Render the tray label into a square PNG so Plasma shows it at full
     panel height: auto-fitted text (stacked at the first space), plain
     light-gray normally, white on an orange/red rounded square at
     warning/critical (this tray's own alert badge — the only place the urgency
     colours reach the label *text*; on the icon path they arrive instead as the
-    -warning/-critical icon variants, stroked in the same two colours)."""
+    -warning/-critical icon variants, stroked in the same two colours).
+
+    `fill` (0…1) and `color` ('#rrggbb') come straight off the wire and draw a
+    progress border round the icon — the tray's answer to the Mac's ring, and
+    the same number behind it, so the border closes as the countdown reaches
+    zero. It is suppressed at warning and critical: the pill already fills the
+    whole square in those states, and a border round a solid block of colour
+    reads as a rendering fault rather than as progress."""
     stacked = text.replace(" ", "\n", 1)
-    pad = 8 if urgency in PILL_COLORS else 3
+    bordered = urgency not in PILL_COLORS and border_rgb(color) is not None
+    # The border needs its own room — see BORDER_PAD, which is exactly the inset
+    # and the stroke with nothing spare. This is the feature's real cost: the
+    # text auto-fits whatever is left, so every point here comes off the
+    # countdown's size, and at panel scale the countdown is the whole point.
+    pad = 8 if urgency in PILL_COLORS else (BORDER_PAD if bordered else 3)
     avail = ICON_SIZE - 2 * pad
 
     def make_layout(cr, size):
@@ -125,7 +152,44 @@ def render_text_icon(text, urgency, out_path):
     text_w, text_h = layout.get_pixel_size()
     cr.move_to((ICON_SIZE - text_w) / 2, (ICON_SIZE - text_h) / 2)
     PangoCairo.show_layout(cr, layout)
+
+    if bordered:
+        _stroke_border(cr, 1.0, (1, 1, 1, 0.18))      # the unfilled remainder
+        _stroke_border(cr, fill, border_rgb(color) + (1.0,))
+
     surface.write_to_png(out_path)
+
+
+def _stroke_border(cr, fill, rgba):
+    """Stroke `fill` of the perimeter in one pass.
+
+    Segments are emitted in walk order and every one begins where the last
+    ended, so a single path keeps the corners mitred — stroking them
+    individually would leave a seam at each joint. Cairo's `arc` draws a
+    connecting line from the current point when there is one, which is exactly
+    the join wanted here since the endpoints coincide."""
+    path = border_segments(fill, ICON_SIZE, BORDER_INSET, BORDER_RADIUS)
+    if not path:
+        return
+    cr.save()
+    cr.new_path()
+    cr.set_line_width(BORDER_WIDTH)
+    cr.set_line_cap(cairo.LINE_CAP_ROUND)
+    cr.set_source_rgba(*rgba)
+    for index, segment in enumerate(path):
+        if segment[0] == "line":
+            _, x1, y1, x2, y2 = segment
+            if index == 0:
+                cr.move_to(x1, y1)
+            cr.line_to(x2, y2)
+        else:
+            # No move_to even when an arc leads: with radius at half the side the
+            # straights vanish and the walk opens on a corner, and `arc` with no
+            # current point simply starts there.
+            _, cx, cy, radius, a0, a1 = segment
+            cr.arc(cx, cy, radius, a0, a1)
+    cr.stroke()
+    cr.restore()
 
 
 class TrayApp:
@@ -324,7 +388,8 @@ class TrayApp:
         if urgency in ("warning", "critical"):
             icon = f"{icon}-{urgency}"
         if self.texticon:
-            self._set_text_icon(text, urgency)
+            self._set_text_icon(text, urgency,
+                                fill=status.get("fill"), color=status.get("fillColor"))
         else:
             self.indicator.set_label(text, LABEL_GUIDE)
             self.indicator.set_icon_full(icon, text)
@@ -388,7 +453,7 @@ class TrayApp:
                            check=False)
         self.has_session = has_session
 
-    def _set_text_icon(self, text, urgency):
+    def _set_text_icon(self, text, urgency, fill=None, color=None):
         # Icons travel by NAME (appindicator → SNI → Plasma's icon loader),
         # and Plasma caches pixmaps per name for the whole session — reusing
         # names froze the tray at the first renders (seen live: icon 15 min
@@ -396,7 +461,8 @@ class TrayApp:
         # prune old files so the temp dir stays at two PNGs.
         self.icon_seq += 1
         name = f"kaltoe-live-{self.icon_seq}"
-        render_text_icon(text, urgency, os.path.join(self.icon_temp, name + ".png"))
+        render_text_icon(text, urgency, os.path.join(self.icon_temp, name + ".png"),
+                         fill=fill, color=color)
         self.indicator.set_icon_full(name, text)
         stale = os.path.join(self.icon_temp, f"kaltoe-live-{self.icon_seq - 2}.png")
         if os.path.exists(stale):
