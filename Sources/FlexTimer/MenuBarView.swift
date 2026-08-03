@@ -137,7 +137,13 @@ struct MenuBarView: View {
             // on screen instead of blanking.
             if state.weekSummary.days.contains(where: { $0.worked != nil }) {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(state.weekSummary.days, id: \.date) { WeekBarRow(day: $0) }
+                    // One scale for the whole strip, read once here rather than per
+                    // row: it is derived from all five days, so a row cannot compute
+                    // it from the day it was handed.
+                    let scale = state.weekSummary.barScale
+                    ForEach(state.weekSummary.days, id: \.date) {
+                        WeekBarRow(day: $0, scale: scale)
+                    }
                 }
             }
             row("Week OT", "\(Formatting.hm(state.weekSummary.overtime)) / "

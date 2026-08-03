@@ -7,16 +7,26 @@ import KaltoeCore
 /// notch at the target, so each row carries its own overtime rather than only
 /// contributing to the total below. Hours worked sits on the right; signed overtime
 /// would state the orange segment's fact twice and cost track width.
+///
+/// The track holds no space in reserve for overtime: on a week nobody ran over, the
+/// scale is the longest target and a full bar means the day is done. On an ordinary
+/// week that puts every row's notch at the track's right edge, where it reads as an
+/// end cap — kept anyway, because a shortened day (family day, time off) carries its
+/// notch inboard and that is the only thing on screen explaining why its bar stops
+/// short of full.
 struct WeekBarRow: View {
     let day: DaySummary
+    /// Hours the full track spans. Passed in rather than held here because it is a
+    /// property of the week, not of one day: `WeekSummary.barScale` derives it once
+    /// from all five rows so they stay comparable, and every row must be handed the
+    /// same value. See that property for why it is not a constant.
+    let scale: TimeInterval
 
     /// Fixed rather than measured with a GeometryReader: the popover is a fixed
     /// 280pt, so 280 − 2×12 padding − 26 label − 36 value − 2×8 spacing = 178 is
     /// known here, and a reader would add a layout pass per row per second.
     private let trackWidth: CGFloat = 178
     private let trackHeight: CGFloat = 7
-    /// Hours the full track spans, shared by every row so they are comparable.
-    private let scale: TimeInterval = 10 * 3600
 
     var body: some View {
         HStack(spacing: 8) {
@@ -70,9 +80,11 @@ struct WeekBarRow: View {
                     Capsule().fill(Color.orange)
                         // Clamped against the remaining track, not just the scale:
                         // x() bounds the offset and the width separately, so their
-                        // sum could run past 178pt and draw over the hours figure.
-                        // A day beyond the 10h scale therefore saturates at a full
-                        // bar; the exact figure is printed beside it regardless.
+                        // sum could otherwise run past 178pt and draw over the hours
+                        // figure. `barScale` now sizes itself to fit target +
+                        // overtime, so this should never bite — but that guarantee
+                        // lives in another type and this is one `min` to keep it
+                        // honest if the scale is ever computed some other way.
                         .frame(width: min(x(day.overtime), trackWidth - x(day.target)),
                                height: trackHeight)
                         .offset(x: x(day.target))

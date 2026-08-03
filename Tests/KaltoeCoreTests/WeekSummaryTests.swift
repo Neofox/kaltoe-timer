@@ -255,6 +255,57 @@ final class WeekSummaryTests: XCTestCase {
         XCTAssertFalse(s.todayIsDayOff)
     }
 
+    /// The canonical week's longest day is Tuesday at 9:10, so the track stretches to
+    /// the next half hour above it and every row is measured against 9:30.
+    func testBarScaleStretchesToTheLongestDay() {
+        let s = summary()
+        XCTAssertEqual(s.barScale, 9.5 * 3600)
+        // The invariant the orange segment depends on: whatever the scale is, it has
+        // room for each row's notch *and* the overtime drawn past it. `worked` alone
+        // does not guarantee this — see netWorked's note on the two derivations.
+        for day in s.days {
+            XCTAssertLessThanOrEqual(day.target + day.overtime, s.barScale)
+            XCTAssertLessThanOrEqual(day.worked ?? 0, s.barScale)
+        }
+    }
+
+    /// The point of the whole thing: a week nobody ran over reserves no space for
+    /// overtime, so the scale *is* the target and a full bar means the day is done.
+    /// Mon 09:00–18:00 is 9h gross, 8h net — exactly on target, not a second over.
+    func testBarScaleIsTheTargetWhenNobodyRanOver() {
+        let data = WeekData(records: [
+            WorkRecord(clockIn: d(2026, 7, 27, 9, 0), clockOut: d(2026, 7, 27, 18, 0),
+                       flexWorkedNet: nil)
+        ])
+        let s = summary(data, now: d(2026, 7, 27, 18, 30))
+        XCTAssertEqual(s.days[0].worked, 8 * 3600)
+        XCTAssertEqual(s.days[0].overtime, 0)
+        XCTAssertEqual(s.barScale, 8 * 3600)
+    }
+
+    /// Overtime on a *shortened* day does not stretch the track: Friday is a family
+    /// day, so 6:30 worked is 30 minutes over its own 6h notch while still sitting
+    /// well inside Monday's ordinary 8h. Rounding up to the half hour applies only
+    /// when something genuinely exceeds the longest target — otherwise a week whose
+    /// targets are not round numbers would grow dead space back.
+    func testBarScaleIgnoresOvertimeThatFitsUnderTheLongestTarget() {
+        let data = WeekData(records: [
+            WorkRecord(clockIn: d(2026, 7, 31, 9, 0), clockOut: d(2026, 7, 31, 16, 30),
+                       flexWorkedNet: nil)
+        ])
+        let s = summary(data, now: d(2026, 7, 31, 17, 0))
+        XCTAssertEqual(s.days[4].target, 6 * 3600)
+        XCTAssertEqual(s.days[4].overtime, 30 * 60)
+        XCTAssertEqual(s.barScale, 8 * 3600)
+    }
+
+    /// The placeholder `WeekSummary` AppState holds before its first recompute has no
+    /// days at all. Nothing renders a strip from it, but the scale divides the bar
+    /// widths, so it must never hand back zero.
+    func testBarScaleFallsBackOnAnEmptySummary() {
+        XCTAssertEqual(WeekSummary().barScale, 8 * 3600)
+    }
+
     /// A manual start is a real record everywhere else, so it must appear as a row.
     func testManualStartAppearsAsARow() {
         SettingsStore.setManualStart(d(2026, 7, 31, 9, 12), on: d(2026, 7, 31, 9, 12))

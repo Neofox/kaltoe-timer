@@ -53,7 +53,7 @@ public struct ColourPair: Equatable, Sendable {
 /// intent and `MenuBarLabel` resolves it.
 ///
 /// `.systemOrange` is literally the week strip's over-target colour
-/// (`WeekBarRow.swift:70`), and both are what the shipping pill already uses
+/// (`WeekBarRow.swift:80`), and both are what the shipping pill already uses
 /// (`MenuBarLabel.swift:26`). `.systemRed` has nothing to match in the strip, which
 /// has no limit colour at all — so the red is the label's own, taken from the system
 /// only so that the two alerting colours stay consistent with each other. Copying

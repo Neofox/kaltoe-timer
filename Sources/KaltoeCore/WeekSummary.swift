@@ -81,6 +81,39 @@ public struct WeekSummary: Equatable, Sendable {
     /// translated text on screen.
     private static let labels = ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
+    /// Hours the popover's bar track spans, shared by every row so the five stay
+    /// comparable — a per-row scale would make bars of equal length mean different
+    /// things.
+    ///
+    /// This used to be a hardcoded 10h in `WeekBarRow`, which meant an ordinary 8h day
+    /// filled four fifths of the track and the last fifth stood permanently empty,
+    /// reserved for overtime most days never earn. The scale is derived instead: on a
+    /// week nobody ran over it *is* the longest target, so a full bar means the day is
+    /// done, and it only stretches when a day actually needs the room.
+    ///
+    /// Three things the arithmetic has to get right:
+    ///
+    /// - Each day needs `target + overtime`, not merely `worked`. The two come from
+    ///   different derivations and can disagree — `netWorked` documents the case — so
+    ///   sizing on `worked` alone could leave the orange segment clamped to nothing.
+    /// - Rounding up to the half hour, so the live row's own overtime does not regrow
+    ///   the scale every second and jitter all five bars. It moves at most twice an
+    ///   hour instead.
+    /// - Rounding applies **only** past the longest target. A week of 6:45 targets must
+    ///   scale to 6:45, not up to 7:00, or the dead space this exists to remove comes
+    ///   straight back.
+    public var barScale: TimeInterval {
+        let longestTarget = days.map(\.target).max() ?? 0
+        let needed = days.map { max($0.target, $0.worked ?? 0, $0.target + $0.overtime) }
+            .max() ?? 0
+        // The default-initialised placeholder, which has no days. Nothing draws a strip
+        // from it, but the scale is a divisor, so it cannot be allowed to reach zero.
+        guard longestTarget > 0 || needed > 0 else { return 8 * 3600 }
+        guard needed > longestTarget else { return longestTarget }
+        let step: TimeInterval = 30 * 60
+        return (needed / step).rounded(.up) * step
+    }
+
     /// - Precondition: `calendar` must be `.current` (or omitted). It governs **row
     ///   layout only** — `weekStart`, each row's `startOfDay`, and the same-day match
     ///   that attaches a record to a row. Three things this function delegates to
