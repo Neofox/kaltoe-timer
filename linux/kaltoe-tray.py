@@ -188,29 +188,29 @@ class TrayApp:
 
         menu.append(Gtk.SeparatorMenuItem())
 
-        self.status_item = Gtk.MenuItem(label="Starting…")
+        self.status_item = Gtk.MenuItem(label="시작 중…")
         self.status_item.set_sensitive(False)
         menu.append(self.status_item)
         menu.append(Gtk.SeparatorMenuItem())
 
-        self.sign_in_item = Gtk.MenuItem(label="Sign in to Flex…")
+        self.sign_in_item = Gtk.MenuItem(label="Flex 로그인…")
         self.sign_in_item.connect("activate", self.open_login)
         menu.append(self.sign_in_item)
 
-        self.sign_out_item = Gtk.MenuItem(label="Sign out")
+        self.sign_out_item = Gtk.MenuItem(label="로그아웃")
         self.sign_out_item.connect("activate", self.sign_out)
         menu.append(self.sign_out_item)
 
-        refresh_item = Gtk.MenuItem(label="Refresh now")
+        refresh_item = Gtk.MenuItem(label="Flex 재동기화")
         refresh_item.connect("activate", self.request_refresh)
         menu.append(refresh_item)
 
-        self.restart_item = Gtk.MenuItem(label="Restart core")
+        self.restart_item = Gtk.MenuItem(label="코어 재시작")
         self.restart_item.connect("activate", self.start_core)
         menu.append(self.restart_item)
 
         menu.append(Gtk.SeparatorMenuItem())
-        quit_item = Gtk.MenuItem(label="Quit")
+        quit_item = Gtk.MenuItem(label="종료")
         quit_item.connect("activate", self.quit)
         menu.append(quit_item)
 
@@ -332,12 +332,12 @@ class TrayApp:
         has_session = status.get("hasSession", False)
         parts = []
         if not has_session:
-            parts.append("Signed out")
+            parts.append("세션 만료")
         if status.get("syncError"):
             parts.append(status["syncError"])
         if status.get("lastSync"):
-            parts.append("Synced " + self._local_sync_label(status["lastSync"]))
-        self.status_item.set_label(" · ".join(parts) or "OK")
+            parts.append("동기화 " + self._local_sync_label(status["lastSync"]))
+        self.status_item.set_label(" · ".join(parts) or "정상")
 
         started = self._parse_iso(status.get("started"))
         self.leave_at_dt = self._parse_iso(status.get("leaveAt"))
@@ -345,14 +345,14 @@ class TrayApp:
 
         self.started_item.set_visible(started is not None)
         if started:
-            self.started_item.set_label(f"Started {self._local_hhmm(started)}")
+            self.started_item.set_label(f"출근 {self._local_hhmm(started)}")
         self.leave_item.set_visible(self.leave_at_dt is not None)
         if self.leave_at_dt:
-            self.leave_item.set_label(f"Leave at {self._local_hhmm(self.leave_at_dt)}")
+            self.leave_item.set_label(f"퇴근 예정 {self._local_hhmm(self.leave_at_dt)}")
         self.timeleft_item.set_visible(self.leave_at_dt is not None)
         self.ot_item.set_visible(week_ot is not None)
         if week_ot is not None:
-            label = f"Week OT {self._signed_hm(week_ot)}"
+            label = f"주간 초과근무 {self._signed_hm(week_ot)}"
             cap = status.get("weekOvertimeCap")
             if cap is not None:
                 label += f" / {hm(cap)}"
@@ -384,7 +384,7 @@ class TrayApp:
 
         if self.has_session and not has_session:
             subprocess.run(["notify-send", "칼퇴타이머",
-                            "Flex session expired — sign in again to keep tracking."],
+                            "Flex 세션이 만료되었습니다 — 계속 기록하려면 다시 로그인해 주세요."],
                            check=False)
         self.has_session = has_session
 
@@ -406,7 +406,7 @@ class TrayApp:
         if self.leave_at_dt:
             left = max(0, int((self.leave_at_dt - datetime.now().astimezone()).total_seconds()))
             self.timeleft_item.set_label(
-                f"Time left {left // 3600}:{(left % 3600) // 60:02d}:{left % 60:02d}")
+                f"남은 시간 {left // 3600}:{(left % 3600) // 60:02d}:{left % 60:02d}")
         return True
 
     # ---- login (mirrors macOS LoginWindowController) ----
@@ -415,7 +415,7 @@ class TrayApp:
         if self.login_window:
             self.login_window.present()
             return
-        win = Gtk.Window(title="Sign in to Flex")
+        win = Gtk.Window(title="Flex 로그인")
         win.set_default_size(480, 680)
         web = WebKit2.WebView()
         web.connect("load-changed", self.on_load_changed)

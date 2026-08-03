@@ -16,23 +16,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from kaltoe_rows import day_label, hm
 
 CASES = [
-    ({"label": "Mon", "worked": 30900, "overtime": 2100, "isDayOff": False, "isOngoing": False},
-     "Mon   8:35   +0:35"),
-    ({"label": "Wed", "worked": 27600, "overtime": 0, "isDayOff": False, "isOngoing": False},
-     "Wed   7:40"),
-    ({"label": "Thu", "worked": None, "overtime": 0, "isDayOff": True, "isOngoing": False},
-     "Thu   off"),
-    ({"label": "Fri", "worked": 16140, "overtime": 0, "isDayOff": False, "isOngoing": True},
-     "Fri   4:29   · on the clock"),
+    ({"label": "월", "worked": 30900, "overtime": 2100, "isDayOff": False, "isOngoing": False},
+     "월   8:35   +0:35"),
+    ({"label": "수", "worked": 27600, "overtime": 0, "isDayOff": False, "isOngoing": False},
+     "수   7:40"),
+    ({"label": "목", "worked": None, "overtime": 0, "isDayOff": True, "isOngoing": False},
+     "목   휴무"),
+    ({"label": "금", "worked": 16140, "overtime": 0, "isDayOff": False, "isOngoing": True},
+     "금   4:29   · 근무 중"),
     # No record at all: the label alone, never "0:00" — the distinction the wire's
     # absent `worked` exists to carry.
-    ({"label": "Tue", "worked": None, "overtime": 0, "isDayOff": False, "isOngoing": False},
-     "Tue"),
+    ({"label": "화", "worked": None, "overtime": 0, "isDayOff": False, "isOngoing": False},
+     "화"),
     # The marker rides `isOngoing`, i.e. "still clocked in", not "is today": a day
     # worked and closed carries no marker (case 1 above), and overtime still shows
     # alongside it while the clock runs.
-    ({"label": "Mon", "worked": 32400, "overtime": 3600, "isDayOff": False, "isOngoing": True},
-     "Mon   9:00   +1:00   · on the clock"),
+    ({"label": "월", "worked": 32400, "overtime": 3600, "isDayOff": False, "isOngoing": True},
+     "월   9:00   +1:00   · 근무 중"),
 ]
 
 

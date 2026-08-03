@@ -122,12 +122,12 @@ struct WeekBarRow: View {
 
     /// Blank for a day with no record: the empty track already says nothing happened,
     /// and a column of `·` placeholders down four untouched weekdays was the loudest
-    /// thing in the strip. "off" stays — a day off is a fact about the day, not an
+    /// thing in the strip. 휴무 stays — a day off is a fact about the day, not an
     /// absence of one — and alignment does not depend on either, since the column is a
     /// fixed 36pt frame.
     private var value: String {
         if let worked = day.worked { return Formatting.hm(worked) }
-        return day.isDayOff ? "off" : ""
+        return day.isDayOff ? "휴무" : ""
     }
 
     private var spokenLabel: String {

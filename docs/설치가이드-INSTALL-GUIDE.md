@@ -16,8 +16,9 @@ account inside the app; nothing is sent anywhere except to flex.team itself.
 **v2.1.0 — Korean menu, and a clearer ring**
 
 - **The menu is in Korean.** 남은 시간, 퇴근 예정, 출근, 주간 초과근무, and the
-  week strip's 월–금. The one line still in English is the shortened-day note
-  (`Target 6:00 · family day`), which the Linux tray shares.
+  week strip's 월–금 — on the Linux tray as well as the Mac menu bar. The one
+  line still in English is the shortened-day note (`Target 6:00 · family day`),
+  which both share.
 - **The ring now measures whatever the countdown is counting.** In the morning
   it fills toward lunch, during the break toward going back, and in the
   afternoon toward leave time — so a full ring always means the number beside
