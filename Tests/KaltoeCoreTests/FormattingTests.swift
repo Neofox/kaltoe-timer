@@ -119,7 +119,9 @@ final class PhaseDisplayTests: XCTestCase {
     // Phase boundaries: clock-in 09:00 → lunch-leave 11:20, lunch-end 12:30, leave 18:00
     func testMorningCountsDownToLunchLeave() {
         let s = display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 9, 30))
-        XCTAssertEqual(s, MenuDisplay(state: .toLunch(timeLeft: 6600), urgency: .normal)) // 1h50 to 11:20
+        // 1h50 to 11:20, and 30 of the morning's 140 minutes spent.
+        XCTAssertEqual(s, MenuDisplay(state: .toLunch(timeLeft: 6600), urgency: .normal,
+                                      fillProgress: 30.0 / 140))
         XCTAssertEqual(s.state.menuBarText, "1:50")
         XCTAssertEqual(s.state.iconName, "fork.knife")
     }
@@ -167,6 +169,101 @@ final class PhaseDisplayTests: XCTestCase {
         r.lunchStart = 12 * 3600; r.lunchEnd = 13 * 3600; r.lunchEarlyLeave = 0
         XCTAssertEqual(display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 11, 30), r: r).state,
                        .toLunch(timeLeft: 30 * 60))
+    }
+
+    // MARK: fillProgress — the ring measures the number beside it
+
+    /// The invariant the whole thing exists for: whatever the label is counting down
+    /// to, the ring is full when that countdown reaches zero. Checked at the last
+    /// minute of each of the three working phases, on the canonical 09:00 day.
+    ///
+    /// Without this the morning silently reverts to `dayProgress`, where 11:19 reads
+    /// 0.26 — a nearly-empty ring beside "0:01".
+    func testFillIsFullAsEachCountdownExpires() {
+        XCTAssertEqual(display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 11, 19)).fillProgress,
+                       139.0 / 140, accuracy: 0.001)   // one minute to lunch
+        XCTAssertEqual(display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 12, 29)).fillProgress,
+                       69.0 / 70, accuracy: 0.001)     // one minute of break left
+        XCTAssertEqual(display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 17, 59)).fillProgress,
+                       329.0 / 330, accuracy: 0.001)   // one minute to leave
+    }
+
+    /// Each phase restarts from empty, so the arc is never a leftover of the last one.
+    func testFillRestartsAtEachPhaseBoundary() {
+        XCTAssertEqual(display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 9, 0)).fillProgress, 0)
+        XCTAssertEqual(display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 11, 20)).fillProgress, 0)
+        XCTAssertEqual(display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 12, 30)).fillProgress, 0)
+    }
+
+    /// The morning and afternoon fills are the segment's, not the day's — stated
+    /// against `dayProgress` at the same instants, which is what they used to be and
+    /// what they must no longer equal.
+    func testFillMeasuresTheSegmentAndNotTheDay() {
+        let clockIn = d(2026, 7, 9, 9, 0)
+        let morning = d(2026, 7, 9, 10, 0)
+        XCTAssertEqual(display(clockIn, morning).fillProgress, 60.0 / 140, accuracy: 0.001)
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: clockIn, now: morning, rules: rules),
+                       60.0 / 540, accuracy: 0.001)
+
+        // 12:30→18:00 is 330 minutes; 15:00 is 150 of them in.
+        let afternoon = d(2026, 7, 9, 15, 0)
+        XCTAssertEqual(display(clockIn, afternoon).fillProgress, 150.0 / 330, accuracy: 0.001)
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: clockIn, now: afternoon, rules: rules),
+                       360.0 / 540, accuracy: 0.001)
+    }
+
+    /// Clocking in at 11:25, mid-window, starts the break arc from *then* rather than
+    /// from a 11:20 departure that never happened.
+    func testBreakFillStartsFromClockInWhenItLandsMidWindow() {
+        XCTAssertEqual(display(d(2026, 7, 9, 11, 25), d(2026, 7, 9, 11, 30)).fillProgress,
+                       5.0 / 65, accuracy: 0.001)
+    }
+
+    /// A day with no lunch phase has exactly one segment, so the fill is the day's
+    /// progress again — the afternoon branch must not subtract a break that never
+    /// applied. Clock-in 02:00 → leave 11:00, and 13:00 → leave 22:00.
+    func testDaysWithoutALunchPhaseFillAcrossTheWholeDay() {
+        for (clockIn, now, expected) in [(d(2026, 7, 9, 2, 0), d(2026, 7, 9, 9, 0), 7.0 / 9),
+                                         (d(2026, 7, 9, 13, 0), d(2026, 7, 9, 14, 0), 1.0 / 9)] {
+            XCTAssertEqual(display(clockIn, now).fillProgress, expected, accuracy: 0.001)
+            XCTAssertEqual(display(clockIn, now).fillProgress,
+                           WorkCalculator.dayProgress(clockIn: clockIn, now: now, rules: rules),
+                           accuracy: 0.001)
+        }
+    }
+
+    /// Past target the arc is simply full. Load-bearing for the collapsed-span case
+    /// below, and the reason the label no longer decides this for itself.
+    func testOvertimeFillsCompletely() {
+        XCTAssertEqual(display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 19, 0)).fillProgress, 1)
+    }
+
+    /// Time off at or above the target collapses the day to a zero-length span, so
+    /// `dayProgress` returns 0 while the state is `.overtime` from the first tick.
+    /// Driving the arc off that number drew an empty ring in overtime orange.
+    func testCollapsedDayStillFillsRatherThanReadingEmpty() {
+        let clockIn = d(2026, 7, 9, 9, 0)
+        let key = Calendar(identifier: .gregorian).startOfDay(for: clockIn)
+        let today = WorkRecord(clockIn: clockIn, clockOut: nil, flexWorkedNet: nil)
+        let display = DisplayState.computeDisplay(hasSession: true, today: today,
+                                                  weeklyOvertime: 0,
+                                                  timeOff: [key: 8 * 3600],
+                                                  now: d(2026, 7, 9, 9, 1), rules: rules,
+                                                  calendar: seoul)
+        XCTAssertEqual(display.state, .overtime(today: 60, clockedIn: true))
+        XCTAssertEqual(WorkCalculator.dayProgress(clockIn: clockIn, now: d(2026, 7, 9, 9, 1),
+                                                  rules: rules, timeOff: 8 * 3600), 0)
+        XCTAssertEqual(display.fillProgress, 1)
+    }
+
+    /// A settled day keeps the progress it reached, measured at clock-out: 09:00–17:00
+    /// against an 18:00 leave time is eight ninths of the span, and it must still read
+    /// eight ninths at 22:30 rather than having crept to full over the evening.
+    func testSettledDayHoldsItsProgressFromClockOut() {
+        let s = display(d(2026, 7, 9, 9, 0), d(2026, 7, 9, 22, 30),
+                        clockOut: d(2026, 7, 9, 17, 0))
+        XCTAssertEqual(s.state, .overtime(today: -3600, clockedIn: false))
+        XCTAssertEqual(s.fillProgress, 8.0 / 9, accuracy: 0.001)
     }
 
     // Urgency: leave 18:00

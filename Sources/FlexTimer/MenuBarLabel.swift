@@ -15,6 +15,9 @@ struct MenuBarLabel: View {
     let display: MenuDisplay
     let text: String
     /// 0…1, from `WorkCalculator.dayProgress`. Already clamped and finite.
+    ///
+    /// Drives the **colour** only. The arc's length comes from `display.fillProgress`,
+    /// which measures the current phase rather than the day.
     let progress: Double
     let geometry: LabelGeometry
 
@@ -32,41 +35,35 @@ struct MenuBarLabel: View {
 
     private var phase: LabelPhase { LabelPhase(display) }
 
-    /// Resolved from `fillFraction`, not from `progress`, so the arc's length and its
-    /// colour are always computed from the same number — and so both land in the render
-    /// cache's key together. Behaviour-identical: `resolve` reads `progress` only in the
-    /// `.working` case, where `fillFraction` *is* the clamped progress.
+    /// Resolved from `progress` — the whole day — while the arc's *length* comes from
+    /// `display.fillProgress`, the current phase. The two are different numbers on
+    /// purpose: hue answers "where am I in the day", length answers "how close is the
+    /// thing I am counting down to". See `MenuDisplay.fillProgress`.
+    ///
+    /// They can be keyed independently because `LabelRenderCache.Key` already carries
+    /// the resolved `Colours` beside `fill`, so nothing about the cache weakens by
+    /// letting them diverge.
     private var colours: LabelPalette.Colours {
-        LabelPalette.resolve(progress: fillFraction, phase: phase)
+        LabelPalette.resolve(progress: min(1, max(0, progress)), phase: phase)
     }
 
-    /// How much of the arc or capsule to fill. `progress` everywhere except past
-    /// target, which fills completely however far `progress` got.
+    /// How much of the arc or capsule to fill: whatever `computeDisplay` decided this
+    /// phase's segment has run, quantised.
     ///
-    /// Not cosmetic. Time off at or above the day's target drives the target to
-    /// zero, so `leaveTime == clockIn`, the span is zero, and `dayProgress` returns
-    /// 0 by its totality guard — while such a day has no time left and so is
-    /// `.overtime` from the first tick. Driving the fill from `progress` there would
-    /// draw an empty ring in overtime orange, which reads as broken rather than as
-    /// past target. In the ordinary case this changes nothing: being past leave time
-    /// already clamps `progress` to 1. `.settled` stays progress-driven deliberately
-    /// — a short day's partly-filled ring is the whole point of that state.
+    /// The phase reasoning all lives in `MenuDisplay.fillProgress` now — including the
+    /// full-past-target rule and the settled day's clock-out measurement, both of which
+    /// this property used to make for itself off `progress`.
     ///
-    /// Clamped on the way out for the same reason `LabelPalette.spectrum` clamps its
-    /// copy of the same value: `progress` arrives already clamped and finite today,
-    /// but the two consumers of `dayProgress` should agree about how much they trust
-    /// it, and `.trim(to:)` and a frame width are no more forgiving than an array index.
-    /// Quantised on the way out, so the render cache has a stable key. The ring's
-    /// circumference is about 50pt, so at 2× one step is half a pixel — invisible —
-    /// while a 9h day drops from 32,400 rasterisations to at most 200.
+    /// Clamped for the same reason `LabelPalette.spectrum` clamps its own input: the
+    /// value arrives already clamped and finite today, but `.trim(to:)` and a frame
+    /// width are no more forgiving than an array index. Quantised so the render cache
+    /// has a stable key — the ring's circumference is about 50pt, so at 2× one step is
+    /// half a pixel, invisible, while a 9h day drops from 32,400 rasterisations to at
+    /// most 200.
     private static let fillSteps: Double = 200
 
     private var fillFraction: Double {
-        let raw: Double
-        switch phase {
-        case .overtime, .atLimit: raw = 1
-        case .idle, .working, .settled: raw = min(1, max(0, progress))
-        }
+        let raw = min(1, max(0, display.fillProgress))
         return (raw * Self.fillSteps).rounded() / Self.fillSteps
     }
 
@@ -106,8 +103,15 @@ struct MenuBarLabel: View {
     /// the original 14 the ring was not the height driver at all, which is why it
     /// read small beside the digits. At 18 it is, with 2pt to spare either side.
     /// That spare is the whole margin: much past 18 and the bar clips or downscales.
+    ///
+    /// The stroke is where all the colour is, and 2pt of it was too little to read a
+    /// hue through — the spectrum's stops were already saturated once for this reason
+    /// and the ring was still the weakest place to see them. 2.5 buys a quarter more
+    /// coloured area at the same 18pt footprint, which the diameter cannot give:
+    /// the 22pt ceiling above is a hard stop, so thickness is the only lever left.
+    /// It leaves 13pt of clear space for a 9pt glyph, down from 14.
     private let ringSize: CGFloat = 18
-    private let ringStroke: CGFloat = 2
+    private let ringStroke: CGFloat = 2.5
     private let ringGlyphSize: CGFloat = 9
 
     private var ring: some View {
@@ -119,9 +123,15 @@ struct MenuBarLabel: View {
                 // same weight here as in Track. `.idle` sets `fill` to the neutral
                 // grey precisely to be that stroke; the faint `track` wash it used to
                 // use can be all but invisible on a light bar.
+                // The gap tracks `ringStroke` rather than being a constant: a round cap
+                // is drawn half a line width past each end of its dash, so the ink
+                // grows and the gap shrinks by the same amount the stroke thickens.
+                // Left at 2.0 when the stroke went to 2.5 the dashes would have closed
+                // up and the idle ring would read solid. This keeps the net gap exactly
+                // what it was at 2pt.
                 .stroke(colours.dashed ? colour(colours.fill) : colour(colours.track),
                         style: StrokeStyle(lineWidth: ringStroke, lineCap: .round,
-                                           dash: colours.dashed ? [1.5, 2.0] : []))
+                                           dash: colours.dashed ? [1.5, ringStroke] : []))
             if !colours.dashed {
                 Circle()
                     .inset(by: ringStroke / 2)

@@ -57,10 +57,21 @@ public enum WorkCalculator {
     /// handing `±inf` or `NaN` to the renderer.
     public static func dayProgress(clockIn: Date, now: Date, rules: WorkRules,
                                    timeOff: TimeInterval = 0) -> Double {
-        let span = leaveTime(clockIn: clockIn, rules: rules, timeOff: timeOff)
-            .timeIntervalSince(clockIn)
+        progress(from: clockIn, to: leaveTime(clockIn: clockIn, rules: rules, timeOff: timeOff),
+                 at: now)
+    }
+
+    /// How far `now` has travelled from `start` to `end`, as `0...1`.
+    ///
+    /// Extracted from `dayProgress` so the menu bar label's per-phase fill measures
+    /// its segment the same way the day measures itself — same clamping, same
+    /// totality, one place to reason about a collapsed or non-finite span. Not
+    /// public: the two things that need it both live in this module, and a bare
+    /// three-date function is not worth the API surface.
+    static func progress(from start: Date, to end: Date, at now: Date) -> Double {
+        let span = end.timeIntervalSince(start)
         guard span.isFinite, span > 0 else { return 0 }
-        let elapsed = now.timeIntervalSince(clockIn)
+        let elapsed = now.timeIntervalSince(start)
         guard elapsed.isFinite else { return 0 }
         return min(1, max(0, elapsed / span))
     }

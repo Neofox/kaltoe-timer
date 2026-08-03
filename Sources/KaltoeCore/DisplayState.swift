@@ -7,10 +7,34 @@ public enum Urgency: String, Equatable, Sendable {
 public struct MenuDisplay: Equatable, Sendable {
     public var state: DisplayState
     public var urgency: Urgency
+    /// How full to draw the menu bar's ring or capsule, `0...1`.
+    ///
+    /// **The gauge for the number beside it, not for the day.** Each phase measures
+    /// its own segment — morning fills toward the lunch-leave moment, the break fills
+    /// toward resumption, the afternoon fills toward leave time — so a full ring
+    /// always means the countdown printed next to it has reached 0:00. It used to be
+    /// `dayProgress` in every phase, which held that invariant all afternoon and broke
+    /// it all morning: a label reading "0:10 until lunch" beside a ring one third full
+    /// was showing two different clocks and looked broken.
+    ///
+    /// Deliberately *not* what colours the label. `LabelPalette` still resolves its
+    /// spectrum from `dayProgress`, so hue continues to travel blue→amber across the
+    /// whole day while the arc tracks the current milestone. That separation is what
+    /// makes a nearly-full ring at 11:55 unmistakable: it is still morning blue, and
+    /// the glyph is a fork.
+    ///
+    /// Computed here rather than by the label because the phase decision — which
+    /// segment you are even in — already lives in `computeDisplay`, and a second copy
+    /// of that branch would be free to drift from this one.
+    public var fillProgress: Double
 
-    public init(state: DisplayState, urgency: Urgency) {
+    /// `fillProgress` defaults to empty so the states that draw no fill at all
+    /// (`.idle`, and every construction in a test that only cares about text) need not
+    /// mention it.
+    public init(state: DisplayState, urgency: Urgency, fillProgress: Double = 0) {
         self.state = state
         self.urgency = urgency
+        self.fillProgress = fillProgress
     }
 }
 
@@ -57,19 +81,37 @@ public enum DisplayState: Equatable, Sendable {
         if today.clockOut == nil && left > 0 {
             let lunch = WorkCalculator.lunchWindow(on: now, rules: rules, calendar: calendar)
             let leave = WorkCalculator.leaveTime(clockIn: today.clockIn, rules: rules, timeOff: off)
-            if leave > lunch.endAt { // lunch phases only apply to a normally-shaped day
+            let lunchApplies = leave > lunch.endAt   // a normally-shaped day
+            if lunchApplies {
                 if now < lunch.leaveAt {
                     return MenuDisplay(state: .toLunch(timeLeft: lunch.leaveAt.timeIntervalSince(now)),
-                                       urgency: .normal)
+                                       urgency: .normal,
+                                       fillProgress: WorkCalculator.progress(
+                                        from: today.clockIn, to: lunch.leaveAt, at: now))
                 }
                 if now < lunch.endAt {
                     return MenuDisplay(state: .onBreak(timeLeft: lunch.endAt.timeIntervalSince(now)),
-                                       urgency: .normal)
+                                       urgency: .normal,
+                                       // From whichever came later: clocking in at
+                                       // 12:00 starts the break arc empty rather than
+                                       // half-full for a window most of which you were
+                                       // not here for.
+                                       fillProgress: WorkCalculator.progress(
+                                        from: max(today.clockIn, lunch.leaveAt),
+                                        to: lunch.endAt, at: now))
                 }
             }
             let urgency: Urgency = left <= criticalThreshold ? .critical
                 : left <= warningThreshold ? .warning : .normal
-            return MenuDisplay(state: .counting(timeLeft: left), urgency: urgency)
+            // The afternoon segment runs from the end of lunch, except on the two days
+            // that never had one to end: a short day where the lunch phases never
+            // applied, and a clock-in after the window had already closed. Both start
+            // their single segment at clock-in, which is also what makes this the whole
+            // day's progress whenever there is only one segment in it.
+            let resumed = lunchApplies ? max(today.clockIn, lunch.endAt) : today.clockIn
+            return MenuDisplay(state: .counting(timeLeft: left), urgency: urgency,
+                               fillProgress: WorkCalculator.progress(from: resumed, to: leave,
+                                                                     at: now))
         }
         let todayOvertime = WorkCalculator.dailyOvertime(record: today, now: now,
                                                          rules: rules, timeOff: timeOff)
@@ -86,7 +128,21 @@ public enum DisplayState: Equatable, Sendable {
             urgency = .normal                       // day settled
         }
         return MenuDisplay(state: .overtime(today: todayOvertime, clockedIn: clockedIn),
-                           urgency: urgency)
+                           urgency: urgency,
+                           // Past target the arc is simply full, whatever the day's
+                           // arithmetic says. This is load-bearing, not cosmetic: time
+                           // off at or above the target collapses the span, so
+                           // `dayProgress` returns 0 by its totality guard on a day
+                           // that is `.overtime` from the very first tick — and an
+                           // empty ring in overtime orange reads as broken.
+                           //
+                           // A settled day keeps its real progress, measured at
+                           // clock-out rather than at `now`: a day that ended short of
+                           // target has to look like it stopped short, and measuring at
+                           // `now` would let the ring keep filling all evening.
+                           fillProgress: clockedIn ? 1 : WorkCalculator.dayProgress(
+                            clockIn: today.clockIn, now: today.clockOut ?? now,
+                            rules: rules, timeOff: off))
     }
 
     public var menuBarText: String {
