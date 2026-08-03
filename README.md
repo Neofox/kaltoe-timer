@@ -233,6 +233,11 @@ now takes the progress border's fill and colour as optional trailing arguments:
         python3 kaltoe-tray.py --render-test /out/critical.png "OT -0:59" critical
         python3 kaltoe-tray.py --render-test /out/border.png "1:25" normal 0.18 "#258ef7"'
 
+`--render-ring <out.png> <icon-name> <fill> <#rrggbb>` does the same for label
+mode's ringed glyph, which is what GNOME shows:
+
+    python3 kaltoe-tray.py --render-ring /out/ring.png kaltoe-fork 0.42 "#51cc29"
+
 Then look at them — **resampled to about 22px, not at their native 64**. The
 panel scales them down, and text that is comfortable at full size can be mush
 there; that resampled view is what chose the border's padding, and judging at

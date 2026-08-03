@@ -6,6 +6,7 @@ AppIndicator tray item, and hosts the flex.team login window (WebKitGTK).
 Design: docs/superpowers/specs/2026-07-10-linux-build-design.md.
 """
 import json
+import math
 import os
 import subprocess
 import sys
@@ -57,7 +58,7 @@ except ValueError:  # older distros ship the pre-Ayatana name
         raise SystemExit(
             "No AppIndicator introspection data found.\n"
             "Install it:  sudo apt install gir1.2-ayatanaappindicator3-0.1")
-from gi.repository import GLib, Gtk, Pango, PangoCairo, WebKit2
+from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango, PangoCairo, WebKit2
 
 APP_DIR = Path(__file__).resolve().parent
 CORE_BIN = str(APP_DIR / "kaltoe-core")
@@ -98,6 +99,22 @@ BORDER_RADIUS = 10
 # using Cairo's toy text API. Pango disagrees — if anything the break label is
 # a touch crisper at 10 — so the conclusion held and the reason did not.)
 BORDER_PAD = BORDER_INSET + BORDER_WIDTH
+# Ring metrics for label mode, same 64pt canvas. Proportioned off the Mac's ring
+# — an 18pt circle with a 2pt stroke around a 9pt glyph — which is the geometry
+# this mode already has: a glyph with the countdown beside it, exactly what
+# MenuBarLabel draws. The glyph gives up room to the ring, as it does there.
+#
+# The Mac gives its glyph half the ring's diameter; this gives it two thirds,
+# chosen by rendering 7/35, 6/39 and 5/43 through `--render-ring` and judging
+# them resampled to 22px. The glyph loses far more to a thick ring here than the
+# reasoning-by-proportion suggested — at 35 the cup and the stopwatch are barely
+# separable on a panel — while the ring itself still reads clearly at 5, which
+# is the same 5-in-64 stroke the KDE border already proves legible. On GNOME the
+# countdown is text beside the icon, so the glyph is the only thing naming the
+# app in the panel; it gets the room.
+RING_INSET = 3.5
+RING_WIDTH = 5.0
+RING_GLYPH = 43.0
 
 
 def render_text_icon(text, urgency, out_path, fill=None, color=None):
@@ -168,6 +185,48 @@ def render_text_icon(text, urgency, out_path, fill=None, color=None):
     surface.write_to_png(out_path)
 
 
+def render_glyph_icon(svg_path, out_path, fill, color):
+    """Draw the tray glyph inside a progress ring, for the label-mode panels.
+
+    GNOME (and anything that is not KDE) puts the countdown in the indicator's
+    own label and shows a small icon beside it, so the KDE trick of drawing the
+    time *into* the icon has nothing to add there — but the icon itself was a
+    static SVG carrying no progress at all, while KDE gained a border. This is
+    the same information in the shape that fits: a ring round the glyph, which
+    is what the Mac has always drawn for the identical layout.
+
+    The glyph is loaded from the very SVG the static path ships rather than
+    redrawn in Cairo, so there is one copy of the artwork and the ringed icon
+    cannot drift from the plain one. GdkPixbuf reads it through the librsvg
+    loader that any desktop rendering an icon theme already has; the caller
+    treats a failure here as "fall back to the static icon" rather than as an
+    error, so a machine without that loader keeps today's tray.
+    """
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, ICON_SIZE, ICON_SIZE)
+    cr = cairo.Context(surface)
+    centre = ICON_SIZE / 2
+    radius = centre - RING_INSET - RING_WIDTH / 2
+
+    cr.set_line_width(RING_WIDTH)
+    cr.set_line_cap(cairo.LINE_CAP_ROUND)
+    cr.new_path()
+    cr.set_source_rgba(1, 1, 1, 0.20)
+    cr.arc(centre, centre, radius, 0, 2 * math.pi)
+    cr.stroke()
+    if fill and fill > 0:
+        cr.new_path()
+        cr.set_source_rgb(*color)
+        # From twelve o'clock, like the Mac ring and the KDE border.
+        cr.arc(centre, centre, radius, -math.pi / 2, -math.pi / 2 + 2 * math.pi * min(1.0, fill))
+        cr.stroke()
+
+    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(svg_path, int(RING_GLYPH), int(RING_GLYPH))
+    offset = (ICON_SIZE - RING_GLYPH) / 2
+    Gdk.cairo_set_source_pixbuf(cr, pixbuf, offset, offset)
+    cr.paint()
+    surface.write_to_png(out_path)
+
+
 def _stroke_border(cr, fill, rgba):
     """Stroke `fill` of the perimeter in one pass.
 
@@ -213,9 +272,15 @@ class TrayApp:
         self.indicator.set_icon_theme_path(ICON_DIR)
         self.texticon = TRAY_MODE == "texticon"
         self.icon_seq = 0
+        # Both modes now write generated PNGs, so the temp dir is no longer the
+        # text-icon path's alone. `rings` starts optimistic and latches off the
+        # first time GdkPixbuf cannot read the SVG — a desktop without the
+        # librsvg loader then keeps the static icons instead of a blank tray.
+        self.rings = not self.texticon
+        self.icon_temp = tempfile.mkdtemp(prefix="kaltoe-tray-")
+        self._theme_path = None
+        self._use_theme_path(self.icon_temp if self.texticon else ICON_DIR)
         if self.texticon:
-            self.icon_temp = tempfile.mkdtemp(prefix="kaltoe-tray-")
-            self.indicator.set_icon_theme_path(self.icon_temp)
             self._set_text_icon("--:--", "normal")
         self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
         if not self.texticon:
@@ -400,7 +465,16 @@ class TrayApp:
                                 fill=status.get("fill"), color=status.get("fillColor"))
         else:
             self.indicator.set_label(text, LABEL_GUIDE)
-            self.indicator.set_icon_full(icon, text)
+            # The ring carries what the border carries on KDE. Suppressed at
+            # warning and critical for the same reason: those states already
+            # recolour the whole glyph, and a progress ring around an alarm is
+            # a second thing to read at the moment there is least time to.
+            ringed = (self.rings and urgency not in PILL_COLORS
+                      and self._set_glyph_icon(icon, text, status.get("fill"),
+                                               status.get("fillColor")))
+            if not ringed:
+                self._use_theme_path(ICON_DIR)
+                self.indicator.set_icon_full(icon, text)
 
         has_session = status.get("hasSession", False)
         parts = []
@@ -461,20 +535,60 @@ class TrayApp:
                            check=False)
         self.has_session = has_session
 
-    def _set_text_icon(self, text, urgency, fill=None, color=None):
+    def _use_theme_path(self, path):
+        """Point the indicator at a directory, but only when it changes.
+
+        Label mode alternates between two: generated rings live in the temp
+        dir, the warning and critical glyphs are shipped SVGs in ICON_DIR. Set
+        the wrong one and `set_icon_full` names a file that is not there — the
+        first cut of the ring did exactly that, leaving the alert states with
+        no icon at the moment they matter most. Guarded on change because this
+        runs on the one-second tick."""
+        if self._theme_path != path:
+            self.indicator.set_icon_theme_path(path)
+            self._theme_path = path
+
+    def _publish_icon(self, text, render):
         # Icons travel by NAME (appindicator → SNI → Plasma's icon loader),
         # and Plasma caches pixmaps per name for the whole session — reusing
         # names froze the tray at the first renders (seen live: icon 15 min
         # behind the menu). A never-reused name defeats every cache layer;
         # prune old files so the temp dir stays at two PNGs.
+        #
+        # Shared by both modes since label mode started generating icons too.
+        # Whether GNOME's appindicator extension caches as aggressively as
+        # Plasma is unknown, and the flip costs nothing on a desktop that does
+        # not need it — where guessing wrong the other way is a tray frozen on
+        # the first ring it ever drew.
         self.icon_seq += 1
         name = f"kaltoe-live-{self.icon_seq}"
-        render_text_icon(text, urgency, os.path.join(self.icon_temp, name + ".png"),
-                         fill=fill, color=color)
+        render(os.path.join(self.icon_temp, name + ".png"))
         self.indicator.set_icon_full(name, text)
         stale = os.path.join(self.icon_temp, f"kaltoe-live-{self.icon_seq - 2}.png")
         if os.path.exists(stale):
             os.remove(stale)
+
+    def _set_text_icon(self, text, urgency, fill=None, color=None):
+        self._publish_icon(text, lambda path: render_text_icon(
+            text, urgency, path, fill=fill, color=color))
+
+    def _set_glyph_icon(self, icon, text, fill, color):
+        """Ringed glyph for label mode, falling back to the static SVG.
+
+        Returns False when the ring could not be drawn, which latches `rings`
+        off: the failure is a missing SVG loader, so it will not fix itself on
+        the next tick and retrying every second would just churn."""
+        rgb = border_rgb(color)
+        if rgb is None or fill is None:
+            return False
+        try:
+            self._use_theme_path(self.icon_temp)
+            self._publish_icon(text, lambda path: render_glyph_icon(
+                os.path.join(ICON_DIR, icon + ".svg"), path, fill, rgb))
+            return True
+        except Exception:
+            self.rings = False
+            return False
 
     def _tick(self):
         if self.leave_at_dt:
@@ -575,6 +689,20 @@ def main():
         fill = float(sys.argv[5]) if len(sys.argv) > 5 else None
         color = sys.argv[6] if len(sys.argv) > 6 else None
         render_text_icon(sys.argv[3], sys.argv[4], sys.argv[2], fill=fill, color=color)
+        print(f"wrote {sys.argv[2]}")
+        return
+    if sys.argv[1:2] == ["--render-ring"]:
+        # Label mode's counterpart. Same reason the text seam exists: the ring
+        # is a PNG this code draws, and a GNOME panel is not available to look
+        # at, so the only honest check is to render the shipped function.
+        if len(sys.argv) < 6:
+            raise SystemExit("usage: kaltoe-tray.py --render-ring <out.png> <icon-name> "
+                             "<fill> <#rrggbb>")
+        colour = border_rgb(sys.argv[5])
+        if colour is None:
+            raise SystemExit(f"unusable colour: {sys.argv[5]}")
+        render_glyph_icon(os.path.join(ICON_DIR, sys.argv[3] + ".svg"), sys.argv[2],
+                          float(sys.argv[4]), colour)
         print(f"wrote {sys.argv[2]}")
         return
     if not os.path.exists(CORE_BIN):
