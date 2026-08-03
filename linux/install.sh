@@ -14,9 +14,9 @@ cat > "$HOME/.config/autostart/kaltoe-timer.desktop" <<EOF
 Type=Application
 Name=칼퇴타이머
 Comment=Work-hours tray timer for flex.team
-Exec=$DEST/kaltoe-tray.py
+Exec=/usr/bin/python3 $DEST/kaltoe-tray.py
 X-GNOME-Autostart-enabled=true
 EOF
 
 echo "Installed to $DEST (autostarts at login)."
-echo "Start it now with:  $DEST/kaltoe-tray.py &"
+echo "Start it now with:  /usr/bin/python3 $DEST/kaltoe-tray.py &"

@@ -33,7 +33,11 @@ the system clock.
 
 The app autostarts at login. Start it immediately with:
 
-    ~/.local/share/kaltoe-timer/kaltoe-tray.py &
+    /usr/bin/python3 ~/.local/share/kaltoe-timer/kaltoe-tray.py &
+
+Spelling out `/usr/bin/python3` is deliberate: `gi` and `cairo` are distro
+packages that install only into the system Python, so a pyenv, conda, or
+venv `python3` earlier in your `PATH` cannot import them.
 
 ## First run
 

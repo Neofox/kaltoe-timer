@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """칼퇴타이머 Linux tray frontend.
 
 Spawns the kaltoe-core daemon, mirrors its NDJSON status lines in an
@@ -42,11 +42,24 @@ try:
     gi.require_version("Pango", "1.0")
     gi.require_version("PangoCairo", "1.0")
 except (ImportError, ValueError) as e:
+    # gi and cairo are distro packages: they land in the system interpreter's
+    # site-packages and nowhere else. A pyenv shim or an active venv first on
+    # PATH therefore fails here no matter how many packages get installed, so
+    # name the interpreter before listing packages that may already be there.
+    wrong_python = "" if sys.executable.startswith("/usr/bin/") else (
+        f"\nRunning under {sys.executable} —\n"
+        "not the system Python, so distro-installed modules are invisible to "
+        "it.\nRerun with:  "
+        f"/usr/bin/python3 {Path(__file__).resolve()}\n")
     raise SystemExit(
-        f"Missing GTK/WebKit introspection data ({e}).\n"
+        f"Missing GTK/WebKit introspection data ({e}).\n{wrong_python}"
         "Install the dependencies:\n"
-        "  sudo apt install python3-gi gir1.2-ayatanaappindicator3-0.1 "
-        "gir1.2-webkit2-4.1 libnotify-bin python3-gi-cairo")
+        "  Ubuntu: sudo apt install python3-gi python3-gi-cairo "
+        "gir1.2-ayatanaappindicator3-0.1 gir1.2-webkit2-4.1 libnotify-bin "
+        "librsvg2-common\n"
+        "  Fedora: sudo dnf install python3-gobject python3-cairo gtk3 "
+        "gobject-introspection libayatana-appindicator-gtk3 webkit2gtk4.1 "
+        "libnotify librsvg2")
 try:
     gi.require_version("AyatanaAppIndicator3", "0.1")
     from gi.repository import AyatanaAppIndicator3 as AppIndicator
@@ -57,7 +70,8 @@ except ValueError:  # older distros ship the pre-Ayatana name
     except ValueError:
         raise SystemExit(
             "No AppIndicator introspection data found.\n"
-            "Install it:  sudo apt install gir1.2-ayatanaappindicator3-0.1")
+            "Install it:  sudo apt install gir1.2-ayatanaappindicator3-0.1\n"
+            "         or  sudo dnf install libayatana-appindicator-gtk3")
 from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango, PangoCairo, WebKit2
 
 APP_DIR = Path(__file__).resolve().parent

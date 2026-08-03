@@ -147,8 +147,12 @@ Ubuntu 22.04 이상(GNOME) 또는 Fedora(KDE Plasma), x86_64(인텔/AMD)가
 3. 바로 실행합니다(또는 로그아웃 후 다시 로그인):
 
     ```
-    ~/.local/share/kaltoe-timer/kaltoe-tray.py &
+    /usr/bin/python3 ~/.local/share/kaltoe-timer/kaltoe-tray.py &
     ```
+
+    `/usr/bin/python3`을 그대로 적는 것이 중요합니다. GTK 모듈은 배포판
+    패키지라 시스템 파이썬에만 설치되므로, `PATH` 앞쪽에 pyenv나 conda의
+    `python3`이 있으면 앱이 실행되지 않습니다.
 
 4. 트레이 아이콘 → **Sign in to Flex…** 로 로그인합니다. 세션은
    `~/.config/kaltoe-timer/session.json` 에 본인만 읽을 수 있게 저장됩니다.

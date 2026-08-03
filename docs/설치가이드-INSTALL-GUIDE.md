@@ -147,8 +147,12 @@ not ARM).
 3. Start it now (or just log out/in):
 
     ```
-    ~/.local/share/kaltoe-timer/kaltoe-tray.py &
+    /usr/bin/python3 ~/.local/share/kaltoe-timer/kaltoe-tray.py &
     ```
+
+    `/usr/bin/python3` is spelled out on purpose — the GTK modules are
+    distro packages that only the system Python can see, so a pyenv or
+    conda `python3` on your `PATH` would fail to start the app.
 
 4. Click the tray icon → **Sign in to Flex…** and log in. Your session is
    saved to `~/.config/kaltoe-timer/session.json`, readable only by you.
