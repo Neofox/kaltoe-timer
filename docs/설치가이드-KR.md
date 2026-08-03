@@ -122,14 +122,14 @@ Ubuntu 22.04 이상(GNOME) 또는 Fedora(KDE Plasma), x86_64(인텔/AMD)가
 
     ```
     sudo apt install python3-gi python3-gi-cairo gir1.2-ayatanaappindicator3-0.1 \
-                     gir1.2-webkit2-4.1 libnotify-bin
+                     gir1.2-webkit2-4.1 libnotify-bin librsvg2-common
     ```
 
     Fedora:
 
     ```
     sudo dnf install python3-gobject python3-cairo gtk3 gobject-introspection \
-                     libayatana-appindicator-gtk3 webkit2gtk4.1 libnotify
+                     libayatana-appindicator-gtk3 webkit2gtk4.1 libnotify librsvg2
     ```
 
 2. 압축을 풀고 설치합니다:
