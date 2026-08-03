@@ -9,11 +9,12 @@ and a family day that shortens the last Friday of the month.
 
 ## The label
 
-![The menu bar label eight minutes from 칼퇴](docs/images/menubar.png)
+![Ring style](docs/images/menubar.png) ![Track style](docs/images/track.png)
 
-A glyph, a countdown, and a fill that closes as the countdown runs down — here
-with eight minutes left, so the ring is nearly shut, amber, and the glyph has
-started walking.
+A glyph, a countdown, and a fill that closes as the countdown runs down — both
+above with minutes left, so the fill is nearly complete, amber, and the glyph
+has started walking. Two geometries, chosen under `라벨 스타일`: a **ring** around
+the glyph, or a **track** capsule filling behind the whole label.
 
 | Phase | Reads | Meaning |
 | --- | --- | --- |
@@ -35,9 +36,6 @@ Two details the fill gets right, and they are the interesting part:
 - **Its colour tracks the whole day regardless** — blue → teal → green → amber
   — so a nearly-closed morning ring is still morning-blue and cannot be read as
   a finished day. Past target it goes flat orange, and red at a company limit.
-
-Pick a **ring** around the glyph or a **track** capsule behind the label under
-`라벨 스타일`.
 
 ## The dropdown
 
